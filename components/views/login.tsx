@@ -7,7 +7,7 @@ import { LogoMark } from "../brand";
 import { Button, Field, Input } from "../ui";
 
 export function LoginView() {
-  const { auth, backend } = useData();
+  const { auth, backend, settings } = useData();
   const [isSignUp, setIsSignUp] = useState(false);
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
@@ -48,7 +48,7 @@ export function LoginView() {
           <LogoMark className="h-12 w-12" />
           <h1 className="mt-6 text-[2.25rem] leading-tight font-normal sm:text-[2.75rem]">{isSignUp ? "Create your account" : "Sign in"}</h1>
           <p className="mt-3 text-base text-muted">
-            {isSignUp ? "Start tracking tefillin, Shabbos candles and every other mivtza." : "to continue to Shiur Daled Mivtzoim"}
+            {isSignUp ? settings.welcome : `to continue to ${settings.site_name} ${settings.tagline}`}
           </p>
         </div>
 
@@ -58,7 +58,7 @@ export function LoginView() {
               <Input id="login-name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Mendel Cohen" autoComplete="name" />
             </Field>
           )}
-          <Field label="Username" htmlFor="login-username" hint={isSignUp ? "3 to 20 letters, numbers, dots or dashes. You'll use it to sign in." : undefined}>
+          <Field label={isSignUp ? "Username" : "Username or email"} htmlFor="login-username" hint={isSignUp ? "3 to 20 letters, numbers, dots or dashes. You'll use it to sign in." : undefined}>
             <Input
               id="login-username"
               required
@@ -100,7 +100,9 @@ export function LoginView() {
         </div>
       </form>
       <div className="mt-6 flex w-full max-w-[64rem] flex-wrap justify-between gap-2 px-4 text-xs text-muted">
-        <span>Shiur Daled Mivtzoim</span>
+        <span>
+          {settings.site_name} {settings.tagline}
+        </span>
         <span>{hebrewDate()}</span>
       </div>
     </div>

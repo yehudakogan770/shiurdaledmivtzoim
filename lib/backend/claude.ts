@@ -12,7 +12,7 @@ type DocRef = {
 type CollRef = { get(): Promise<{ docs: Snap[] }>; doc(id?: string): DocRef; where(f: string, op: string, v: unknown): CollRef };
 type DB = { doc(path: string): DocRef; collection(path: string): CollRef };
 type User = {
-  me(): Promise<{ id: string | null; name: string }>;
+  me(): Promise<{ id: string | null; name: string; isOwner: boolean }>;
   profiles(ids: string[]): Promise<Record<string, { name: string }>>;
 };
 type ClaudeRuntime = { use(name: string): Promise<unknown> };
@@ -45,7 +45,9 @@ export async function createClaudeBackend(): Promise<Backend | null> {
 
     async currentUser() {
       const m = await user.me();
-      return { id: myId, name: m.name || "You", username: null };
+      const roleDoc = await db.collection("roles").doc(myId).get().catch(() => null);
+      const role = m.isOwner || roleDoc?.data()?.role === "admin" ? "admin" : "user";
+      return { id: myId, name: m.name || "You", username: null, role };
     },
     async signIn() {},
     async signUp() {
@@ -111,6 +113,38 @@ export async function createClaudeBackend(): Promise<Backend | null> {
       const out: Record<string, string> = {};
       for (const id of ids) out[id] = ps[id]?.name || (id === myId ? "You" : "Someone");
       return out;
+    },
+
+    async getSettings() {
+      const snap = await db.doc("settings/site").get().catch(() => null);
+      return (snap?.exists ? snap.data() : {}) as Record<string, string>;
+    },
+    async saveSettings(settings) {
+      try {
+        await db.doc("settings/site").set(clean(settings));
+      } catch (e) {
+        throw explain(e);
+      }
+    },
+    async setRole(userId, role) {
+      try {
+        await db.collection("roles").doc(userId).set({ role });
+      } catch (e) {
+        throw explain(e);
+      }
+    },
+    async listPeople() {
+      const [members, activity, roles] = await Promise.all([
+        db.collection("group_members").get(),
+        db.collection("mivtzoim_activity").get(),
+        db.collection("roles").get(),
+      ]);
+      const ids = new Set<string>([myId]);
+      for (const d of [...members.docs, ...activity.docs]) ids.add(String(d.data()?.user_id));
+      const ps = await user.profiles([...ids]);
+      const admins = new Set(roles.docs.filter((d) => d.data()?.role === "admin").map((d) => d.id));
+      if (me.isOwner) admins.add(myId);
+      return [...ids].map((id) => ({ id, name: ps[id]?.name || "Someone", username: null, role: admins.has(id) ? "admin" : "user" }));
     },
   };
 }

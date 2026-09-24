@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ClipboardList, Flame, ScrollText, Sparkles, Trash2 } from "lucide-react";
+import { ClipboardList, Flame, Sparkles, Trash2 } from "lucide-react";
+import { TefillinIcon } from "../icons";
 import { useData } from "@/lib/data";
 import { categoryName } from "@/lib/categories";
 import { formatDay, weekLabel, weekStart } from "@/lib/dates";
@@ -78,7 +79,7 @@ export function HistoryView() {
                 const meta = [formatDay(a.activity_date), group?.name, route?.name, place?.name].filter(Boolean).join(" · ");
                 return (
                   <li key={a.id} className="flex items-center gap-3 px-6 py-3.5">
-                    <CategoryIcon type={a.category_type} icon={a.category_type === "tefillin" ? ScrollText : a.category_type === "shabbos_candles" ? Flame : Sparkles} />
+                    <CategoryIcon type={a.category_type} icon={a.category_type === "tefillin" ? TefillinIcon : a.category_type === "shabbos_candles" ? Flame : Sparkles} />
                     <span className="min-w-0 flex-1">
                       <span className="block font-medium">{categoryName(a, data.categories)}</span>
                       <span className="block text-sm text-muted">{meta}</span>

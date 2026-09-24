@@ -19,6 +19,17 @@ The screens talk to one small interface (`lib/backend`). Which storage it uses d
 | Published as a Claude artifact | The artifact's shared database | The viewer's Claude account |
 | Anywhere else (no keys) | This browser only (`localStorage`) | Username and password (accounts live on that device) |
 
+## Admin
+
+Signing up or signing in with **sdmivtzoim87@gmail.com** makes that account an admin (the list is in `lib/admin.ts`). Admins get an **Admin** page to:
+
+- edit the site name, tagline, sign-up welcome text and a dashboard announcement
+- add or hide mivtzoim categories offered to everyone
+- see every person, their totals, groups and entries, and make or remove admins
+- see all activity, filtered by person or mivtza, and delete any group
+
+With Supabase, create the admin account right after running the setup files, before sharing the link. Only an admin can change anyone's role; the database enforces this.
+
 ## Run locally
 
 ```bash
@@ -31,7 +42,7 @@ Without Supabase keys the site runs in single-device mode, which is useful for t
 ## Launch with Supabase and Vercel
 
 1. Create a project at [supabase.com](https://supabase.com).
-2. In **SQL Editor**, run `supabase/migrations/001_initial.sql`, `002_app.sql` and `003_usernames.sql`, in that order.
+2. In **SQL Editor**, run `supabase/migrations/001_initial.sql`, `002_app.sql`, `003_usernames.sql` and `004_admin.sql`, in that order.
    Then under **Authentication → Sign In / Providers → Email**, turn off **Confirm email**. People sign in with a username, so there is no inbox to confirm.
 3. Import this repository at [vercel.com/new](https://vercel.com/new) and add these environment variables from Supabase **Project Settings → API**:
    - `NEXT_PUBLIC_SUPABASE_URL`

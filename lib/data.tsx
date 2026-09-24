@@ -9,9 +9,11 @@ import type {
   Location,
   PersonalCategory,
   Profile,
+  SiteSettings,
   Route,
   RouteLocation,
 } from "./types";
+import { DEFAULT_SETTINGS } from "./types";
 import { today } from "./dates";
 
 export interface AppData {
@@ -60,6 +62,12 @@ interface DataContextValue {
     activity: Activity[];
     categories: PersonalCategory[];
   };
+  /** Categories an admin offers to everyone. */
+  shared: PersonalCategory[];
+  settings: SiteSettings;
+  isAdmin: boolean;
+  /** Every account; filled in for admins only. */
+  people: Profile[];
   toast: string | null;
   notify(message: string): void;
   refresh(): Promise<void>;
@@ -82,8 +90,10 @@ interface DataContextValue {
     removeStop(stopId: string): Promise<void>;
     toggleStop(stop: RouteLocation): Promise<void>;
     resetRoute(routeId: string): Promise<void>;
-    addCategory(name: string, description?: string): Promise<void>;
+    addCategory(name: string, description?: string, shared?: boolean): Promise<void>;
     archiveCategory(id: string, archived: boolean): Promise<void>;
+    saveSettings(settings: SiteSettings): Promise<void>;
+    setRole(userId: string, role: "user" | "admin"): Promise<void>;
   };
 }
 
@@ -101,6 +111,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const [me, setMe] = useState<Profile | null>(null);
   const [data, setData] = useState<AppData>(EMPTY);
+  const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
+  const [people, setPeople] = useState<Profile[]>([]);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -111,12 +123,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const load = useCallback(async (b: Backend) => {
-    const user = await b.currentUser();
+    const [user, saved] = await Promise.all([b.currentUser(), b.getSettings().catch(() => ({}))]);
+    const merged = { ...DEFAULT_SETTINGS };
+    for (const [k, v] of Object.entries(saved)) if (typeof v === "string" && (v || k === "announcement")) merged[k as keyof SiteSettings] = v;
+    setSettings(merged);
     setMe(user);
     if (!user) {
       setData(EMPTY);
+      setPeople([]);
       return;
     }
+    const everyone = user.role === "admin" ? await b.listPeople().catch(() => []) : [];
+    setPeople(everyone);
     const [groups, members, routes, locations, stops, categories, activity] = await Promise.all([
       b.list("groups"),
       b.list("group_members"),
@@ -129,6 +147,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const ids = new Set<string>([user.id]);
     members.forEach((m) => ids.add(m.user_id));
     activity.forEach((a) => ids.add(a.user_id));
+    everyone.forEach((p) => ids.add(p.id));
     const names = await b.names([...ids]);
     names[user.id] = user.name || names[user.id];
     setData({ groups, members, routes, locations, stops, categories, activity, names });
@@ -175,7 +194,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const groups = data.groups.filter((g) => myGroupIds.has(g.id));
     const routes = data.routes.filter((r) => r.created_by === me.id || (r.group_id && myGroupIds.has(r.group_id)));
     const activity = data.activity.filter((a) => a.user_id === me.id);
-    const categories = data.categories.filter((c) => c.user_id === me.id);
+    const categories = data.categories.filter((c) => c.user_id === me.id && !c.shared);
     return { groups, routes, activity, categories };
   }, [data, me]);
 
@@ -198,6 +217,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       me,
       data,
       mine,
+      shared: data.categories.filter((c) => c.shared),
+      settings,
+      isAdmin: me?.role === "admin",
+      people,
       toast,
       notify,
       refresh,
@@ -300,7 +323,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
               await b.update("route_locations", s.id, { completed: false });
             }
           }),
-        addCategory: (name, description) =>
+        addCategory: (name, description, shared) =>
           run(async () => {
             await b.insert("personal_categories", {
               user_id: uid(),
@@ -308,12 +331,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
               description: description?.trim() || null,
               icon: "circle",
               status: "active",
+              ...(shared ? { shared: true } : {}),
             });
           }),
+        saveSettings: (next) => run(() => b.saveSettings(next)),
+        setRole: (userId, role) => run(() => b.setRole(userId, role)),
         archiveCategory: (id, archived) => run(() => b.update("personal_categories", id, { status: archived ? "archived" : "active" })),
       },
     };
-  }, [backend, status, error, me, data, mine, toast, notify, refresh, load]);
+  }, [backend, status, error, me, data, mine, settings, people, toast, notify, refresh, load]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }

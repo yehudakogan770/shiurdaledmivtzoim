@@ -1,7 +1,9 @@
 "use client";
 
+import type { ComponentType } from "react";
 import { useMemo, useState, type FormEvent } from "react";
-import { Check, Flame, Minus, Plus, ScrollText, Sparkles } from "lucide-react";
+import { Check, Flame, Minus, Plus, Sparkles } from "lucide-react";
+import { TefillinIcon } from "../icons";
 import { useData } from "@/lib/data";
 import { useNav } from "@/lib/nav";
 import { STANDARD } from "@/lib/categories";
@@ -11,25 +13,25 @@ import { Button, Card, CardTitle, Field, Input, PageHeader, Select, Textarea, cx
 
 type Choice = { key: string; type: CategoryType; personalId: string | null; label: string; hint: string };
 
-const TONE: Record<CategoryType, { on: string; chip: string; icon: typeof ScrollText }> = {
-  tefillin: { on: "bg-accent-soft text-accent-on-soft", chip: "bg-accent text-accent-ink", icon: ScrollText },
+const TONE: Record<CategoryType, { on: string; chip: string; icon: ComponentType<{ size?: number }> }> = {
+  tefillin: { on: "bg-accent-soft text-accent-on-soft", chip: "bg-accent text-accent-ink", icon: TefillinIcon },
   shabbos_candles: { on: "bg-candle-soft text-candle-on-soft", chip: "bg-candle text-card", icon: Flame },
   personal: { on: "bg-sage-soft text-sage-on-soft", chip: "bg-sage text-card", icon: Sparkles },
 };
 
 export function LogView() {
-  const { mine, data, actions, notify } = useData();
+  const { mine, shared, data, actions, notify } = useData();
   const { query, Link, go } = useNav();
 
   const choices: Choice[] = useMemo(
     () => [
       { key: "tefillin", type: "tefillin", personalId: null, label: STANDARD.tefillin.label, hint: "People who put on tefillin" },
       { key: "shabbos_candles", type: "shabbos_candles", personalId: null, label: STANDARD.shabbos_candles.label, hint: "Women and girls who received candles" },
-      ...mine.categories
+      ...[...shared, ...mine.categories]
         .filter((c) => c.status === "active")
         .map((c) => ({ key: c.id, type: "personal" as const, personalId: c.id, label: c.name, hint: c.description || "Your own category" })),
     ],
-    [mine.categories],
+    [mine.categories, shared],
   );
 
   const [choiceKey, setChoiceKey] = useState(query.category && choices.some((c) => c.key === query.category) ? query.category : "tefillin");

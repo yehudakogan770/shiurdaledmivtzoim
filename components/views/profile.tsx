@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { Plus } from "lucide-react";
+import { handle } from "@/lib/admin";
 import { useData } from "@/lib/data";
 import { SUGGESTED_PERSONAL } from "@/lib/categories";
 import { Button, Card, CardTitle, Field, Input, PageHeader } from "../ui";
@@ -79,7 +80,7 @@ export function ProfileView() {
               <div>
                 <p className="text-sm font-medium text-muted">Name</p>
                 <p className="text-2xl font-medium">{me?.name}</p>
-                {me?.username && <p className="text-muted">@{me.username}</p>}
+                {me?.username && <p className="text-muted">{handle(me.username)}</p>}
               </div>
             )}
             <div className="grid grid-cols-3 gap-3 rounded-2xl bg-paper p-4 text-center">

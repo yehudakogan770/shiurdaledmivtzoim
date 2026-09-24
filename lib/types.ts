@@ -4,6 +4,7 @@ export interface Profile {
   id: string;
   name: string;
   username?: string | null;
+  role?: "user" | "admin";
 }
 
 export interface Group {
@@ -56,6 +57,8 @@ export interface PersonalCategory {
   description?: string | null;
   icon: string;
   status: "active" | "archived";
+  /** Set by an admin: the category is offered to everyone. */
+  shared?: boolean;
   created_at: string;
 }
 
@@ -85,3 +88,18 @@ export interface Tables {
 }
 
 export type TableName = keyof Tables;
+
+/** Website text an admin can edit from the Admin page. */
+export interface SiteSettings {
+  site_name: string;
+  tagline: string;
+  welcome: string;
+  announcement: string;
+}
+
+export const DEFAULT_SETTINGS: SiteSettings = {
+  site_name: "Shiur Daled",
+  tagline: "Mivtzoim",
+  welcome: "Start tracking tefillin, Shabbos candles and every other mivtza.",
+  announcement: "",
+};

@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { History, LayoutDashboard, LogOut, Map, Menu, Plus, UserRound, Users } from "lucide-react";
+import { History, LayoutDashboard, LogOut, Map, Menu, Plus, ShieldCheck, UserRound, Users } from "lucide-react";
+import { handle } from "@/lib/admin";
 import { useData } from "@/lib/data";
 import { useNav } from "@/lib/nav";
 import { hebrewDate } from "@/lib/dates";
@@ -18,6 +19,7 @@ const links = [
 ];
 
 const LOG_MATCH = ["/log", "/mivtzoim"];
+const ADMIN_LINK = { href: "/admin", label: "Admin", short: "Admin", icon: ShieldCheck, match: ["/admin"] };
 
 function isActive(path: string, match: string[]) {
   return match.some((m) => (m === "/" ? path === "/" : path === m || path.startsWith(m + "/")));
@@ -26,7 +28,8 @@ function isActive(path: string, match: string[]) {
 /** The side panel's contents. `expanded` shows labels; collapsed shows icons only. */
 function PanelContent({ expanded, onNavigate }: { expanded: boolean; onNavigate?: () => void }) {
   const { path, Link } = useNav();
-  const { me, backend, auth } = useData();
+  const { me, backend, auth, settings, isAdmin } = useData();
+  const items = isAdmin ? [...links, ADMIN_LINK] : links;
   const label = cx("whitespace-nowrap transition-opacity duration-200", expanded ? "opacity-100" : "opacity-0");
   return (
     <div className="flex h-full flex-col px-3 py-4" onClick={(e) => (e.target as HTMLElement).closest("a") && onNavigate?.()}>
@@ -35,14 +38,14 @@ function PanelContent({ expanded, onNavigate }: { expanded: boolean; onNavigate?
           <span className="flex items-center gap-3">
             <LogoMark className="h-10 w-10" />
             <span className={cx("leading-tight", label)}>
-              <span className="block text-lg font-medium text-ink">Shiur Daled</span>
-              <span className="block text-sm text-muted">Mivtzoim</span>
+              <span className="block text-lg font-medium text-ink">{settings.site_name}</span>
+              <span className="block text-sm text-muted">{settings.tagline}</span>
             </span>
           </span>
         </Link>
       </div>
       <nav aria-label="Main" className="grid gap-0.5">
-        {links.map(({ href, label: text, icon: Icon, match }) => {
+        {items.map(({ href, label: text, icon: Icon, match }) => {
           const active = isActive(path, match);
           return (
             <Link
@@ -68,7 +71,7 @@ function PanelContent({ expanded, onNavigate }: { expanded: boolean; onNavigate?
               <Avatar name={me.name} id={me.id} size={40} />
               <span className={cx("min-w-0", label)}>
                 <span className="block truncate text-sm font-medium">{me.name}</span>
-                <span className="block truncate text-xs text-muted">{me.username ? `@${me.username}` : "View profile"}</span>
+                <span className="block truncate text-xs text-muted">{me.username ? handle(me.username) : "View profile"}</span>
               </span>
             </Link>
             {backend?.hasAuth && expanded && (
@@ -156,7 +159,7 @@ function ModalDrawer({ open, onClose }: { open: boolean; onClose: () => void }) 
 /** Top app bar (phones and tablets). */
 function TopAppBar({ onMenu }: { onMenu: () => void }) {
   const { Link } = useNav();
-  const { me } = useData();
+  const { me, settings } = useData();
   return (
     <header className="sticky top-[env(safe-area-inset-top,0px)] z-30 flex h-16 items-center gap-1 bg-paper/90 px-2 backdrop-blur lg:hidden">
       <IconButton onClick={onMenu} aria-label="Open menu" className="h-12 w-12 text-ink">
@@ -164,7 +167,7 @@ function TopAppBar({ onMenu }: { onMenu: () => void }) {
       </IconButton>
       <Link href="/" className="flex items-center gap-2.5">
         <LogoMark className="h-8 w-8" />
-        <span className="text-lg font-medium">Shiur Daled</span>
+        <span className="truncate text-lg font-medium">{settings.site_name}</span>
       </Link>
       {me && (
         <Link href="/profile" aria-label="Profile" className="ml-auto mr-2 rounded-full">

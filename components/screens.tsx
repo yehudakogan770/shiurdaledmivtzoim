@@ -1,5 +1,6 @@
 "use client";
 
+import { AdminView } from "./views/admin";
 import { DashboardView } from "./views/dashboard";
 import { GroupDetailView, GroupsView } from "./views/groups";
 import { HistoryView } from "./views/history";
@@ -21,6 +22,7 @@ export const SCREENS: Record<string, () => React.JSX.Element> = {
   "/routes/view": RouteDetailView,
   "/history": HistoryView,
   "/profile": ProfileView,
+  "/admin": AdminView,
 };
 
 export function Screen({ path }: { path: string }) {

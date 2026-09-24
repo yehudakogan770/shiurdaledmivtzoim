@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ClipboardList, Flame, Plus, ScrollText, Sparkles, Users } from "lucide-react";
+import { ClipboardList, Flame, Megaphone, Plus, Sparkles, Users } from "lucide-react";
+import { TefillinIcon } from "../icons";
 import { useData } from "@/lib/data";
 import { useNav } from "@/lib/nav";
 import { STANDARD, categoryName } from "@/lib/categories";
@@ -21,7 +22,7 @@ function niceMax(n: number) {
 }
 
 export function DashboardView() {
-  const { me, mine, data } = useData();
+  const { me, mine, data, settings } = useData();
   const { Link } = useNav();
   const thisWeek = weekStart(today());
   const lastWeek = addDays(thisWeek, -7);
@@ -40,9 +41,16 @@ export function DashboardView() {
         subtitle={`Here is your mivtzoim for the week of ${formatShort(thisWeek)}.`}
       />
 
+      {settings.announcement.trim() && (
+        <div role="status" className="flex items-start gap-3 rounded-[28px] bg-secondary-soft px-5 py-4 text-secondary-on-soft">
+          <Megaphone size={20} aria-hidden className="mt-0.5 shrink-0" />
+          <p className="whitespace-pre-line">{settings.announcement}</p>
+        </div>
+      )}
+
       <div>
         <div className="grid grid-cols-2 gap-3">
-          <Stat label="Tefillin" icon={ScrollText} value={by(weekRows, "tefillin")} delta={by(weekRows, "tefillin") - by(lastRows, "tefillin")} note="vs last week" tone="accent" />
+          <Stat label="Tefillin" icon={TefillinIcon} value={by(weekRows, "tefillin")} delta={by(weekRows, "tefillin") - by(lastRows, "tefillin")} note="vs last week" tone="accent" />
           <Stat label="Candles" icon={Flame} value={by(weekRows, "shabbos_candles")} delta={by(weekRows, "shabbos_candles") - by(lastRows, "shabbos_candles")} note="vs last week" tone="candle" />
         </div>
       </div>
@@ -102,7 +110,7 @@ export function DashboardView() {
           <ul className={listClass}>
             {recent.map((a) => (
               <li key={a.id} className="flex items-center gap-3 px-6 py-3.5">
-                <CategoryIcon type={a.category_type} icon={a.category_type === "tefillin" ? ScrollText : a.category_type === "shabbos_candles" ? Flame : Sparkles} />
+                <CategoryIcon type={a.category_type} icon={a.category_type === "tefillin" ? TefillinIcon : a.category_type === "shabbos_candles" ? Flame : Sparkles} />
                 <span className="min-w-0 flex-1">
                   <span className="font-medium">{categoryName(a, data.categories)}</span>
                   {a.notes && <span className="block truncate text-sm text-muted">{a.notes}</span>}
@@ -136,7 +144,7 @@ function QuickLog() {
   }
 
   const items = [
-    { type: "tefillin" as const, label: "tefillin", title: "Tefillin", text: "Someone just put on tefillin", icon: ScrollText, tone: "bg-accent-soft text-accent-on-soft", chip: "bg-accent text-accent-ink" },
+    { type: "tefillin" as const, label: "tefillin", title: "Tefillin", text: "Someone just put on tefillin", icon: TefillinIcon, tone: "bg-accent-soft text-accent-on-soft", chip: "bg-accent text-accent-ink" },
     { type: "shabbos_candles" as const, label: "Shabbos candles", title: "Shabbos Candles", text: "Gave out candles or a kit", icon: Flame, tone: "bg-candle-soft text-candle-on-soft", chip: "bg-candle text-card" },
   ];
 

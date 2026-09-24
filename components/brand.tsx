@@ -10,13 +10,13 @@ export function LogoMark({ className }: { className?: string }) {
   );
 }
 
-export function Wordmark() {
+export function Wordmark({ name = "Shiur Daled", tagline = "Mivtzoim" }: { name?: string; tagline?: string }) {
   return (
     <span className="flex items-center gap-3">
       <LogoMark className="h-10 w-10" />
       <span className="leading-tight">
-        <span className="block text-lg font-medium text-ink">Shiur Daled</span>
-        <span className="block text-sm text-muted">Mivtzoim</span>
+        <span className="block text-lg font-medium text-ink">{name}</span>
+        <span className="block text-sm text-muted">{tagline}</span>
       </span>
     </span>
   );

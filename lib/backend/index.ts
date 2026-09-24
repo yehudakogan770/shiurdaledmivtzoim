@@ -1,4 +1,4 @@
-import type { Profile, TableName, Tables } from "../types";
+import type { Profile, SiteSettings, TableName, Tables } from "../types";
 
 /**
  * Where the app keeps its data. The UI talks only to this interface, so the
@@ -26,6 +26,15 @@ export interface Backend {
   joinGroup(code: string): Promise<string>;
   /** Display names for people referenced in the data. */
   names(ids: string[]): Promise<Record<string, string>>;
+
+  /** Website text; readable before sign-in. */
+  getSettings(): Promise<Partial<SiteSettings>>;
+  /** Admins only. */
+  saveSettings(settings: SiteSettings): Promise<void>;
+  /** Admins only: make someone an admin or a regular user. */
+  setRole(userId: string, role: "user" | "admin"): Promise<void>;
+  /** Every account (admins only; others get just the people they share a group with). */
+  listPeople(): Promise<Profile[]>;
 }
 
 export function newId() {
@@ -33,13 +42,27 @@ export function newId() {
   return "id-" + Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
-/** Usernames: 3–20 lowercase letters, numbers, dots, dashes or underscores. */
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * Sign-in names: a username (3–20 lowercase letters, numbers, dots, dashes or
+ * underscores) or an email address (used by the admin account).
+ */
 export function normalizeUsername(raw: string) {
   const u = raw.trim().toLowerCase().replace(/^@/, "");
+  if (u.includes("@")) {
+    if (!EMAIL_RE.test(u)) throw new Error("That email address doesn't look right.");
+    return u;
+  }
   if (!/^[a-z0-9._-]{3,20}$/.test(u)) {
     throw new Error("Usernames are 3 to 20 characters: letters, numbers, dots, dashes or underscores.");
   }
   return u;
+}
+
+/** Lowercased sign-in name for lookups (no validation). */
+export function loginKey(raw: string) {
+  return raw.trim().toLowerCase().replace(/^@/, "");
 }
 
 export function checkPassword(password: string) {
