@@ -77,7 +77,7 @@ export function PageHeader({
 }
 
 export function Card({ className, children }: { className?: string; children: ReactNode }) {
-  return <section className={cx("rounded-[28px] bg-card", className)}>{children}</section>;
+  return <section className={cx("rounded-[28px]", !className?.includes("bg-") && "bg-card", className)}>{children}</section>;
 }
 
 export function CardTitle({ children, sub, action }: { children: ReactNode; sub?: ReactNode; action?: ReactNode }) {
@@ -123,7 +123,7 @@ export function Field({ label, htmlFor, hint, children }: { label: string; htmlF
 }
 
 const inputClass =
-  "w-full rounded-2xl border-2 border-transparent bg-sunken px-4 py-3 text-ink placeholder:text-muted/60 transition-colors focus:border-accent focus:bg-surface focus:outline-none";
+  "w-full rounded-2xl border-2 border-transparent bg-sunken px-4 py-3 text-base text-ink placeholder:text-muted/60 transition-colors focus:border-accent focus:bg-surface focus:outline-none";
 
 export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={cx(inputClass, props.className)} />;

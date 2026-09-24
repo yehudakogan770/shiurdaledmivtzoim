@@ -208,7 +208,36 @@ export function GroupDetailView() {
         >
           Leaderboard
         </CardTitle>
-        <div className="overflow-x-auto">
+        <ul className="divide-y divide-line/60 sm:hidden">
+          {board.map((row, i) => {
+            const name = data.names[row.member.user_id] || "Someone";
+            return (
+              <li key={row.member.id} className={row.member.user_id === me?.id ? "flex items-center gap-3 bg-secondary-soft/60 px-5 py-3" : "flex items-center gap-3 px-5 py-3"}>
+                <span className="w-5 shrink-0 text-center text-sm text-muted">
+                  {i === 0 && row.total > 0 ? <Trophy size={16} className="inline text-candle" aria-label="Leading" /> : i + 1}
+                </span>
+                <Avatar name={name} id={row.member.user_id} size={36} />
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-1.5">
+                    <span className="truncate font-medium">{name}</span>
+                    {row.member.user_id === me?.id && <span className="shrink-0 text-xs text-muted">(you)</span>}
+                  </span>
+                  <span className="tabular flex flex-wrap gap-x-3 text-xs text-muted">
+                    <span className="inline-flex items-center gap-1"><CategoryDot type="tefillin" />{row.tefillin}</span>
+                    <span className="inline-flex items-center gap-1"><CategoryDot type="shabbos_candles" />{row.candles}</span>
+                    <span className="inline-flex items-center gap-1"><CategoryDot type="personal" />{row.other}</span>
+                  </span>
+                </span>
+                <span className="tabular text-2xl">{row.total}</span>
+              </li>
+            );
+          })}
+          <li className="tabular flex items-center justify-between px-5 py-3 font-medium">
+            <span>Group total</span>
+            <span className="text-2xl">{board.reduce((n, r) => n + r.total, 0)}</span>
+          </li>
+        </ul>
+        <div className="hidden overflow-x-auto sm:block">
           <table className="w-full min-w-[34rem] text-left text-sm">
             <thead className="text-xs text-muted">
               <tr>

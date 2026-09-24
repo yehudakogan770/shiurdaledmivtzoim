@@ -39,7 +39,7 @@ export function DashboardView() {
         title={firstName ? `Shalom, ${firstName}` : "Dashboard"}
         subtitle={`Here is your mivtzoim for the week of ${formatShort(thisWeek)}.`}
         action={
-          <ButtonLink href="/log">
+          <ButtonLink href="/log" className="hidden sm:inline-flex">
             <Plus size={16} aria-hidden /> Log mivtzoim
           </ButtonLink>
         }
@@ -48,8 +48,8 @@ export function DashboardView() {
       <div>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Stat label="Tefillin" icon={ScrollText} value={by(weekRows, "tefillin")} delta={by(weekRows, "tefillin") - by(lastRows, "tefillin")} note="vs last week" tone="accent" />
-          <Stat label="Shabbos Candles" icon={Flame} value={by(weekRows, "shabbos_candles")} delta={by(weekRows, "shabbos_candles") - by(lastRows, "shabbos_candles")} note="vs last week" tone="candle" />
-          <Stat label="Other mivtzoim" icon={Sparkles} value={by(weekRows, "personal")} delta={by(weekRows, "personal") - by(lastRows, "personal")} note="vs last week" tone="sage" />
+          <Stat label="Candles" icon={Flame} value={by(weekRows, "shabbos_candles")} delta={by(weekRows, "shabbos_candles") - by(lastRows, "shabbos_candles")} note="vs last week" tone="candle" />
+          <Stat label="Other" icon={Sparkles} value={by(weekRows, "personal")} delta={by(weekRows, "personal") - by(lastRows, "personal")} note="vs last week" tone="sage" />
           <Stat label="All time" icon={Award} value={sum(mine.activity)} note={`${mine.activity.length} ${mine.activity.length === 1 ? "entry" : "entries"}`} tone="ink" />
         </div>
       </div>
@@ -232,7 +232,14 @@ function WeeklyChart({ rows }: { rows: Activity[] }) {
       <div className="mt-2 flex gap-2 pl-10 sm:gap-3">
         {totals.map((t, i) => (
           <span key={t.week} className={cx("flex-1 text-center text-[11px]", i === totals.length - 1 ? "font-bold text-ink" : "text-muted")}>
-            {i === totals.length - 1 ? "Now" : formatShort(t.week)}
+            {i === totals.length - 1 ? (
+              "Now"
+            ) : (
+              <>
+                <span className="hidden sm:inline">{formatShort(t.week)}</span>
+                <span className="sm:hidden">{Number(t.week.slice(5, 7))}/{Number(t.week.slice(8))}</span>
+              </>
+            )}
           </span>
         ))}
       </div>

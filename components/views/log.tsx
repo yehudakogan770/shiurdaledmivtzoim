@@ -82,7 +82,7 @@ export function LogView() {
         <div className="grid content-start gap-3">
           <Card>
             <CardTitle sub="Pick what you're logging">Mivtza</CardTitle>
-            <fieldset className="grid gap-2 px-4 pb-4 sm:grid-cols-2">
+            <fieldset className="grid min-w-0 gap-2 px-4 pb-4 sm:grid-cols-2">
               <legend className="sr-only">Mivtza</legend>
               {choices.map((c) => {
                 const active = c.key === choice.key;
@@ -92,7 +92,7 @@ export function LogView() {
                   <label
                     key={c.key}
                     className={cx(
-                      "flex cursor-pointer items-center gap-3 rounded-[20px] p-3 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent",
+                      "flex min-w-0 cursor-pointer items-center gap-3 rounded-[20px] p-3 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent",
                       active ? tone.on : "bg-paper hover:bg-sunken",
                     )}
                   >
