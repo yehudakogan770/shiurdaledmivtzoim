@@ -233,7 +233,11 @@ export function RouteDetailView() {
             {group ? `Shared with ${group.name}` : "Personal route"} · <span className="tabular">{done} of {stops.length} stops done</span>
           </>
         }
-        action={<ButtonLink href={`/log?${logQuery}`}>Log on this route</ButtonLink>}
+        action={
+          <ButtonLink href={route.group_id ? `/routes/new?group=${route.group_id}` : "/routes/new"}>
+            <Plus size={16} aria-hidden /> New route
+          </ButtonLink>
+        }
       />
       {route.description && <p className="-mt-3 max-w-2xl text-muted">{route.description}</p>}
 
@@ -275,7 +279,7 @@ export function RouteDetailView() {
                     {loc?.notes && <span className="block italic">{loc.notes}</span>}
                   </span>
                 </span>
-                <ButtonLink href={`/log?${logQuery}&location=${stop.location_id}`} variant="secondary" className="hidden px-3 py-1.5 sm:inline-flex">
+                <ButtonLink href={`/log?${logQuery}&location=${stop.location_id}`} variant="secondary" className="h-9 shrink-0 px-4">
                   Log here
                 </ButtonLink>
                 <IconButton aria-label={`Remove ${loc?.name}`} disabled={pending !== null} onClick={() => wrap(stop.id, () => actions.removeStop(stop.id), "Stop removed.")}>
