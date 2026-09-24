@@ -27,9 +27,10 @@ jobs:
         env:
           STATIC_EXPORT: "1"
           NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
-          # Optional: set these as repository variables to share data through Supabase.
-          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          # The Supabase project that stores accounts and data. The anon key is
+          # public by design; row level security in the database protects the data.
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL || 'https://rtmpafeqpqbmblssnyoz.supabase.co' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0bXBhZmVxcHFibWJsc3NueW96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAyNzk0MzksImV4cCI6MjEwNTg1NTQzOX0.Dqd1wWsA31-1946rlVUSMZBwjwsTpKf47sM3TroW5_w' }}
       - name: Publish to the gh-pages branch
         uses: peaceiris/actions-gh-pages@v4
         with:
