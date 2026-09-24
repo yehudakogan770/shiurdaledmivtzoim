@@ -2,6 +2,8 @@
 
 import { useState, type FormEvent } from "react";
 import { useData } from "@/lib/data";
+import { hebrewDate } from "@/lib/dates";
+import { LogoMark } from "../brand";
 import { Button, Field, Input } from "../ui";
 
 export function LoginView() {
@@ -32,21 +34,28 @@ export function LoginView() {
     }
   }
 
+  function toggle() {
+    setIsSignUp(!isSignUp);
+    setMessage(null);
+  }
+
   return (
-    <main className="grid min-h-screen place-items-center bg-paper px-4 py-10">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <h1 className="font-display text-4xl font-bold">Shiur Daled</h1>
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted">Mivtzoim</p>
-          <p className="mt-4 text-muted">
-            Track tefillin, Shabbos candles and every other mivtza, on your own and with your group.
+    <div className="flex min-h-screen flex-col items-center justify-center bg-paper px-4 py-10">
+      <form
+        onSubmit={submit}
+        className="grid w-full max-w-[64rem] gap-10 rounded-[28px] bg-card px-6 py-10 sm:px-10 md:grid-cols-2 md:gap-12 md:px-12 md:py-12"
+      >
+        <div>
+          <LogoMark className="h-12 w-12" />
+          <h1 className="mt-6 text-[2.25rem] leading-tight font-normal sm:text-[2.75rem]">{isSignUp ? "Create your account" : "Sign in"}</h1>
+          <p className="mt-3 text-base text-muted">
+            {isSignUp ? "Start tracking tefillin, Shabbos candles and every other mivtza." : "to continue to Shiur Daled Mivtzoim"}
           </p>
         </div>
 
-        <form onSubmit={submit} className="grid gap-4 rounded-lg border border-line bg-surface p-6">
-          <h2 className="font-display text-2xl font-bold">{isSignUp ? "Create your account" : "Sign in"}</h2>
+        <div className="grid content-start gap-5">
           {isSignUp && (
-            <Field label="Name" htmlFor="login-name">
+            <Field label="Full name" htmlFor="login-name">
               <Input id="login-name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Mendel Cohen" autoComplete="name" />
             </Field>
           )}
@@ -54,7 +63,7 @@ export function LoginView() {
             <Input id="login-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" />
           </Field>
           {needsPassword && (
-            <Field label="Password" htmlFor="login-password" hint={isSignUp ? "At least 6 characters." : undefined}>
+            <Field label="Password" htmlFor="login-password" hint={isSignUp ? "Use at least 6 characters." : undefined}>
               <Input
                 id="login-password"
                 type="password"
@@ -66,20 +75,27 @@ export function LoginView() {
               />
             </Field>
           )}
-          {message && <p className={message.kind === "error" ? "text-sm text-danger" : "text-sm text-sage"}>{message.text}</p>}
-          <Button type="submit" disabled={busy} className="w-full py-2.5">
-            {busy ? "One moment…" : isSignUp ? "Create account" : "Sign in"}
-          </Button>
-          {!needsPassword && <p className="text-center text-xs text-muted">{backend?.storageLabel}</p>}
-        </form>
+          {message && (
+            <p className={message.kind === "error" ? "rounded-2xl bg-danger-soft px-4 py-3 text-sm text-danger" : "rounded-2xl bg-sage-soft px-4 py-3 text-sm text-sage-on-soft"}>
+              {message.text}
+            </p>
+          )}
+          {!needsPassword && <p className="px-1 text-sm text-muted">{backend?.storageLabel}</p>}
 
-        <p className="mt-5 text-center text-sm text-muted">
-          {isSignUp ? "Already have an account?" : "New here?"}{" "}
-          <button type="button" onClick={() => { setIsSignUp(!isSignUp); setMessage(null); }} className="font-semibold text-accent underline-offset-2 hover:underline">
-            {isSignUp ? "Sign in" : "Create an account"}
-          </button>
-        </p>
+          <div className="mt-6 flex items-center justify-end gap-2">
+            <Button variant="ghost" onClick={toggle}>
+              {isSignUp ? "Sign in instead" : "Create account"}
+            </Button>
+            <Button type="submit" disabled={busy}>
+              {busy ? "Please wait…" : "Next"}
+            </Button>
+          </div>
+        </div>
+      </form>
+      <div className="mt-6 flex w-full max-w-[64rem] flex-wrap justify-between gap-2 px-4 text-xs text-muted">
+        <span>Shiur Daled Mivtzoim</span>
+        <span>{hebrewDate()}</span>
       </div>
-    </main>
+    </div>
   );
 }

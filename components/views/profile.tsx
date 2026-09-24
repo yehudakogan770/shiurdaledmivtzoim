@@ -57,12 +57,12 @@ export function ProfileView() {
     <div className="grid grid-cols-1 gap-6">
       <PageHeader title="Profile" subtitle="Your account and the mivtzoim you track." />
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-3 lg:grid-cols-2">
         <Card>
-          <CardTitle action={canRename && !editing ? <Button variant="ghost" className="px-2 py-1" onClick={() => { setName(me?.name ?? ""); setEditing(true); }}>Edit</Button> : undefined}>
+          <CardTitle action={canRename && !editing ? <Button variant="ghost" className="h-9 px-3" onClick={() => { setName(me?.name ?? ""); setEditing(true); }}>Edit</Button> : undefined}>
             Account
           </CardTitle>
-          <div className="grid gap-4 p-5">
+          <div className="grid gap-4 px-6 pb-6">
             {editing ? (
               <form onSubmit={saveName} className="grid gap-3">
                 <Field label="Name" htmlFor="profile-name">
@@ -77,22 +77,22 @@ export function ProfileView() {
               </form>
             ) : (
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted">Name</p>
-                <p className="font-display text-2xl font-bold">{me?.name}</p>
+                <p className="text-sm font-medium text-muted">Name</p>
+                <p className="text-2xl font-medium">{me?.name}</p>
                 {me?.email && <p className="text-muted">{me.email}</p>}
               </div>
             )}
-            <div className="grid grid-cols-3 gap-3 rounded-md bg-sunken p-4 text-center">
+            <div className="grid grid-cols-3 gap-3 rounded-2xl bg-paper p-4 text-center">
               <div>
-                <p className="tabular font-display text-2xl font-bold">{sum(mine.activity)}</p>
+                <p className="tabular text-2xl font-medium">{sum(mine.activity)}</p>
                 <p className="text-xs text-muted">mivtzoim</p>
               </div>
               <div>
-                <p className="tabular font-display text-2xl font-bold">{mine.groups.length}</p>
+                <p className="tabular text-2xl font-medium">{mine.groups.length}</p>
                 <p className="text-xs text-muted">groups</p>
               </div>
               <div>
-                <p className="tabular font-display text-2xl font-bold">{mine.routes.length}</p>
+                <p className="tabular text-2xl font-medium">{mine.routes.length}</p>
                 <p className="text-xs text-muted">routes</p>
               </div>
             </div>
@@ -107,19 +107,19 @@ export function ProfileView() {
 
         <Card>
           <CardTitle>My categories</CardTitle>
-          <div className="grid gap-5 p-5">
+          <div className="grid gap-5 px-6 pb-6">
             <p className="text-sm text-muted">
               Tefillin and Shabbos Candles are always there. Add any other mivtza you do and it appears on the Log page.
             </p>
             {active.length > 0 && (
-              <ul className="divide-y divide-line rounded-md border border-line">
+              <ul className="divide-y divide-line/60 overflow-hidden rounded-2xl bg-paper">
                 {active.map((c) => (
                   <li key={c.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
                     <span className="min-w-0">
-                      <span className="block font-semibold">{c.name}</span>
+                      <span className="block font-medium">{c.name}</span>
                       {c.description && <span className="block truncate text-sm text-muted">{c.description}</span>}
                     </span>
-                    <Button variant="ghost" className="px-2 py-1" onClick={() => toggle(c.id, true)}>
+                    <Button variant="ghost" className="h-9 px-3" onClick={() => toggle(c.id, true)}>
                       Hide
                     </Button>
                   </li>
@@ -128,7 +128,7 @@ export function ProfileView() {
             )}
             {suggestions.length > 0 && (
               <div>
-                <p className="mb-2 text-xs font-bold uppercase tracking-[0.08em] text-muted">From the ten mivtzoim</p>
+                <p className="mb-2 text-sm font-medium text-muted">From the ten mivtzoim</p>
                 <div className="flex flex-wrap gap-2">
                   {suggestions.map((s) => (
                     <button
@@ -136,7 +136,7 @@ export function ProfileView() {
                       type="button"
                       disabled={busy}
                       onClick={() => addCategory(s.name, s.description)}
-                      className="inline-flex items-center gap-1 rounded-full border border-line px-3 py-1 text-sm font-semibold hover:border-sage hover:bg-sage-soft disabled:opacity-50"
+                      className="inline-flex items-center gap-1 h-8 rounded-lg border border-outline px-3 text-sm font-medium text-muted hover:bg-ink/8 disabled:opacity-50"
                     >
                       <Plus size={13} aria-hidden /> {s.name}
                     </button>
@@ -149,7 +149,7 @@ export function ProfileView() {
                 e.preventDefault();
                 addCategory(catName, catDesc);
               }}
-              className="grid gap-3 border-t border-line pt-4"
+              className="grid gap-3 border-t border-line/60 pt-4"
             >
               <Field label="Your own category" htmlFor="cat-name">
                 <Input id="cat-name" required value={catName} onChange={(e) => setCatName(e.target.value)} placeholder="Lulav and Esrog" />
@@ -157,16 +157,16 @@ export function ProfileView() {
               <Field label="What you count" htmlFor="cat-desc">
                 <Input id="cat-desc" value={catDesc} onChange={(e) => setCatDesc(e.target.value)} placeholder="People who shook lulav" />
               </Field>
-              <Button type="submit" variant="secondary" disabled={busy} className="justify-self-start">
+              <Button type="submit" variant="tonal" disabled={busy} className="justify-self-start">
                 Add category
               </Button>
             </form>
             {archived.length > 0 && (
               <div>
-                <p className="mb-2 text-xs font-bold uppercase tracking-[0.08em] text-muted">Hidden</p>
+                <p className="mb-2 text-sm font-medium text-muted">Hidden</p>
                 <div className="flex flex-wrap gap-2">
                   {archived.map((c) => (
-                    <button key={c.id} type="button" onClick={() => toggle(c.id, false)} className="rounded-full border border-dashed border-line px-3 py-1 text-sm text-muted hover:text-ink">
+                    <button key={c.id} type="button" onClick={() => toggle(c.id, false)} className="h-8 rounded-lg border border-dashed border-outline px-3 text-sm text-muted hover:bg-ink/8">
                       Show {c.name}
                     </button>
                   ))}

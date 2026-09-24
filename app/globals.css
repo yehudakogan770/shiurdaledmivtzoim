@@ -3,79 +3,136 @@
 @source "../lib";
 @source "../spa";
 
+/*
+ * Material You color scheme generated from the brand colors
+ * #106a7a (primary, teal) and #c5c2c2 (neutral, warm grey).
+ * Candle amber and success green are harmonized toward the primary.
+ */
 :root {
-  --paper: #f3f4ef;
+  --paper: #efedf0;
   --surface: #ffffff;
-  --sunken: #e9ebe4;
-  --ink: #18202c;
-  --muted: #5b6472;
-  --line: #d9dcd3;
-  --accent: #21508f;
+  --card: #ffffff;
+  --sunken: #e9e7ea;
+  --high: #e4e2e4;
+  --ink: #1b1b1e;
+  --muted: #44474c;
+  --line: #c5c6cc;
+  --outline: #75777d;
+  --accent: #006878;
   --accent-ink: #ffffff;
-  --accent-soft: #e2eaf5;
-  --candle: #a86b12;
-  --candle-soft: #f6ead3;
-  --sage: #3f6f4c;
-  --sage-soft: #e1ede3;
-  --danger: #b3261e;
+  --accent-soft: #a8edff;
+  --accent-on-soft: #001f25;
+  --secondary-soft: #d1e6ec;
+  --secondary-on-soft: #0a1e23;
+  --candle: #755b00;
+  --candle-soft: #ffe08e;
+  --candle-on-soft: #241a00;
+  --sage: #256a4a;
+  --sage-soft: #abf2c9;
+  --sage-on-soft: #002112;
+  --danger: #ba1a1a;
+  --danger-soft: #ffdad6;
+  --brand: #106a7a;
+  --brand-neutral: #c5c2c2;
+  --elev-1: 0 1px 2px rgba(0, 0, 0, 0.08), 0 1px 3px 1px rgba(0, 0, 0, 0.04);
+  --elev-3: 0 4px 8px 3px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.14);
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --paper: #0f1318;
-    --surface: #171c23;
-    --sunken: #1e252e;
-    --ink: #e7eaee;
-    --muted: #9aa3b0;
-    --line: #2b333e;
-    --accent: #7ea7e0;
-    --accent-ink: #0f1318;
-    --accent-soft: #1d2a3c;
-    --candle: #e3ac50;
-    --candle-soft: #33291a;
-    --sage: #86b894;
-    --sage-soft: #1d2b22;
-    --danger: #f2877f;
+    --paper: #131315;
+    --surface: #0d0e10;
+    --card: #1f2022;
+    --sunken: #292a2c;
+    --high: #343537;
+    --ink: #e4e2e4;
+    --muted: #c5c6cc;
+    --line: #44474c;
+    --outline: #8f9096;
+    --accent: #84d2e5;
+    --accent-ink: #00363f;
+    --accent-soft: #004e5b;
+    --accent-on-soft: #a8edff;
+    --secondary-soft: #374a4f;
+    --secondary-on-soft: #d1e6ec;
+    --candle: #e6c361;
+    --candle-soft: #584400;
+    --candle-on-soft: #ffe08e;
+    --sage: #90d5ae;
+    --sage-soft: #005234;
+    --sage-on-soft: #abf2c9;
+    --danger: #ffb4ab;
+    --danger-soft: #93000a;
+    --brand: #106a7a;
+    --brand-neutral: #c5c2c2;
+    --elev-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px 1px rgba(0, 0, 0, 0.2);
+    --elev-3: 0 4px 8px 3px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.4);
     color-scheme: dark;
   }
 }
 
 :root[data-theme="dark"] {
-  --paper: #0f1318;
-  --surface: #171c23;
-  --sunken: #1e252e;
-  --ink: #e7eaee;
-  --muted: #9aa3b0;
-  --line: #2b333e;
-  --accent: #7ea7e0;
-  --accent-ink: #0f1318;
-  --accent-soft: #1d2a3c;
-  --candle: #e3ac50;
-  --candle-soft: #33291a;
-  --sage: #86b894;
-  --sage-soft: #1d2b22;
-  --danger: #f2877f;
+  --paper: #131315;
+  --surface: #0d0e10;
+  --card: #1f2022;
+  --sunken: #292a2c;
+  --high: #343537;
+  --ink: #e4e2e4;
+  --muted: #c5c6cc;
+  --line: #44474c;
+  --outline: #8f9096;
+  --accent: #84d2e5;
+  --accent-ink: #00363f;
+  --accent-soft: #004e5b;
+  --accent-on-soft: #a8edff;
+  --secondary-soft: #374a4f;
+  --secondary-on-soft: #d1e6ec;
+  --candle: #e6c361;
+  --candle-soft: #584400;
+  --candle-on-soft: #ffe08e;
+  --sage: #90d5ae;
+  --sage-soft: #005234;
+  --sage-on-soft: #abf2c9;
+  --danger: #ffb4ab;
+  --danger-soft: #93000a;
+  --brand: #106a7a;
+  --brand-neutral: #c5c2c2;
+  --elev-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px 1px rgba(0, 0, 0, 0.2);
+  --elev-3: 0 4px 8px 3px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.4);
   color-scheme: dark;
 }
 
 @theme inline {
   --color-paper: var(--paper);
   --color-surface: var(--surface);
+  --color-card: var(--card);
   --color-sunken: var(--sunken);
+  --color-high: var(--high);
   --color-ink: var(--ink);
   --color-muted: var(--muted);
   --color-line: var(--line);
+  --color-outline: var(--outline);
   --color-accent: var(--accent);
   --color-accent-ink: var(--accent-ink);
   --color-accent-soft: var(--accent-soft);
+  --color-accent-on-soft: var(--accent-on-soft);
+  --color-secondary-soft: var(--secondary-soft);
+  --color-secondary-on-soft: var(--secondary-on-soft);
   --color-candle: var(--candle);
   --color-candle-soft: var(--candle-soft);
+  --color-candle-on-soft: var(--candle-on-soft);
   --color-sage: var(--sage);
   --color-sage-soft: var(--sage-soft);
+  --color-sage-on-soft: var(--sage-on-soft);
   --color-danger: var(--danger);
-  --font-display: "Frank Ruhl Libre", Georgia, "Times New Roman", serif;
-  --font-sans: "Figtree", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --color-danger-soft: var(--danger-soft);
+  --color-brand: var(--brand);
+  --color-brand-neutral: var(--brand-neutral);
+  --shadow-card: var(--elev-1);
+  --shadow-pop: var(--elev-3);
+  --font-display: "Google Sans Flex", "Google Sans", Roboto, ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Google Sans Flex", "Google Sans", Roboto, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 html,

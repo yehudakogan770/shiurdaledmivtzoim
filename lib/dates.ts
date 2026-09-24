@@ -51,3 +51,28 @@ export function formatDay(s: string) {
 export function weekLabel(start: string) {
   return `${formatShort(start)} – ${formatShort(addDays(start, 6))}`;
 }
+
+const HEBREW_MONTHS: Record<string, string> = {
+  Tishri: "Tishrei",
+  Heshvan: "Cheshvan",
+  Tevet: "Teves",
+  Nisan: "Nissan",
+  Tamuz: "Tammuz",
+  Av: "Menachem Av",
+};
+
+/** Today's Hebrew date, e.g. "13 Tishrei 5787". */
+export function hebrewDate(d = new Date()) {
+  try {
+    const parts = new Intl.DateTimeFormat("en-u-ca-hebrew", { day: "numeric", month: "long", year: "numeric" }).formatToParts(d);
+    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+    const month = get("month");
+    return `${get("day")} ${HEBREW_MONTHS[month] ?? month} ${get("year")}`;
+  } catch {
+    return "";
+  }
+}
+
+export function longDate(d = new Date()) {
+  return new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(d);
+}

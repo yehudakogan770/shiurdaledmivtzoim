@@ -47,7 +47,7 @@ const html = `<title>Shiur Daled Mivtzoim</title>
 <meta name="description" content="Track tefillin, Shabbos candles and every other mivtza, on your own and with your group.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Frank+Ruhl+Libre:wght@500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,400..700&display=swap">
 <style>${css.css}</style>
 <div id="root"></div>
 <script>${js}</script>

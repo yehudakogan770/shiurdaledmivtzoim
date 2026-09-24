@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import { Check, MapPin, Plus, RotateCcw, Trash2, X } from "lucide-react";
 import { useData } from "@/lib/data";
 import { useNav } from "@/lib/nav";
-import { Button, ButtonLink, Card, CardTitle, Empty, Field, Input, PageHeader, Select, Textarea, cx } from "../ui";
+import { Button, ButtonLink, Card, CardTitle, Empty, Field, IconButton, Input, PageHeader, Select, Textarea, cx } from "../ui";
 
 const STOP_TYPES = ["Store", "Office", "Home", "Hospital", "Campus", "Street corner", "Other"];
 
@@ -28,25 +28,25 @@ export function RoutesView() {
       />
       {mine.routes.length === 0 ? (
         <Card>
-          <Empty title="No routes yet" action={<ButtonLink href="/routes/new" variant="secondary">Create your first route</ButtonLink>}>
+          <Empty title="No routes yet" icon={MapPin} action={<ButtonLink href="/routes/new" variant="secondary">Create your first route</ButtonLink>}>
             A route is a list of places you visit, like the stores on Main Street every Friday.
           </Empty>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-3 md:grid-cols-2">
           {mine.routes.map((r) => {
             const stops = data.stops.filter((s) => s.route_id === r.id);
             const done = stops.filter((s) => s.completed).length;
             const group = data.groups.find((g) => g.id === r.group_id);
             const pct = stops.length ? (done / stops.length) * 100 : 0;
             return (
-              <Link key={r.id} href={`/routes/view?id=${r.id}`} className="block rounded-lg border border-line bg-surface p-5 transition-colors hover:border-accent">
+              <Link key={r.id} href={`/routes/view?id=${r.id}`} className="block rounded-[28px] bg-card p-6 transition hover:shadow-card">
                 <div className="flex items-start justify-between gap-3">
-                  <h2 className="font-display text-xl font-bold">{r.name}</h2>
-                  <span className="shrink-0 rounded bg-sunken px-2 py-0.5 text-xs font-semibold text-muted">{group ? group.name : "Personal"}</span>
+                  <h2 className="text-xl font-medium">{r.name}</h2>
+                  <span className="shrink-0 rounded-lg bg-secondary-soft px-2 py-0.5 text-xs font-medium text-secondary-on-soft">{group ? group.name : "Personal"}</span>
                 </div>
                 {r.description && <p className="mt-1 line-clamp-2 text-sm text-muted">{r.description}</p>}
-                <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-sunken">
+                <div className="mt-4 h-2 overflow-hidden rounded-full bg-sunken">
                   <div className="h-full rounded-full bg-sage" style={{ width: `${pct}%` }} />
                 </div>
                 <p className="tabular mt-1.5 text-sm text-muted">
@@ -117,8 +117,8 @@ export function NewRouteView() {
   return (
     <div className="grid grid-cols-1 gap-6">
       <PageHeader back={{ href: "/routes", label: "Routes" }} title="New route" subtitle="List the places you visit, in the order you visit them." />
-      <form onSubmit={submit} className="grid max-w-3xl gap-6">
-        <Card className="grid gap-4 p-5 sm:p-6">
+      <form onSubmit={submit} className="grid max-w-3xl gap-3">
+        <Card className="grid gap-4 p-6">
           <Field label="Route name" htmlFor="route-name">
             <Input id="route-name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Friday – Main Street stores" />
           </Field>
@@ -140,24 +140,24 @@ export function NewRouteView() {
         <Card>
           <CardTitle>Stops ({stops.length})</CardTitle>
           {stops.length > 0 && (
-            <ol className="divide-y divide-line">
+            <ol className="divide-y divide-line/60">
               {stops.map((s, i) => (
-                <li key={i} className="flex items-center gap-3 px-5 py-3">
-                  <span className="tabular grid h-7 w-7 shrink-0 place-items-center rounded-full bg-sunken text-xs font-bold">{i + 1}</span>
+                <li key={i} className="flex items-center gap-3 px-6 py-3.5">
+                  <span className="tabular grid h-8 w-8 shrink-0 place-items-center rounded-full bg-secondary-soft text-sm text-secondary-on-soft font-medium">{i + 1}</span>
                   <span className="min-w-0 flex-1">
-                    <span className="block font-semibold">{s.name}</span>
+                    <span className="block font-medium">{s.name}</span>
                     <span className="block truncate text-sm text-muted">{[s.type, s.address].filter(Boolean).join(" · ")}</span>
                   </span>
-                  <Button variant="ghost" aria-label={`Remove ${s.name}`} onClick={() => setStops(stops.filter((_, j) => j !== i))} className="px-2">
-                    <X size={16} />
-                  </Button>
+                  <IconButton aria-label={`Remove ${s.name}`} onClick={() => setStops(stops.filter((_, j) => j !== i))}>
+                    <X size={18} />
+                  </IconButton>
                 </li>
               ))}
             </ol>
           )}
-          <div className={cx("grid gap-3 p-5", stops.length > 0 && "border-t border-line")}>
+          <div className="grid gap-3 px-6 pt-2 pb-6">
             <StopFields value={draft} onChange={setDraft} idPrefix="new-stop" />
-            <Button variant="secondary" onClick={addDraft} className="justify-self-start">
+            <Button variant="tonal" onClick={addDraft} className="justify-self-start">
               <Plus size={16} aria-hidden /> Add stop
             </Button>
           </div>
@@ -241,7 +241,7 @@ export function RouteDetailView() {
         <CardTitle
           action={
             done > 0 ? (
-              <Button variant="ghost" className="px-2 py-1" disabled={pending !== null} onClick={() => wrap("reset", () => actions.resetRoute(route.id), "All stops unchecked.")}>
+              <Button variant="ghost" className="h-9 px-3" disabled={pending !== null} onClick={() => wrap("reset", () => actions.resetRoute(route.id), "All stops unchecked.")}>
                 <RotateCcw size={14} aria-hidden /> Start over
               </Button>
             ) : undefined
@@ -250,11 +250,11 @@ export function RouteDetailView() {
           Stops
         </CardTitle>
         {stops.length === 0 ? (
-          <Empty title="No stops yet">Add the first place on this route below.</Empty>
+          <Empty title="No stops yet" icon={MapPin}>Add the first place on this route below.</Empty>
         ) : (
-          <ol className="divide-y divide-line">
+          <ol className="divide-y divide-line/60">
             {stops.map(({ stop, loc }, i) => (
-              <li key={stop.id} className="flex items-center gap-3 px-5 py-3">
+              <li key={stop.id} className="flex items-center gap-3 px-6 py-3.5">
                 <button
                   type="button"
                   aria-pressed={stop.completed}
@@ -262,14 +262,14 @@ export function RouteDetailView() {
                   disabled={pending !== null}
                   onClick={() => wrap(stop.id, () => actions.toggleStop(stop))}
                   className={cx(
-                    "grid h-8 w-8 shrink-0 place-items-center rounded-full border-2 transition-colors",
-                    stop.completed ? "border-sage bg-sage text-paper" : "border-line text-muted hover:border-sage",
+                    "grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 transition-colors",
+                    stop.completed ? "border-sage bg-sage text-card" : "border-outline text-muted hover:border-sage",
                   )}
                 >
-                  {stop.completed ? <Check size={16} strokeWidth={3} /> : <span className="tabular text-xs font-bold">{i + 1}</span>}
+                  {stop.completed ? <Check size={16} strokeWidth={3} /> : <span className="tabular text-xs font-medium">{i + 1}</span>}
                 </button>
                 <span className="min-w-0 flex-1">
-                  <span className={cx("block font-semibold", stop.completed && "text-muted line-through")}>{loc?.name ?? "Unknown place"}</span>
+                  <span className={cx("block font-medium", stop.completed && "text-muted line-through")}>{loc?.name ?? "Unknown place"}</span>
                   <span className="block text-sm text-muted">
                     {[loc?.type, loc?.address].filter(Boolean).join(" · ")}
                     {loc?.notes && <span className="block italic">{loc.notes}</span>}
@@ -278,14 +278,14 @@ export function RouteDetailView() {
                 <ButtonLink href={`/log?${logQuery}&location=${stop.location_id}`} variant="secondary" className="hidden px-3 py-1.5 sm:inline-flex">
                   Log here
                 </ButtonLink>
-                <Button variant="ghost" aria-label={`Remove ${loc?.name}`} className="px-2" disabled={pending !== null} onClick={() => wrap(stop.id, () => actions.removeStop(stop.id), "Stop removed.")}>
-                  <Trash2 size={16} />
-                </Button>
+                <IconButton aria-label={`Remove ${loc?.name}`} disabled={pending !== null} onClick={() => wrap(stop.id, () => actions.removeStop(stop.id), "Stop removed.")}>
+                  <Trash2 size={18} />
+                </IconButton>
               </li>
             ))}
           </ol>
         )}
-        <div className="border-t border-line p-5">
+        <div className="px-6 pt-2 pb-6">
           {adding ? (
             <form onSubmit={addStop} className="grid gap-3">
               <StopFields value={draft} onChange={setDraft} idPrefix="add-stop" />
@@ -299,7 +299,7 @@ export function RouteDetailView() {
               </div>
             </form>
           ) : (
-            <Button variant="secondary" onClick={() => setAdding(true)}>
+            <Button variant="tonal" onClick={() => setAdding(true)}>
               <Plus size={16} aria-hidden /> Add a stop
             </Button>
           )}
@@ -310,7 +310,7 @@ export function RouteDetailView() {
         <div className="flex flex-wrap items-center gap-3">
           {confirmDelete ? (
             <>
-              <span className="text-sm font-semibold">Delete this route and its stops?</span>
+              <span className="text-sm font-medium">Delete this route and its stops?</span>
               <Button variant="danger" onClick={() => wrap("delete", async () => { await actions.deleteRoute(route.id); go("/routes"); }, "Route deleted.")}>
                 Yes, delete
               </Button>

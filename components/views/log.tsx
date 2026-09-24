@@ -1,15 +1,21 @@
 "use client";
 
 import { useMemo, useState, type FormEvent } from "react";
-import { Minus, Plus } from "lucide-react";
+import { Check, Flame, Minus, Plus, ScrollText, Sparkles } from "lucide-react";
 import { useData } from "@/lib/data";
 import { useNav } from "@/lib/nav";
 import { STANDARD } from "@/lib/categories";
 import { today } from "@/lib/dates";
 import type { CategoryType } from "@/lib/types";
-import { Button, Card, Field, Input, PageHeader, Select, Textarea, cx } from "../ui";
+import { Button, Card, CardTitle, Field, Input, PageHeader, Select, Textarea, cx } from "../ui";
 
 type Choice = { key: string; type: CategoryType; personalId: string | null; label: string; hint: string };
+
+const TONE: Record<CategoryType, { on: string; chip: string; icon: typeof ScrollText }> = {
+  tefillin: { on: "bg-accent-soft text-accent-on-soft", chip: "bg-accent text-accent-ink", icon: ScrollText },
+  shabbos_candles: { on: "bg-candle-soft text-candle-on-soft", chip: "bg-candle text-card", icon: Flame },
+  personal: { on: "bg-sage-soft text-sage-on-soft", chip: "bg-sage text-card", icon: Sparkles },
+};
 
 export function LogView() {
   const { mine, data, actions, notify } = useData();
@@ -72,66 +78,87 @@ export function LogView() {
     <div className="grid grid-cols-1 gap-6">
       <PageHeader title="Log mivtzoim" subtitle="Record what you did. It counts toward your week and your group." />
 
-      <form onSubmit={submit} className="grid gap-6 lg:grid-cols-[1fr_20rem]">
-        <Card className="grid gap-6 p-5 sm:p-6">
-          <fieldset>
-            <legend className="mb-2 text-sm font-semibold">Mivtza</legend>
-            <div className="grid gap-2 sm:grid-cols-2">
+      <form onSubmit={submit} className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_22rem]">
+        <div className="grid content-start gap-3">
+          <Card>
+            <CardTitle sub="Pick what you're logging">Mivtza</CardTitle>
+            <fieldset className="grid gap-2 px-4 pb-4 sm:grid-cols-2">
+              <legend className="sr-only">Mivtza</legend>
               {choices.map((c) => {
                 const active = c.key === choice.key;
-                const tone =
-                  c.type === "tefillin"
-                    ? "border-accent bg-accent-soft"
-                    : c.type === "shabbos_candles"
-                      ? "border-candle bg-candle-soft"
-                      : "border-sage bg-sage-soft";
+                const tone = TONE[c.type];
+                const Icon = tone.icon;
                 return (
                   <label
                     key={c.key}
-                    className={cx("cursor-pointer rounded-md border px-4 py-3 transition-colors", active ? tone : "border-line hover:bg-sunken")}
+                    className={cx(
+                      "flex cursor-pointer items-center gap-3 rounded-[20px] p-3 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent",
+                      active ? tone.on : "bg-paper hover:bg-sunken",
+                    )}
                   >
                     <input type="radio" name="category" value={c.key} checked={active} onChange={() => setChoiceKey(c.key)} className="sr-only" />
-                    <span className="block font-semibold">{c.label}</span>
-                    <span className="block text-sm text-muted">{c.hint}</span>
+                    <span className={cx("grid h-11 w-11 shrink-0 place-items-center rounded-full", active ? tone.chip : "bg-card text-muted")}>
+                      {active ? <Check size={20} /> : <Icon size={20} />}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block font-medium">{c.label}</span>
+                      <span className={cx("block truncate text-sm", active ? "opacity-80" : "text-muted")}>{c.hint}</span>
+                    </span>
                   </label>
                 );
               })}
-            </div>
-            <p className="mt-2 text-sm text-muted">
-              Doing mezuzah, tzedakah or another mivtza? <Link href="/profile" className="font-semibold text-accent">Add your own category</Link>.
+            </fieldset>
+            <p className="px-6 pb-5 text-sm text-muted">
+              Doing mezuzah, tzedakah or another mivtza?{" "}
+              <Link href="/profile" className="font-medium text-accent hover:underline">
+                Add your own category
+              </Link>
             </p>
-          </fieldset>
+          </Card>
 
-          <div className="grid gap-1.5">
-            <label htmlFor="log-quantity" className="text-sm font-semibold">
+          <Card className="p-6">
+            <label htmlFor="log-quantity" className="text-lg font-medium">
               How many
             </label>
-            <div className="flex items-center gap-2">
-              <Button variant="secondary" aria-label="One less" onClick={() => setQuantity(Math.max(1, quantity - 1))} className="h-12 w-12 px-0">
-                <Minus size={18} />
-              </Button>
-              <Input
+            <div className="mt-4 flex items-center justify-center gap-6">
+              <button
+                type="button"
+                aria-label="One less"
+                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                className="grid h-14 w-14 place-items-center rounded-2xl bg-secondary-soft text-secondary-on-soft transition hover:shadow-card"
+              >
+                <Minus size={24} />
+              </button>
+              <input
                 id="log-quantity"
                 type="number"
                 inputMode="numeric"
                 min={1}
                 value={quantity}
                 onChange={(e) => setQuantity(Number(e.target.value))}
-                className="tabular h-12 w-24 text-center font-display text-2xl font-bold"
+                className="tabular w-32 bg-transparent text-center text-[4rem] leading-none font-normal focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
               />
-              <Button variant="secondary" aria-label="One more" onClick={() => setQuantity(quantity + 1)} className="h-12 w-12 px-0">
-                <Plus size={18} />
-              </Button>
+              <button
+                type="button"
+                aria-label="One more"
+                onClick={() => setQuantity(quantity + 1)}
+                className="grid h-14 w-14 place-items-center rounded-2xl bg-accent-soft text-accent-on-soft transition hover:shadow-card"
+              >
+                <Plus size={24} />
+              </button>
             </div>
-          </div>
+          </Card>
 
-          <Field label="Notes" htmlFor="log-notes" hint="Optional. A name, a place, anything to remember.">
-            <Textarea id="log-notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Put on tefillin with the manager at the pizza shop" />
-          </Field>
-        </Card>
+          <Card className="p-6">
+            <Field label="Notes (optional)" htmlFor="log-notes">
+              <Textarea id="log-notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Put on tefillin with the manager at the pizza shop" />
+            </Field>
+          </Card>
+        </div>
 
-        <div className="grid content-start gap-6">
-          <Card className="grid gap-4 p-5">
+        <div className="grid content-start gap-3">
+          <Card className="grid gap-4 p-6">
+            <h2 className="text-lg font-medium">Details</h2>
             <Field label="Date" htmlFor="log-date">
               <Input id="log-date" type="date" value={date} max={today()} onChange={(e) => setDate(e.target.value)} />
             </Field>
@@ -175,7 +202,7 @@ export function LogView() {
               </Field>
             )}
           </Card>
-          <Button type="submit" disabled={busy} className="w-full py-3 text-base">
+          <Button type="submit" disabled={busy} className="h-14 w-full rounded-2xl text-base">
             {busy ? "Saving…" : `Log ${quantity} × ${choice.label}`}
           </Button>
         </div>
