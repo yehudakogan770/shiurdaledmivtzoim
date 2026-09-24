@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { ClipboardPen, History, LayoutDashboard, LogOut, Map, Menu, Plus, UserRound, Users } from "lucide-react";
+import { History, LayoutDashboard, LogOut, Map, Menu, Plus, UserRound, Users } from "lucide-react";
 import { useData } from "@/lib/data";
 import { useNav } from "@/lib/nav";
 import { hebrewDate } from "@/lib/dates";
@@ -11,12 +11,13 @@ import { LoginView } from "./views/login";
 
 const links = [
   { href: "/", label: "Dashboard", short: "Home", icon: LayoutDashboard, match: ["/", "/dashboard"] },
-  { href: "/log", label: "Log mivtzoim", short: "Log", icon: ClipboardPen, match: ["/log", "/mivtzoim"] },
   { href: "/groups", label: "Groups", short: "Groups", icon: Users, match: ["/groups"] },
   { href: "/routes", label: "Routes", short: "Routes", icon: Map, match: ["/routes"] },
   { href: "/history", label: "History", short: "History", icon: History, match: ["/history"] },
   { href: "/profile", label: "Profile", short: "Profile", icon: UserRound, match: ["/profile"] },
 ];
+
+const LOG_MATCH = ["/log", "/mivtzoim"];
 
 function isActive(path: string, match: string[]) {
   return match.some((m) => (m === "/" ? path === "/" : path === m || path.startsWith(m + "/")));
@@ -38,17 +39,6 @@ function PanelContent({ expanded, onNavigate }: { expanded: boolean; onNavigate?
               <span className="block text-sm text-muted">Mivtzoim</span>
             </span>
           </span>
-        </Link>
-      </div>
-      <div className="px-1 pb-4">
-        <Link
-          href="/log"
-          className={cx(
-            "flex h-14 items-center gap-3 overflow-hidden rounded-2xl bg-accent-soft pl-4 text-[15px] font-medium text-accent-on-soft shadow-pop transition-[width] duration-200 hover:brightness-[0.97]",
-            expanded ? "w-full pr-6" : "w-14",
-          )}
-        >
-          <Plus size={22} aria-hidden className="shrink-0" /> <span className={label}>Log mivtzoim</span>
         </Link>
       </div>
       <nav aria-label="Main" className="grid gap-0.5">
@@ -188,7 +178,7 @@ function TopAppBar({ onMenu }: { onMenu: () => void }) {
 /** Material 3 navigation bar (phones), with a pill indicator behind the active icon. */
 function NavigationBar() {
   const { path, Link } = useNav();
-  const tabs = [links[0], links[2], links[3], links[4], links[5]];
+  const tabs = links;
   return (
     <nav
       aria-label="Main"
@@ -217,12 +207,12 @@ function NavigationBar() {
 /** Floating action button for logging (phones). */
 function Fab() {
   const { path, Link } = useNav();
-  if (isActive(path, links[1].match)) return null;
+  if (isActive(path, LOG_MATCH)) return null;
   return (
     <Link
       href="/log"
       aria-label="Log mivtzoim"
-      className="fixed right-4 bottom-[calc(6.5rem+env(safe-area-inset-bottom,0px))] z-30 grid h-14 w-14 place-items-center rounded-2xl bg-accent-soft text-accent-on-soft shadow-pop lg:hidden"
+      className="fixed right-4 bottom-[calc(6.5rem+env(safe-area-inset-bottom,0px))] z-30 grid h-14 w-14 place-items-center rounded-2xl bg-accent-soft text-accent-on-soft shadow-pop transition hover:brightness-[0.97] lg:right-8 lg:bottom-8"
     >
       <Plus size={26} aria-hidden />
     </Link>

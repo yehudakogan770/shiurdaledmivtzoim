@@ -38,11 +38,6 @@ export function DashboardView() {
         eyebrow={`${longDate()}${hd ? ` · ${hd}` : ""}`}
         title={firstName ? `Shalom, ${firstName}` : "Dashboard"}
         subtitle={`Here is your mivtzoim for the week of ${formatShort(thisWeek)}.`}
-        action={
-          <ButtonLink href="/log" className="hidden sm:inline-flex">
-            <Plus size={16} aria-hidden /> Log mivtzoim
-          </ButtonLink>
-        }
       />
 
       <div>

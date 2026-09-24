@@ -59,7 +59,7 @@ export function HistoryView() {
 
       {rows.length === 0 ? (
         <Card>
-          <Empty title="No entries yet" icon={ClipboardList} action={<ButtonLink href="/log">Log mivtzoim</ButtonLink>}>
+          <Empty title="No entries yet" icon={ClipboardList} action={<ButtonLink href="/log">Add an entry</ButtonLink>}>
             Everything you log shows up here, grouped by week.
           </Empty>
         </Card>
