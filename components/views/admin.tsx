@@ -5,7 +5,7 @@ import { ChevronDown, ClipboardList, Eye, EyeOff, Flame, ShieldCheck, Sparkles, 
 import { TefillinIcon } from "../icons";
 import { categoryName } from "@/lib/categories";
 import { formatDay, today, weekStart } from "@/lib/dates";
-import type { Activity } from "@/lib/types";
+import type { Activity, Profile } from "@/lib/types";
 import { useData } from "@/lib/data";
 import { handle, isAdminIdentifier } from "@/lib/admin";
 import type { SiteSettings } from "@/lib/types";
@@ -32,7 +32,6 @@ export function AdminView() {
       </div>
       <PeopleCard />
       <ActivityCard />
-      <GroupsCard />
     </div>
   );
 }
@@ -228,7 +227,7 @@ function PeopleCard() {
                   </Button>
                 ))}
             </div>
-            {expanded && <PersonDetails userId={p.id} username={p.username ?? null} />}
+            {expanded && <PersonDetails person={p} />}
             </li>
           );
         })}
@@ -237,70 +236,14 @@ function PeopleCard() {
   );
 }
 
-function GroupsCard() {
-  const { data, actions, notify } = useData();
-  const [confirmId, setConfirmId] = useState<string | null>(null);
-
-  async function remove(id: string) {
-    try {
-      await actions.deleteGroup(id);
-      notify("Group deleted.");
-    } catch (err) {
-      notify((err as Error).message);
-    }
-    setConfirmId(null);
-  }
-
-  return (
-    <Card>
-      <CardTitle sub="Every group on the site">Groups</CardTitle>
-      {data.groups.length === 0 ? (
-        <Empty title="No groups yet" icon={Users} />
-      ) : (
-        <ul className={listClass}>
-          {data.groups.map((g) => {
-            const members = data.members.filter((m) => m.group_id === g.id).length;
-            const total = sum(data.activity.filter((a) => a.group_id === g.id));
-            return (
-              <li key={g.id} className="flex flex-wrap items-center gap-3 px-6 py-3">
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium">{g.name}</span>
-                  <span className="text-sm text-muted">
-                    {members} {members === 1 ? "member" : "members"} · {total} mivtzoim · code <span className="font-mono">{g.join_code}</span>
-                  </span>
-                </span>
-                {confirmId === g.id ? (
-                  <span className="flex gap-1">
-                    <Button variant="danger" className="h-9 px-4" onClick={() => remove(g.id)}>
-                      Delete
-                    </Button>
-                    <Button variant="ghost" className="h-9 px-3" onClick={() => setConfirmId(null)}>
-                      Keep
-                    </Button>
-                  </span>
-                ) : (
-                  <IconButton aria-label={`Delete ${g.name}`} onClick={() => setConfirmId(g.id)}>
-                    <Trash2 size={18} />
-                  </IconButton>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </Card>
-  );
-}
-
 const iconFor = (a: Activity) => (a.category_type === "tefillin" ? TefillinIcon : a.category_type === "shabbos_candles" ? Flame : Sparkles);
 
 function ActivityRow({ a, showPerson }: { a: Activity; showPerson?: boolean }) {
   const { data } = useData();
-  const group = data.groups.find((g) => g.id === a.group_id);
   const route = data.routes.find((r) => r.id === a.route_id);
   const place = data.locations.find((l) => l.id === a.location_id);
   const who = data.names[a.user_id] || "Someone";
-  const meta = [formatDay(a.activity_date), group?.name, route?.name, place?.name].filter(Boolean).join(" · ");
+  const meta = [formatDay(a.activity_date), route?.name, place?.name].filter(Boolean).join(" · ");
   return (
     <li className="flex items-center gap-3 px-6 py-3">
       {showPerson ? <Avatar name={who} id={a.user_id} size={36} /> : <CategoryIcon type={a.category_type} icon={iconFor(a)} />}
@@ -317,18 +260,19 @@ function ActivityRow({ a, showPerson }: { a: Activity; showPerson?: boolean }) {
   );
 }
 
-function PersonDetails({ userId, username }: { userId: string; username: string | null }) {
+function PersonDetails({ person }: { person: Profile }) {
   const { data } = useData();
+  const userId = person.id;
   const rows = data.activity
     .filter((a) => a.user_id === userId)
     .sort((a, b) => (b.activity_date + b.created_at).localeCompare(a.activity_date + a.created_at));
   const thisWeek = weekStart(today());
-  const groups = data.members.filter((m) => m.user_id === userId).map((m) => data.groups.find((g) => g.id === m.group_id)?.name).filter(Boolean);
   const routes = data.routes.filter((r) => r.created_by === userId).length;
   const categories = data.categories.filter((c) => c.user_id === userId && !c.shared).map((c) => c.name);
   const facts: [string, string][] = [
-    ["Username", username ? handle(username) : "—"],
-    ["Groups", groups.length ? groups.join(", ") : "None"],
+    ["Username", person.username ? handle(person.username) : "—"],
+    ["Email", person.email || "—"],
+    ["Chavrusas", person.partners?.length ? person.partners.join(", ") : "None"],
     ["Routes made", String(routes)],
     ["Own categories", categories.length ? categories.join(", ") : "None"],
     ["Last active", rows[0] ? formatDay(rows[0].activity_date) : "Never"],

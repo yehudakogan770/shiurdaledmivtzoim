@@ -1,4 +1,4 @@
-import type { Profile, SiteSettings, TableName, Tables } from "../types";
+import type { Profile, SignUpInput, SiteSettings, TableName, Tables } from "../types";
 
 /**
  * Where the app keeps its data. The UI talks only to this interface, so the
@@ -14,9 +14,16 @@ export interface Backend {
 
   currentUser(): Promise<Profile | null>;
   signIn(username: string, password: string): Promise<void>;
-  signUp(name: string, username: string, password: string): Promise<{ needsConfirmation: boolean }>;
+  /** needsConfirmation: a confirmation link was emailed and must be clicked before signing in. */
+  signUp(input: SignUpInput): Promise<{ needsConfirmation: boolean }>;
   signOut(): Promise<void>;
-  updateProfile(patch: { name: string }): Promise<void>;
+  updateProfile(patch: { name: string; partners: string[] }): Promise<void>;
+  /** Emails a link to set a new password; the email also reminds them of their username. */
+  requestPasswordReset(email: string): Promise<void>;
+  /** Sets a new password after arriving from the reset link. */
+  updatePassword(password: string): Promise<void>;
+  /** Called when the page was opened from a password-reset link. */
+  onPasswordRecovery(cb: () => void): void;
 
   list<T extends TableName>(table: T): Promise<Tables[T][]>;
   insert<T extends TableName>(table: T, row: Omit<Tables[T], "id" | "created_at"> & { id?: string }): Promise<Tables[T]>;
@@ -44,16 +51,9 @@ export function newId() {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/**
- * Sign-in names: a username (3–20 lowercase letters, numbers, dots, dashes or
- * underscores) or an email address (used by the admin account).
- */
+/** Usernames: 3–20 lowercase letters, numbers, dots, dashes or underscores. */
 export function normalizeUsername(raw: string) {
   const u = raw.trim().toLowerCase().replace(/^@/, "");
-  if (u.includes("@")) {
-    if (!EMAIL_RE.test(u)) throw new Error("That email address doesn't look right.");
-    return u;
-  }
   if (!/^[a-z0-9._-]{3,20}$/.test(u)) {
     throw new Error("Usernames are 3 to 20 characters: letters, numbers, dots, dashes or underscores.");
   }
@@ -63,6 +63,12 @@ export function normalizeUsername(raw: string) {
 /** Lowercased sign-in name for lookups (no validation). */
 export function loginKey(raw: string) {
   return raw.trim().toLowerCase().replace(/^@/, "");
+}
+
+export function checkEmail(raw: string) {
+  const e = raw.trim().toLowerCase();
+  if (!EMAIL_RE.test(e)) throw new Error("Enter a real email address. We send a confirmation link to it.");
+  return e;
 }
 
 export function checkPassword(password: string) {

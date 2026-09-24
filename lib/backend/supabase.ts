@@ -1,16 +1,10 @@
 import { createBrowserClient } from "@supabase/ssr";
-import type { Profile, TableName, Tables } from "../types";
-import { checkPassword, loginKey, normalizeUsername, type Backend } from "./index";
+import { displayName, type Profile, type TableName, type Tables } from "../types";
+import { checkEmail, checkPassword, loginKey, normalizeUsername, type Backend } from "./index";
 
-/**
- * Supabase sign-in needs an email address, so each username maps to an
- * internal address that is never shown or emailed. Turn off "Confirm email"
- * in Supabase (Authentication → Sign In / Providers → Email) for this to work.
- */
-const LOGIN_DOMAIN = "users.shiurdaledmivtzoim.app";
-function loginEmail(login: string) {
-  // Real email addresses (the admin account) are used as they are.
-  return login.includes("@") ? login : `${login}@${LOGIN_DOMAIN}`;
+/** Where email links (confirmation, password reset) send people back to. */
+function siteUrl() {
+  return `${window.location.origin}${process.env.NEXT_PUBLIC_BASE_PATH || ""}/`;
 }
 
 function fail(error: { message: string } | null) {
@@ -35,28 +29,60 @@ export function createSupabaseBackend(url: string, key: string): Backend {
     async currentUser() {
       const { data } = await sb.auth.getUser();
       if (!data.user) return null;
-      const { data: p } = await sb.from("profiles").select("id, name, username, role").eq("id", data.user.id).maybeSingle();
+      const { data: p } = await sb.from("profiles").select("id, name, username, partners, role").eq("id", data.user.id).maybeSingle();
       const username = p?.username || data.user.user_metadata?.username || null;
-      return { id: data.user.id, name: p?.name || username || "You", username, role: p?.role === "admin" ? "admin" : "user" };
+      return {
+        id: data.user.id,
+        name: p?.name || username || "You",
+        username,
+        email: data.user.email ?? null,
+        partners: p?.partners ?? [],
+        role: p?.role === "admin" ? "admin" : "user",
+      };
     },
     async signIn(rawUsername, password) {
-      const username = loginKey(rawUsername);
-      const { error } = await sb.auth.signInWithPassword({ email: loginEmail(username), password });
-      if (error) throw new Error(error.message.includes("Invalid login") ? "That username (or email) and password don't match." : error.message);
+      // People sign in with their username; look up the email it belongs to.
+      const { data: email } = await sb.rpc("login_email", { p_username: loginKey(rawUsername) });
+      if (!email) throw new Error("That username and password don't match.");
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if (!error) return;
+      if (error.message.includes("not confirmed")) throw new Error("Confirm your email first: open the link we sent you, then sign in.");
+      throw new Error(error.message.includes("Invalid login") ? "That username and password don't match." : error.message);
     },
-    async signUp(name, rawUsername, password) {
+    async signUp({ name, partners, username: rawUsername, email: rawEmail, password }) {
       const username = normalizeUsername(rawUsername);
+      const email = checkEmail(rawEmail);
       checkPassword(password);
-      const { data, error } = await sb.auth.signUp({ email: loginEmail(username), password, options: { data: { name, username } } });
-      if (error) throw new Error(error.message.includes("already registered") ? "That username or email is already used. Try another." : error.message);
+      const { data: free } = await sb.rpc("username_available", { p_username: username });
+      if (free === false) throw new Error("That username is taken. Try another.");
+      const { data, error } = await sb.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: siteUrl(), data: { name, username, partners } },
+      });
+      if (error) throw new Error(error.message.includes("already registered") ? "That email already has an account." : error.message);
       return { needsConfirmation: !data.session };
     },
     async signOut() {
       await sb.auth.signOut();
     },
-    async updateProfile({ name }) {
-      const { error } = await sb.from("profiles").update({ name }).eq("id", await uid());
+    async updateProfile({ name, partners }) {
+      const { error } = await sb.from("profiles").update({ name, partners }).eq("id", await uid());
       fail(error);
+    },
+    async requestPasswordReset(rawEmail) {
+      const { error } = await sb.auth.resetPasswordForEmail(checkEmail(rawEmail), { redirectTo: siteUrl() });
+      fail(error);
+    },
+    async updatePassword(password) {
+      checkPassword(password);
+      const { error } = await sb.auth.updateUser({ password });
+      fail(error);
+    },
+    onPasswordRecovery(cb) {
+      sb.auth.onAuthStateChange((event) => {
+        if (event === "PASSWORD_RECOVERY") cb();
+      });
     },
 
     async list(table) {
@@ -84,9 +110,12 @@ export function createSupabaseBackend(url: string, key: string): Backend {
       return data as string;
     },
     async names(ids) {
-      const { data } = await sb.from("profiles").select("id, name").in("id", ids);
+      const { data } = await sb.from("profiles").select("id, name, partners").in("id", ids);
       const out: Record<string, string> = {};
-      for (const id of ids) out[id] = data?.find((p) => p.id === id)?.name || "Someone";
+      for (const id of ids) {
+        const p = data?.find((x) => x.id === id);
+        out[id] = p ? displayName(p) : "Someone";
+      }
       return out;
     },
 
@@ -103,7 +132,9 @@ export function createSupabaseBackend(url: string, key: string): Backend {
       fail(error);
     },
     async listPeople() {
-      const { data, error } = await sb.from("profiles").select("id, name, username, role");
+      const withEmail = await sb.rpc("admin_people");
+      if (!withEmail.error && withEmail.data) return withEmail.data as Profile[];
+      const { data, error } = await sb.from("profiles").select("id, name, username, partners, role");
       fail(error);
       return (data ?? []) as Profile[];
     },

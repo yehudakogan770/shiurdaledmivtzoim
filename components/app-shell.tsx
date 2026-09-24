@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { History, LayoutDashboard, LogOut, Map, Menu, Plus, ShieldCheck, UserRound, Users } from "lucide-react";
+import { History, LayoutDashboard, LogOut, Map, Menu, ShieldCheck, UserRound } from "lucide-react";
 import { handle } from "@/lib/admin";
 import { useData } from "@/lib/data";
+import { displayName } from "@/lib/types";
 import { useNav } from "@/lib/nav";
 import { hebrewDate } from "@/lib/dates";
 import { Avatar, IconButton, cx } from "./ui";
@@ -12,13 +13,11 @@ import { LoginView } from "./views/login";
 
 const links = [
   { href: "/", label: "Dashboard", short: "Home", icon: LayoutDashboard, match: ["/", "/dashboard"] },
-  { href: "/groups", label: "Groups", short: "Groups", icon: Users, match: ["/groups"] },
   { href: "/routes", label: "Routes", short: "Routes", icon: Map, match: ["/routes"] },
   { href: "/history", label: "History", short: "History", icon: History, match: ["/history"] },
   { href: "/profile", label: "Profile", short: "Profile", icon: UserRound, match: ["/profile"] },
 ];
 
-const LOG_MATCH = ["/log", "/mivtzoim"];
 const ADMIN_LINK = { href: "/admin", label: "Admin", short: "Admin", icon: ShieldCheck, match: ["/admin"] };
 
 function isActive(path: string, match: string[]) {
@@ -39,7 +38,7 @@ function PanelContent({ expanded, onNavigate }: { expanded: boolean; onNavigate?
             <LogoMark className="h-10 w-10" />
             <span className={cx("leading-tight", label)}>
               <span className="block text-lg font-medium text-ink">{settings.site_name}</span>
-              <span className="block text-sm text-muted">{settings.tagline}</span>
+              {settings.tagline && <span className="block text-sm text-muted">{settings.tagline}</span>}
             </span>
           </span>
         </Link>
@@ -70,7 +69,7 @@ function PanelContent({ expanded, onNavigate }: { expanded: boolean; onNavigate?
             <Link href="/profile" className="flex min-w-0 flex-1 items-center gap-3 rounded-full p-1 pr-3 hover:bg-ink/5">
               <Avatar name={me.name} id={me.id} size={40} />
               <span className={cx("min-w-0", label)}>
-                <span className="block truncate text-sm font-medium">{me.name}</span>
+                <span className="block truncate text-sm font-medium">{displayName(me)}</span>
                 <span className="block truncate text-xs text-muted">{me.username ? handle(me.username) : "View profile"}</span>
               </span>
             </Link>
@@ -207,23 +206,8 @@ function NavigationBar() {
   );
 }
 
-/** Floating action button for logging (phones). */
-function Fab() {
-  const { path, Link } = useNav();
-  if (isActive(path, LOG_MATCH)) return null;
-  return (
-    <Link
-      href="/log"
-      aria-label="Log mivtzoim"
-      className="fixed right-4 bottom-[calc(6.5rem+env(safe-area-inset-bottom,0px))] z-30 grid h-14 w-14 place-items-center rounded-2xl bg-accent-soft text-accent-on-soft shadow-pop transition hover:brightness-[0.97] lg:right-8 lg:bottom-8"
-    >
-      <Plus size={26} aria-hidden />
-    </Link>
-  );
-}
-
 export function AppShell({ children }: { children: ReactNode }) {
-  const { status, error, me, backend, toast } = useData();
+  const { status, error, me, backend, toast, auth } = useData();
   const [menuOpen, setMenuOpen] = useState(false);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
 
@@ -242,6 +226,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         <p className="text-2xl">We couldn&apos;t load your data</p>
         <p className="mt-2 text-muted">{error}</p>
       </div>
+    );
+  } else if (auth.recovering) {
+    return (
+      <>
+        <LoginView initialMode="reset" />
+        <Snackbar message={toast} />
+      </>
     );
   } else if (!me && backend?.hasAuth) {
     return (
@@ -271,7 +262,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="mx-auto max-w-6xl">{body}</div>
         </main>
       </div>
-      <Fab />
       <NavigationBar />
       <Snackbar message={toast} />
     </div>

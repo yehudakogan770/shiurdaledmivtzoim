@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { ClipboardList, Flame, Megaphone, Plus, Sparkles, Users } from "lucide-react";
+import { ClipboardList, Flame, Megaphone, Plus, Sparkles } from "lucide-react";
 import { TefillinIcon } from "../icons";
 import { useData } from "@/lib/data";
 import { useNav } from "@/lib/nav";
 import { STANDARD, categoryName } from "@/lib/categories";
 import { addDays, formatDay, formatShort, hebrewDate, longDate, recentWeeks, today, weekStart } from "@/lib/dates";
 import type { Activity, CategoryType } from "@/lib/types";
-import { ButtonLink, Card, CardTitle, CategoryIcon, Empty, PageHeader, Stat, cx, listClass } from "../ui";
+import { Card, CardTitle, CategoryIcon, Empty, PageHeader, Stat, cx, listClass } from "../ui";
 
 export function sum(rows: Activity[]) {
   return rows.reduce((n, a) => n + a.quantity, 0);
@@ -57,44 +57,10 @@ export function DashboardView() {
 
       <QuickLog />
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.6fr_1fr]">
+      <div className="grid grid-cols-1 gap-6">
         <Card>
           <CardTitle sub="Everything you logged, by week">Activity</CardTitle>
           <WeeklyChart rows={mine.activity} />
-        </Card>
-
-        <Card>
-          <CardTitle sub="Totals this week" action={<Link href="/groups" className="inline-flex h-9 items-center rounded-full px-3 text-sm font-medium text-accent hover:bg-accent/8">View all</Link>}>
-            My groups
-          </CardTitle>
-          {mine.groups.length === 0 ? (
-            <Empty title="No group yet" icon={Users} action={<ButtonLink href="/groups" variant="secondary">Create or join</ButtonLink>}>
-              Join your shiur&apos;s group to see how everyone is doing.
-            </Empty>
-          ) : (
-            <ul className={listClass}>
-              {mine.groups.map((g) => {
-                const memberIds = data.members.filter((m) => m.group_id === g.id).map((m) => m.user_id);
-                const total = sum(data.activity.filter((a) => a.group_id === g.id && a.activity_date >= thisWeek));
-                return (
-                  <li key={g.id}>
-                    <Link href={`/groups/view?id=${g.id}`} className="flex items-center gap-3 px-6 py-3.5 transition-colors hover:bg-ink/5">
-                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent-soft text-accent-on-soft">
-                        <Users size={18} />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate font-medium">{g.name}</span>
-                        <span className="text-xs text-muted">
-                          {memberIds.length} {memberIds.length === 1 ? "member" : "members"}
-                        </span>
-                      </span>
-                      <span className="tabular text-2xl">{total}</span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
         </Card>
       </div>
 
@@ -129,12 +95,11 @@ export function DashboardView() {
 function QuickLog() {
   const { actions, notify, mine } = useData();
   const [busy, setBusy] = useState<string | null>(null);
-  const groupId = mine.groups.length === 1 ? mine.groups[0].id : null;
 
   async function add(type: CategoryType, label: string) {
     setBusy(type);
     try {
-      await actions.log({ category_type: type, quantity: 1, group_id: groupId });
+      await actions.log({ category_type: type, quantity: 1 });
       notify(`Added 1 ${label}`);
     } catch (e) {
       notify((e as Error).message);

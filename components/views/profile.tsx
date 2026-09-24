@@ -1,17 +1,18 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { Plus } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { handle } from "@/lib/admin";
 import { useData } from "@/lib/data";
 import { SUGGESTED_PERSONAL } from "@/lib/categories";
-import { Button, Card, CardTitle, Field, Input, PageHeader } from "../ui";
+import { Button, Card, CardTitle, Field, IconButton, Input, PageHeader } from "../ui";
 import { sum } from "./dashboard";
 
 export function ProfileView() {
   const { me, backend, mine, auth, actions, notify } = useData();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(me?.name ?? "");
+  const [partners, setPartners] = useState<string[]>(me?.partners?.length ? me.partners : [""]);
   const [catName, setCatName] = useState("");
   const [catDesc, setCatDesc] = useState("");
   const [busy, setBusy] = useState(false);
@@ -24,7 +25,7 @@ export function ProfileView() {
   async function saveName(e: FormEvent) {
     e.preventDefault();
     try {
-      await auth.updateName(name.trim());
+      await auth.updateProfile(name.trim(), partners.map((p) => p.trim()).filter(Boolean));
       setEditing(false);
       notify("Name saved.");
     } catch (err) {
@@ -60,15 +61,39 @@ export function ProfileView() {
 
       <div className="grid gap-3 lg:grid-cols-2">
         <Card>
-          <CardTitle action={canRename && !editing ? <Button variant="ghost" className="h-9 px-3" onClick={() => { setName(me?.name ?? ""); setEditing(true); }}>Edit</Button> : undefined}>
+          <CardTitle action={canRename && !editing ? <Button variant="ghost" className="h-9 px-3" onClick={() => { setName(me?.name ?? ""); setPartners(me?.partners?.length ? me.partners : [""]); setEditing(true); }}>Edit</Button> : undefined}>
             Account
           </CardTitle>
           <div className="grid gap-4 px-6 pb-6">
             {editing ? (
               <form onSubmit={saveName} className="grid gap-3">
-                <Field label="Name" htmlFor="profile-name">
+                <Field label="Your name" htmlFor="profile-name">
                   <Input id="profile-name" required value={name} onChange={(e) => setName(e.target.value)} />
                 </Field>
+                <div className="grid gap-1.5">
+                  <p className="px-1 text-sm font-medium text-muted">Mivtzoim chavrusas (partners)</p>
+                  {partners.map((p, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <Input
+                        id={`profile-partner-${i}`}
+                        aria-label={`Chavrusa ${i + 1}`}
+                        value={p}
+                        onChange={(e) => setPartners(partners.map((x, j) => (j === i ? e.target.value : x)))}
+                        placeholder="Chavrusa's name"
+                      />
+                      {partners.length > 1 && (
+                        <IconButton aria-label={`Remove chavrusa ${i + 1}`} onClick={() => setPartners(partners.filter((_, j) => j !== i))}>
+                          <X size={18} />
+                        </IconButton>
+                      )}
+                    </div>
+                  ))}
+                  {partners.length < 5 && (
+                    <Button variant="ghost" className="h-9 justify-self-start px-3" onClick={() => setPartners([...partners, ""])}>
+                      <Plus size={16} aria-hidden /> Add another chavrusa
+                    </Button>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <Button type="submit">Save</Button>
                   <Button variant="ghost" onClick={() => setEditing(false)}>
@@ -80,17 +105,20 @@ export function ProfileView() {
               <div>
                 <p className="text-sm font-medium text-muted">Name</p>
                 <p className="text-2xl font-medium">{me?.name}</p>
-                {me?.username && <p className="text-muted">{handle(me.username)}</p>}
+                {me?.partners && me.partners.length > 0 && (
+                  <p className="mt-1">
+                    <span className="text-muted">Chavrusas: </span>
+                    {me.partners.join(", ")}
+                  </p>
+                )}
+                {me?.username && <p className="mt-1 text-muted">{handle(me.username)}</p>}
+                {me?.email && <p className="text-muted">{me.email}</p>}
               </div>
             )}
-            <div className="grid grid-cols-3 gap-3 rounded-2xl bg-paper p-4 text-center">
+            <div className="grid grid-cols-2 gap-3 rounded-2xl bg-paper p-4 text-center">
               <div>
                 <p className="tabular text-2xl font-medium">{sum(mine.activity)}</p>
                 <p className="text-xs text-muted">mivtzoim</p>
-              </div>
-              <div>
-                <p className="tabular text-2xl font-medium">{mine.groups.length}</p>
-                <p className="text-xs text-muted">groups</p>
               </div>
               <div>
                 <p className="tabular text-2xl font-medium">{mine.routes.length}</p>

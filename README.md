@@ -4,7 +4,6 @@ A website for tracking mivtzoim: tefillin, Shabbos candles and any other mivtza 
 
 - **Dashboard**: one-tap +1 Tefillin and +1 Shabbos Candles, this week's totals, an 8-week chart and your groups.
 - **Log Mivtzoim**: log any amount for any category and date. You can count it toward a group, a route or a stop.
-- **Groups**: create a group and share its 6-letter code. Members see a weekly and all-time leaderboard, plus the group's routes.
 - **Routes**: an ordered list of stops (stores, offices, homes) that you check off as you go. A route can be personal or shared with a group.
 - **History**: every entry grouped by week. You can filter it and delete entries.
 - **Profile**: your name, plus your own categories (Mezuzah, Tzedakah, Kashrus and the rest of the ten mivtzoim are one tap away).
@@ -15,18 +14,18 @@ The screens talk to one small interface (`lib/backend`). Which storage it uses d
 
 | Where it runs | Storage | Sign-in |
 | --- | --- | --- |
-| Hosted with Supabase keys set | Supabase Postgres with row level security | Username and password |
+| Hosted with Supabase keys set | Supabase Postgres with row level security | Username and password; email confirms the account and resets passwords |
 | Published as a Claude artifact | The artifact's shared database | The viewer's Claude account |
 | Anywhere else (no keys) | This browser only (`localStorage`) | Username and password (accounts live on that device) |
 
 ## Admin
 
-Signing up or signing in with **sdmivtzoim87@gmail.com** makes that account an admin (the list is in `lib/admin.ts`). Admins get an **Admin** page to:
+The account created with the email **sdmivtzoim87@gmail.com** is an admin (the list is in `lib/admin.ts`). Admins get an **Admin** page to:
 
 - edit the site name, tagline, sign-up welcome text and a dashboard announcement
 - add or hide mivtzoim categories offered to everyone
-- see every person, their totals, groups and entries, and make or remove admins
-- see all activity, filtered by person or mivtza, and delete any group
+- see every person, their email, chavrusas, totals and entries, and make or remove admins
+- see all activity, filtered by person or mivtza
 
 With Supabase, create the admin account right after running the setup files, before sharing the link. Only an admin can change anyone's role; the database enforces this.
 
@@ -42,12 +41,15 @@ Without Supabase keys the site runs in single-device mode, which is useful for t
 ## Launch with Supabase and Vercel
 
 1. Create a project at [supabase.com](https://supabase.com).
-2. In **SQL Editor**, run `supabase/migrations/001_initial.sql`, `002_app.sql`, `003_usernames.sql` and `004_admin.sql`, in that order.
-   Then under **Authentication → Sign In / Providers → Email**, turn off **Confirm email**. People sign in with a username, so there is no inbox to confirm.
-3. Import this repository at [vercel.com/new](https://vercel.com/new) and add these environment variables from Supabase **Project Settings → API**:
+2. In **SQL Editor**, run the files in `supabase/migrations/` in order: `001_initial.sql` through `005_email_accounts.sql`.
+3. In **Authentication**:
+   - **Sign In / Providers → Email**: turn **Confirm email** on. New accounts get a confirmation link.
+   - **URL Configuration**: set the Site URL to the website address and add it to Redirect URLs.
+   - **Email Templates → Reset Password**: add `Your username is {{ .Data.username }}` so people who forgot their username get it with the reset link.
+4. Import this repository at [vercel.com/new](https://vercel.com/new) and add these environment variables from Supabase **Project Settings → API**:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-4. Deploy.
+5. Deploy.
 
 ## Single-file build
 

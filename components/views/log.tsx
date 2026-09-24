@@ -37,7 +37,6 @@ export function LogView() {
   const [choiceKey, setChoiceKey] = useState(query.category && choices.some((c) => c.key === query.category) ? query.category : "tefillin");
   const [quantity, setQuantity] = useState(1);
   const [date, setDate] = useState(today());
-  const [groupId, setGroupId] = useState(query.group ?? (mine.groups.length === 1 ? mine.groups[0].id : ""));
   const [routeId, setRouteId] = useState(query.route ?? "");
   const [locationId, setLocationId] = useState(query.location ?? "");
   const [notes, setNotes] = useState("");
@@ -61,7 +60,6 @@ export function LogView() {
         quantity,
         activity_date: date,
         notes,
-        group_id: groupId || null,
         route_id: routeId || null,
         location_id: locationId || null,
       });
@@ -78,7 +76,7 @@ export function LogView() {
 
   return (
     <div className="grid grid-cols-1 gap-6">
-      <PageHeader title="Log mivtzoim" subtitle="Record what you did. It counts toward your week and your group." />
+      <PageHeader title="Log mivtzoim" subtitle="Record what you did. It counts toward your week." />
 
       <form onSubmit={submit} className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_22rem]">
         <div className="grid content-start gap-3">
@@ -163,16 +161,6 @@ export function LogView() {
             <h2 className="text-lg font-medium">Details</h2>
             <Field label="Date" htmlFor="log-date">
               <Input id="log-date" type="date" value={date} max={today()} onChange={(e) => setDate(e.target.value)} />
-            </Field>
-            <Field label="Count toward group" htmlFor="log-group">
-              <Select id="log-group" value={groupId} onChange={(e) => setGroupId(e.target.value)}>
-                <option value="">Just me</option>
-                {mine.groups.map((g) => (
-                  <option key={g.id} value={g.id}>
-                    {g.name}
-                  </option>
-                ))}
-              </Select>
             </Field>
             <Field label="Route" htmlFor="log-route">
               <Select

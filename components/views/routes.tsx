@@ -37,13 +37,11 @@ export function RoutesView() {
           {mine.routes.map((r) => {
             const stops = data.stops.filter((s) => s.route_id === r.id);
             const done = stops.filter((s) => s.completed).length;
-            const group = data.groups.find((g) => g.id === r.group_id);
             const pct = stops.length ? (done / stops.length) * 100 : 0;
             return (
               <Link key={r.id} href={`/routes/view?id=${r.id}`} className="block rounded-[28px] bg-card p-6 transition hover:shadow-card">
                 <div className="flex items-start justify-between gap-3">
                   <h2 className="text-xl font-medium">{r.name}</h2>
-                  <span className="shrink-0 rounded-lg bg-secondary-soft px-2 py-0.5 text-xs font-medium text-secondary-on-soft">{group ? group.name : "Personal"}</span>
                 </div>
                 {r.description && <p className="mt-1 line-clamp-2 text-sm text-muted">{r.description}</p>}
                 <div className="mt-4 h-2 overflow-hidden rounded-full bg-sunken">
@@ -89,7 +87,6 @@ export function NewRouteView() {
   const { query, go } = useNav();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [groupId, setGroupId] = useState(query.group ?? "");
   const [stops, setStops] = useState<StopDraft[]>([]);
   const [draft, setDraft] = useState<StopDraft>(blankStop);
   const [busy, setBusy] = useState(false);
@@ -105,7 +102,7 @@ export function NewRouteView() {
     setBusy(true);
     try {
       const all = draft.name.trim() ? [...stops, draft] : stops;
-      const route = await actions.createRoute({ name, description, group_id: groupId || null, stops: all });
+      const route = await actions.createRoute({ name, description, group_id: null, stops: all });
       notify(`Created ${route.name}.`);
       go(`/routes/view?id=${route.id}`);
     } catch (err) {
@@ -124,16 +121,6 @@ export function NewRouteView() {
           </Field>
           <Field label="Description" htmlFor="route-description" hint="Optional.">
             <Textarea id="route-description" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Start at the bakery and work down to the post office." />
-          </Field>
-          <Field label="Share with" htmlFor="route-group" hint="Group routes can be seen and checked off by everyone in the group.">
-            <Select id="route-group" value={groupId} onChange={(e) => setGroupId(e.target.value)}>
-              <option value="">Only me</option>
-              {mine.groups.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.name}
-                </option>
-              ))}
-            </Select>
           </Field>
         </Card>
 
@@ -195,13 +182,12 @@ export function RouteDetailView() {
     );
   }
 
-  const group = data.groups.find((g) => g.id === route.group_id);
   const stops = data.stops
     .filter((s) => s.route_id === route.id)
     .sort((a, b) => a.position - b.position)
     .map((s) => ({ stop: s, loc: data.locations.find((l) => l.id === s.location_id) }));
   const done = stops.filter((s) => s.stop.completed).length;
-  const logQuery = `route=${route.id}${route.group_id ? `&group=${route.group_id}` : ""}`;
+  const logQuery = `route=${route.id}`;
 
   async function wrap(key: string, work: () => Promise<void>, message?: string) {
     setPending(key);
@@ -230,7 +216,7 @@ export function RouteDetailView() {
         title={route.name}
         subtitle={
           <>
-            {group ? `Shared with ${group.name}` : "Personal route"} · <span className="tabular">{done} of {stops.length} stops done</span>
+            <span className="tabular">{done} of {stops.length} stops done</span>
           </>
         }
         action={<ButtonLink href={`/log?${logQuery}`}>Log on this route</ButtonLink>}

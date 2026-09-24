@@ -73,10 +73,9 @@ export function HistoryView() {
             </div>
             <ul className="divide-y divide-line/60">
               {list.map((a) => {
-                const group = data.groups.find((g) => g.id === a.group_id);
                 const route = data.routes.find((r) => r.id === a.route_id);
                 const place = data.locations.find((l) => l.id === a.location_id);
-                const meta = [formatDay(a.activity_date), group?.name, route?.name, place?.name].filter(Boolean).join(" · ");
+                const meta = [formatDay(a.activity_date), route?.name, place?.name].filter(Boolean).join(" · ");
                 return (
                   <li key={a.id} className="flex items-center gap-3 px-6 py-3.5">
                     <CategoryIcon type={a.category_type} icon={a.category_type === "tefillin" ? TefillinIcon : a.category_type === "shabbos_candles" ? Flame : Sparkles} />

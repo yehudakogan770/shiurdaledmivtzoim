@@ -13,7 +13,7 @@ import type {
   Route,
   RouteLocation,
 } from "./types";
-import { DEFAULT_SETTINGS } from "./types";
+import { DEFAULT_SETTINGS, type SignUpInput } from "./types";
 import { today } from "./dates";
 
 export interface AppData {
@@ -73,9 +73,14 @@ interface DataContextValue {
   refresh(): Promise<void>;
   auth: {
     signIn(username: string, password: string): Promise<void>;
-    signUp(name: string, username: string, password: string): Promise<{ needsConfirmation: boolean }>;
+    signUp(input: SignUpInput): Promise<{ needsConfirmation: boolean }>;
+    requestPasswordReset(email: string): Promise<void>;
+    updatePassword(password: string): Promise<void>;
+    /** true while someone who arrived from a reset link is choosing a new password. */
+    recovering: boolean;
+    finishRecovery(): void;
     signOut(): Promise<void>;
-    updateName(name: string): Promise<void>;
+    updateProfile(name: string, partners: string[]): Promise<void>;
   };
   actions: {
     log(input: LogInput): Promise<void>;
@@ -113,6 +118,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<AppData>(EMPTY);
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
   const [people, setPeople] = useState<Profile[]>([]);
+  const [recovering, setRecovering] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -159,6 +165,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       try {
         const b = await pickBackend();
         if (cancelled) return;
+        b.onPasswordRecovery(() => setRecovering(true));
         setBackend(b);
         await load(b);
         if (!cancelled) setStatus("ready");
@@ -226,9 +233,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
       refresh,
       auth: {
         signIn: (username, password) => run(() => b.signIn(username, password)),
-        signUp: (name, username, password) => run(() => b.signUp(name, username, password)),
+        signUp: (input) => run(() => b.signUp(input)),
+        requestPasswordReset: (email) => b.requestPasswordReset(email),
+        updatePassword: (password) => b.updatePassword(password),
+        recovering,
+        finishRecovery: () => setRecovering(false),
         signOut: () => run(() => b.signOut()),
-        updateName: (name) => run(() => b.updateProfile({ name })),
+        updateProfile: (name, partners) => run(() => b.updateProfile({ name, partners })),
       },
       actions: {
         log: (input) =>
@@ -339,7 +350,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         archiveCategory: (id, archived) => run(() => b.update("personal_categories", id, { status: archived ? "archived" : "active" })),
       },
     };
-  }, [backend, status, error, me, data, mine, settings, people, toast, notify, refresh, load]);
+  }, [backend, status, error, me, data, mine, settings, people, recovering, toast, notify, refresh, load]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }

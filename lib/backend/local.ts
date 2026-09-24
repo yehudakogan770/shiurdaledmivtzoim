@@ -1,6 +1,6 @@
-import type { Profile, SiteSettings, TableName, Tables } from "../types";
+import { displayName, type Profile, type SiteSettings, type TableName, type Tables } from "../types";
 import { isAdminIdentifier } from "../admin";
-import { checkPassword, loginKey, newId, normalizeUsername, type Backend } from "./index";
+import { checkEmail, checkPassword, loginKey, newId, normalizeUsername, type Backend } from "./index";
 
 const KEY = "shiur-daled-mivtzoim:v1";
 
@@ -47,11 +47,11 @@ function load(): Store {
 let memory: Store | null = null;
 
 function roleOf(p: LocalProfile): "user" | "admin" {
-  return isAdminIdentifier(p.username) ? "admin" : p.role === "admin" ? "admin" : "user";
+  return isAdminIdentifier(p.email) || isAdminIdentifier(p.username) || p.role === "admin" ? "admin" : "user";
 }
 
 function publicProfile(p: LocalProfile): Profile {
-  return { id: p.id, name: p.name, username: p.username, role: roleOf(p) };
+  return { id: p.id, name: p.name, username: p.username, email: p.email ?? null, partners: p.partners ?? [], role: roleOf(p) };
 }
 
 function requireAdmin(s: Store) {
@@ -85,18 +85,20 @@ export function createLocalBackend(): Backend {
       const s = load();
       const p = s.profiles.find((x) => x.username === username);
       if (!p || !p.password_hash || p.password_hash !== (await hashPassword(password, p.id))) {
-        throw new Error("That username (or email) and password don't match.");
+        throw new Error("That username and password don't match.");
       }
       s.session = p.id;
       save(s);
     },
-    async signUp(name, rawUsername, password) {
+    async signUp({ name, partners, username: rawUsername, email: rawEmail, password }) {
       const username = normalizeUsername(rawUsername);
+      const email = checkEmail(rawEmail);
       checkPassword(password);
       const s = load();
-      if (s.profiles.some((x) => x.username === username)) throw new Error("That username or email is already used. Try another.");
+      if (s.profiles.some((x) => x.username === username)) throw new Error("That username is taken. Try another.");
+      if (s.profiles.some((x) => x.email === email)) throw new Error("That email already has an account.");
       const id = newId();
-      s.profiles.push({ id, name: name.trim(), username, password_hash: await hashPassword(password, id) });
+      s.profiles.push({ id, name: name.trim(), partners, username, email, password_hash: await hashPassword(password, id) });
       s.session = id;
       save(s);
       return { needsConfirmation: false };
@@ -106,12 +108,23 @@ export function createLocalBackend(): Backend {
       s.session = null;
       save(s);
     },
-    async updateProfile({ name }) {
+    async updateProfile({ name, partners }) {
       const s = load();
       const p = s.profiles.find((x) => x.id === s.session);
-      if (p) p.name = name;
+      if (p) Object.assign(p, { name, partners });
       save(s);
     },
+    async requestPasswordReset() {
+      throw new Error("Password reset by email works once the site is connected to its online database. Until then, ask the admin for help.");
+    },
+    async updatePassword(password) {
+      checkPassword(password);
+      const s = load();
+      const p = s.profiles.find((x) => x.id === s.session);
+      if (p) p.password_hash = await hashPassword(password, p.id);
+      save(s);
+    },
+    onPasswordRecovery() {},
 
     async list(table) {
       if (table === "profiles") return load().profiles.map(publicProfile) as Tables[typeof table][];
@@ -156,7 +169,10 @@ export function createLocalBackend(): Backend {
     async names(ids) {
       const s = load();
       const out: Record<string, string> = {};
-      for (const id of ids) out[id] = s.profiles.find((p) => p.id === id)?.name || "Someone";
+      for (const id of ids) {
+        const p = s.profiles.find((x) => x.id === id);
+        out[id] = p ? displayName(p) : "Someone";
+      }
       return out;
     },
 

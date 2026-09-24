@@ -4,7 +4,23 @@ export interface Profile {
   id: string;
   name: string;
   username?: string | null;
+  email?: string | null;
+  /** Mivtzoim chavrusas (partners) who go out with this person. */
+  partners?: string[] | null;
   role?: "user" | "admin";
+}
+
+/** "Mendel Cohen & Yossi Levi" */
+export function displayName(p: Pick<Profile, "name" | "partners">) {
+  return [p.name, ...(p.partners ?? [])].filter((n) => n && n.trim()).join(" & ");
+}
+
+export interface SignUpInput {
+  name: string;
+  partners: string[];
+  username: string;
+  email: string;
+  password: string;
 }
 
 export interface Group {
@@ -98,8 +114,8 @@ export interface SiteSettings {
 }
 
 export const DEFAULT_SETTINGS: SiteSettings = {
-  site_name: "Shiur Daled",
-  tagline: "Mivtzoim",
+  site_name: "Shiur Daled Mivtzoim",
+  tagline: "",
   welcome: "Start tracking tefillin, Shabbos candles and every other mivtza.",
   announcement: "",
 };

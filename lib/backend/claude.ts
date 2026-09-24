@@ -55,6 +55,9 @@ export async function createClaudeBackend(): Promise<Backend | null> {
     },
     async signOut() {},
     async updateProfile() {},
+    async requestPasswordReset() {},
+    async updatePassword() {},
+    onPasswordRecovery() {},
 
     async list(table) {
       if (table === "profiles") return [];

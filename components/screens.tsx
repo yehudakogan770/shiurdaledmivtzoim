@@ -2,7 +2,6 @@
 
 import { AdminView } from "./views/admin";
 import { DashboardView } from "./views/dashboard";
-import { GroupDetailView, GroupsView } from "./views/groups";
 import { HistoryView } from "./views/history";
 import { LogView } from "./views/log";
 import { ProfileView } from "./views/profile";
@@ -15,8 +14,6 @@ export const SCREENS: Record<string, () => React.JSX.Element> = {
   "/login": DashboardView,
   "/log": LogView,
   "/mivtzoim": LogView,
-  "/groups": GroupsView,
-  "/groups/view": GroupDetailView,
   "/routes": RoutesView,
   "/routes/new": NewRouteView,
   "/routes/view": RouteDetailView,
