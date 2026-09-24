@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Award, ClipboardList, Flame, Plus, ScrollText, Sparkles, Users } from "lucide-react";
+import { ClipboardList, Flame, Plus, ScrollText, Sparkles, Users } from "lucide-react";
 import { useData } from "@/lib/data";
 import { useNav } from "@/lib/nav";
 import { STANDARD, categoryName } from "@/lib/categories";
@@ -46,11 +46,9 @@ export function DashboardView() {
       />
 
       <div>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3">
           <Stat label="Tefillin" icon={ScrollText} value={by(weekRows, "tefillin")} delta={by(weekRows, "tefillin") - by(lastRows, "tefillin")} note="vs last week" tone="accent" />
           <Stat label="Candles" icon={Flame} value={by(weekRows, "shabbos_candles")} delta={by(weekRows, "shabbos_candles") - by(lastRows, "shabbos_candles")} note="vs last week" tone="candle" />
-          <Stat label="Other" icon={Sparkles} value={by(weekRows, "personal")} delta={by(weekRows, "personal") - by(lastRows, "personal")} note="vs last week" tone="sage" />
-          <Stat label="All time" icon={Award} value={sum(mine.activity)} note={`${mine.activity.length} ${mine.activity.length === 1 ? "entry" : "entries"}`} tone="ink" />
         </div>
       </div>
 
