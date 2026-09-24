@@ -29,7 +29,7 @@ end $$;
 -- Sign in with a username: find the email address it belongs to.
 create or replace function public.login_email(p_username text)
 returns text language sql stable security definer set search_path = public as $$
-  select u.email from auth.users u join profiles p on p.id = u.id
+  select u.email::text from auth.users u join profiles p on p.id = u.id
   where lower(p.username) = lower(trim(p_username)) limit 1;
 $$;
 

@@ -1,4 +1,4 @@
-import { createBrowserClient } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 import { displayName, type Profile, type TableName, type Tables } from "../types";
 import { checkEmail, checkPassword, loginKey, normalizeUsername, type Backend } from "./index";
 
@@ -13,7 +13,11 @@ function fail(error: { message: string } | null) {
 
 /** The hosted website: Supabase auth and Postgres with row level security. */
 export function createSupabaseBackend(url: string, key: string): Backend {
-  const sb = createBrowserClient(url, key);
+  // Implicit flow: email links (confirmation, password reset) work on any device,
+  // not only in the browser that asked for them.
+  const sb = createClient(url, key, {
+    auth: { flowType: "implicit", persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+  });
 
   async function uid() {
     const { data } = await sb.auth.getUser();

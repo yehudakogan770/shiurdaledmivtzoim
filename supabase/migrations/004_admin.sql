@@ -56,8 +56,8 @@ create policy "Admins view all activity" on mivtzoim_activity for select using (
 
 create table if not exists site_settings (
   id integer primary key default 1 check (id = 1),
-  site_name text not null default 'Shiur Daled',
-  tagline text not null default 'Mivtzoim',
+  site_name text not null default 'Shiur Daled Mivtzoim',
+  tagline text not null default '',
   welcome text not null default 'Start tracking tefillin, Shabbos candles and every other mivtza.',
   announcement text not null default '',
   updated_at timestamptz not null default now(),
