@@ -1,5 +1,5 @@
 import { Screen } from "@/components/screens";
 
 export default function Page() {
-  return <Screen path="/profile" />;
+  return <Screen path="/routes/view" />;
 }
