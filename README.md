@@ -2,9 +2,9 @@
 
 A website for tracking mivtzoim: tefillin, Shabbos candles and any other mivtza you add, alone or with your shiur.
 
-- **Dashboard**: one-tap +1 Tefillin and +1 Shabbos Candles, this week's totals, an 8-week chart and your groups.
-- **Log Mivtzoim**: log any amount for any category and date. You can count it toward a group, a route or a stop.
-- **Routes**: an ordered list of stops (stores, offices, homes) that you check off as you go. A route can be personal or shared with a group.
+- **Dashboard**: one-tap +1 Tefillin and +1 Shabbos Candles, this week's totals and an 8-week chart.
+- **Log Mivtzoim**: log any amount for any category and date. You can count it toward a route or a stop.
+- **Routes**: an ordered list of stops (stores, offices, homes) that you check off as you go.
 - **History**: every entry grouped by week. You can filter it and delete entries.
 - **Profile**: your name, plus your own categories (Mezuzah, Tzedakah, Kashrus and the rest of the ten mivtzoim are one tap away).
 
@@ -63,7 +63,7 @@ This bundles the whole app, styles included, into one HTML file. That is the ver
 
 ```
 app/                 Next.js pages (thin wrappers around the screens) and global styles
-components/views/    The screens: dashboard, log, groups, routes, history, profile, login
+components/views/    The screens: dashboard, log, routes, history, profile, admin, login
 components/          App shell, navigation and UI pieces
 lib/backend/         Supabase, Claude artifact and browser-storage backends
 lib/data.tsx         Loads data and exposes the app's actions
