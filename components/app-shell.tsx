@@ -1,12 +1,12 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { ClipboardPen, History, LayoutDashboard, LogOut, Map, Plus, UserRound, Users } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { ClipboardPen, History, LayoutDashboard, LogOut, Map, Menu, Plus, UserRound, Users } from "lucide-react";
 import { useData } from "@/lib/data";
 import { useNav } from "@/lib/nav";
 import { hebrewDate } from "@/lib/dates";
 import { Avatar, IconButton, cx } from "./ui";
-import { LogoMark, Wordmark } from "./brand";
+import { LogoMark } from "./brand";
 import { LoginView } from "./views/login";
 
 const links = [
@@ -22,27 +22,37 @@ function isActive(path: string, match: string[]) {
   return match.some((m) => (m === "/" ? path === "/" : path === m || path.startsWith(m + "/")));
 }
 
-/** Material 3 navigation drawer (desktop). */
-function Drawer() {
+/** The side panel's contents. `expanded` shows labels; collapsed shows icons only. */
+function PanelContent({ expanded, onNavigate }: { expanded: boolean; onNavigate?: () => void }) {
   const { path, Link } = useNav();
   const { me, backend, auth } = useData();
+  const label = cx("whitespace-nowrap transition-opacity duration-200", expanded ? "opacity-100" : "opacity-0");
   return (
-    <aside className="sticky top-0 hidden h-screen w-72 shrink-0 flex-col px-3 py-4 lg:flex">
-      <div className="px-4 pt-2 pb-6">
+    <div className="flex h-full flex-col px-3 py-4" onClick={(e) => (e.target as HTMLElement).closest("a") && onNavigate?.()}>
+      <div className="px-2 pt-2 pb-6">
         <Link href="/">
-          <Wordmark />
+          <span className="flex items-center gap-3">
+            <LogoMark className="h-10 w-10" />
+            <span className={cx("leading-tight", label)}>
+              <span className="block text-lg font-medium text-ink">Shiur Daled</span>
+              <span className="block text-sm text-muted">Mivtzoim</span>
+            </span>
+          </span>
         </Link>
       </div>
       <div className="px-1 pb-4">
         <Link
           href="/log"
-          className="inline-flex h-14 items-center gap-3 rounded-2xl bg-accent-soft pr-6 pl-4 text-[15px] font-medium text-accent-on-soft shadow-pop transition hover:brightness-[0.97]"
+          className={cx(
+            "flex h-14 items-center gap-3 overflow-hidden rounded-2xl bg-accent-soft pl-4 text-[15px] font-medium text-accent-on-soft shadow-pop transition-[width] duration-200 hover:brightness-[0.97]",
+            expanded ? "w-full pr-6" : "w-14",
+          )}
         >
-          <Plus size={22} aria-hidden /> Log mivtzoim
+          <Plus size={22} aria-hidden className="shrink-0" /> <span className={label}>Log mivtzoim</span>
         </Link>
       </div>
       <nav aria-label="Main" className="grid gap-0.5">
-        {links.map(({ href, label, icon: Icon, match }) => {
+        {links.map(({ href, label: text, icon: Icon, match }) => {
           const active = isActive(path, match);
           return (
             <Link
@@ -50,27 +60,28 @@ function Drawer() {
               href={href}
               aria-current={active ? "page" : undefined}
               className={cx(
-                "flex h-14 items-center gap-3 rounded-full px-4 text-sm font-medium transition-colors",
+                "flex h-14 items-center gap-4 overflow-hidden rounded-full px-4 text-sm font-medium transition-colors",
                 active ? "bg-secondary-soft text-secondary-on-soft" : "text-muted hover:bg-ink/8 hover:text-ink",
               )}
             >
-              <Icon size={22} strokeWidth={active ? 2.2 : 1.8} aria-hidden /> {label}
+              <Icon size={22} strokeWidth={active ? 2.2 : 1.8} aria-hidden className="shrink-0" />
+              <span className={label}>{text}</span>
             </Link>
           );
         })}
       </nav>
       <div className="mt-auto grid gap-3">
-        <p className="px-4 text-sm text-muted">{hebrewDate()}</p>
+        <p className={cx("px-4 text-sm text-muted", label)}>{hebrewDate()}</p>
         {me && (
-          <div className="flex items-center gap-2 rounded-[28px] bg-card p-2">
+          <div className={cx("flex items-center gap-2 overflow-hidden rounded-[28px] p-2 transition-colors", expanded ? "bg-card" : "bg-transparent")}>
             <Link href="/profile" className="flex min-w-0 flex-1 items-center gap-3 rounded-full p-1 pr-3 hover:bg-ink/5">
               <Avatar name={me.name} id={me.id} size={40} />
-              <span className="min-w-0">
+              <span className={cx("min-w-0", label)}>
                 <span className="block truncate text-sm font-medium">{me.name}</span>
                 <span className="block truncate text-xs text-muted">{me.username ? `@${me.username}` : "View profile"}</span>
               </span>
             </Link>
-            {backend?.hasAuth && (
+            {backend?.hasAuth && expanded && (
               <IconButton onClick={() => auth.signOut()} aria-label="Sign out">
                 <LogOut size={18} />
               </IconButton>
@@ -78,22 +89,95 @@ function Drawer() {
           </div>
         )}
       </div>
-    </aside>
+    </div>
   );
 }
 
-/** Top app bar (phones). */
-function TopAppBar() {
+/** Computers: a slim icon rail that opens while the mouse (or keyboard focus) is on it. */
+function HoverRail() {
+  const [open, setOpen] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const show = () => {
+    if (timer.current) clearTimeout(timer.current);
+    setOpen(true);
+  };
+  const hide = () => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => setOpen(false), 150);
+  };
+  return (
+    <div className="hidden w-20 shrink-0 lg:block">
+      <aside
+        aria-label="Side panel"
+        onMouseEnter={show}
+        onMouseLeave={hide}
+        onFocus={show}
+        onBlur={(e) => !e.currentTarget.contains(e.relatedTarget as Node) && hide()}
+        className={cx(
+          "fixed inset-y-0 left-0 z-40 overflow-hidden bg-paper transition-[width,box-shadow] duration-200 ease-out",
+          open ? "w-72 rounded-r-[28px] shadow-pop" : "w-20",
+        )}
+      >
+        <PanelContent expanded={open} />
+      </aside>
+    </div>
+  );
+}
+
+/** Phones and tablets: a modal side panel opened from the three-bar button. */
+function ModalDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { path } = useNav();
+  useEffect(() => {
+    onClose();
+    // Close whenever the page changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [path]);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    document.addEventListener("keydown", onKey);
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = overflow;
+    };
+  }, [open, onClose]);
+  return (
+    <div className="lg:hidden" aria-hidden={!open}>
+      <div
+        onClick={onClose}
+        className={cx("fixed inset-0 z-40 bg-black/40 transition-opacity duration-200", open ? "opacity-100" : "pointer-events-none opacity-0")}
+      />
+      <aside
+        aria-label="Side panel"
+        inert={!open}
+        className={cx(
+          "fixed inset-y-0 left-0 z-50 w-[85%] max-w-80 rounded-r-[28px] bg-paper pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] shadow-pop transition-transform duration-250 ease-out",
+          open ? "translate-x-0" : "-translate-x-full",
+        )}
+      >
+        <PanelContent expanded onNavigate={onClose} />
+      </aside>
+    </div>
+  );
+}
+
+/** Top app bar (phones and tablets). */
+function TopAppBar({ onMenu }: { onMenu: () => void }) {
   const { Link } = useNav();
   const { me } = useData();
   return (
-    <header className="sticky top-[env(safe-area-inset-top,0px)] z-30 flex h-16 items-center justify-between bg-paper/90 px-4 backdrop-blur lg:hidden">
+    <header className="sticky top-[env(safe-area-inset-top,0px)] z-30 flex h-16 items-center gap-1 bg-paper/90 px-2 backdrop-blur lg:hidden">
+      <IconButton onClick={onMenu} aria-label="Open menu" className="h-12 w-12 text-ink">
+        <Menu size={24} />
+      </IconButton>
       <Link href="/" className="flex items-center gap-2.5">
-        <LogoMark className="h-9 w-9" />
+        <LogoMark className="h-8 w-8" />
         <span className="text-lg font-medium">Shiur Daled</span>
       </Link>
       {me && (
-        <Link href="/profile" aria-label="Profile" className="rounded-full">
+        <Link href="/profile" aria-label="Profile" className="ml-auto mr-2 rounded-full">
           <Avatar name={me.name} id={me.id} size={36} />
         </Link>
       )}
@@ -147,6 +231,8 @@ function Fab() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { status, error, me, backend, toast } = useData();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
 
   let body: ReactNode;
   if (status === "loading") {
@@ -184,9 +270,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-paper lg:flex">
-      <Drawer />
+      <HoverRail />
+      <ModalDrawer open={menuOpen} onClose={closeMenu} />
       <div className="min-w-0 flex-1">
-        <TopAppBar />
+        <TopAppBar onMenu={() => setMenuOpen(true)} />
         <main className="px-4 pt-2 pb-36 sm:px-6 lg:px-8 lg:pt-8 lg:pb-12">
           <div className="mx-auto max-w-6xl">{body}</div>
         </main>
