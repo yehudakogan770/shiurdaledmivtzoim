@@ -67,7 +67,7 @@ function Drawer() {
               <Avatar name={me.name} id={me.id} size={40} />
               <span className="min-w-0">
                 <span className="block truncate text-sm font-medium">{me.name}</span>
-                <span className="block truncate text-xs text-muted">{me.email || "View profile"}</span>
+                <span className="block truncate text-xs text-muted">{me.username ? `@${me.username}` : "View profile"}</span>
               </span>
             </Link>
             {backend?.hasAuth && (

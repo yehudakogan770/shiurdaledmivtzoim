@@ -1,6 +1,16 @@
 import { createBrowserClient } from "@supabase/ssr";
 import type { TableName, Tables } from "../types";
-import type { Backend } from "./index";
+import { checkPassword, normalizeUsername, type Backend } from "./index";
+
+/**
+ * Supabase sign-in needs an email address, so each username maps to an
+ * internal address that is never shown or emailed. Turn off "Confirm email"
+ * in Supabase (Authentication → Sign In / Providers → Email) for this to work.
+ */
+const LOGIN_DOMAIN = "users.shiurdaledmivtzoim.app";
+function loginEmail(username: string) {
+  return `${username}@${LOGIN_DOMAIN}`;
+}
 
 function fail(error: { message: string } | null) {
   if (error) throw new Error(error.message);
@@ -20,21 +30,24 @@ export function createSupabaseBackend(url: string, key: string): Backend {
     kind: "supabase",
     storageLabel: "Saved to your account. Sign in on any device to see it.",
     hasAuth: true,
-    usesPassword: true,
 
     async currentUser() {
       const { data } = await sb.auth.getUser();
       if (!data.user) return null;
-      const { data: p } = await sb.from("profiles").select("id, name").eq("id", data.user.id).maybeSingle();
-      return { id: data.user.id, name: p?.name || data.user.email?.split("@")[0] || "You", email: data.user.email };
+      const { data: p } = await sb.from("profiles").select("id, name, username").eq("id", data.user.id).maybeSingle();
+      const username = p?.username || data.user.user_metadata?.username || null;
+      return { id: data.user.id, name: p?.name || username || "You", username };
     },
-    async signIn(email, password) {
-      const { error } = await sb.auth.signInWithPassword({ email, password });
-      fail(error);
+    async signIn(rawUsername, password) {
+      const username = rawUsername.trim().toLowerCase().replace(/^@/, "");
+      const { error } = await sb.auth.signInWithPassword({ email: loginEmail(username), password });
+      if (error) throw new Error(error.message.includes("Invalid login") ? "That username and password don't match." : error.message);
     },
-    async signUp(name, email, password) {
-      const { data, error } = await sb.auth.signUp({ email, password, options: { data: { name } } });
-      fail(error);
+    async signUp(name, rawUsername, password) {
+      const username = normalizeUsername(rawUsername);
+      checkPassword(password);
+      const { data, error } = await sb.auth.signUp({ email: loginEmail(username), password, options: { data: { name, username } } });
+      if (error) throw new Error(error.message.includes("already registered") ? "That username is taken. Try another." : error.message);
       return { needsConfirmation: !data.session };
     },
     async signOut() {

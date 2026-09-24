@@ -15,9 +15,9 @@ The screens talk to one small interface (`lib/backend`). Which storage it uses d
 
 | Where it runs | Storage | Sign-in |
 | --- | --- | --- |
-| Hosted with Supabase keys set | Supabase Postgres with row level security | Email and password |
+| Hosted with Supabase keys set | Supabase Postgres with row level security | Username and password |
 | Published as a Claude artifact | The artifact's shared database | The viewer's Claude account |
-| Anywhere else (no keys) | This browser only (`localStorage`) | Name and email, no password |
+| Anywhere else (no keys) | This browser only (`localStorage`) | Username and password (accounts live on that device) |
 
 ## Run locally
 
@@ -31,11 +31,12 @@ Without Supabase keys the site runs in single-device mode, which is useful for t
 ## Launch with Supabase and Vercel
 
 1. Create a project at [supabase.com](https://supabase.com).
-2. In **SQL Editor**, run `supabase/migrations/001_initial.sql` and then `supabase/migrations/002_app.sql`.
+2. In **SQL Editor**, run `supabase/migrations/001_initial.sql`, `002_app.sql` and `003_usernames.sql`, in that order.
+   Then under **Authentication → Sign In / Providers → Email**, turn off **Confirm email**. People sign in with a username, so there is no inbox to confirm.
 3. Import this repository at [vercel.com/new](https://vercel.com/new) and add these environment variables from Supabase **Project Settings → API**:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-4. Deploy. In Supabase **Authentication → URL Configuration**, set the Site URL to your Vercel address so confirmation emails link back to it.
+4. Deploy.
 
 ## Single-file build
 

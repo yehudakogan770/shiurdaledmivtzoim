@@ -10,11 +10,10 @@ export function LoginView() {
   const { auth, backend } = useData();
   const [isSignUp, setIsSignUp] = useState(false);
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ kind: "error" | "info"; text: string } | null>(null);
-  const needsPassword = backend?.usesPassword ?? true;
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -22,10 +21,10 @@ export function LoginView() {
     setMessage(null);
     try {
       if (isSignUp) {
-        const { needsConfirmation } = await auth.signUp(name, email, password);
-        if (needsConfirmation) setMessage({ kind: "info", text: "Check your email for a link to confirm your account, then sign in." });
+        const { needsConfirmation } = await auth.signUp(name, username, password);
+        if (needsConfirmation) setMessage({ kind: "info", text: "Your account was created. Sign in with your username and password." });
       } else {
-        await auth.signIn(email, password);
+        await auth.signIn(username, password);
       }
     } catch (err) {
       setMessage({ kind: "error", text: (err as Error).message });
@@ -59,28 +58,36 @@ export function LoginView() {
               <Input id="login-name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Mendel Cohen" autoComplete="name" />
             </Field>
           )}
-          <Field label="Email" htmlFor="login-email">
-            <Input id="login-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" />
+          <Field label="Username" htmlFor="login-username" hint={isSignUp ? "3 to 20 letters, numbers, dots or dashes. You'll use it to sign in." : undefined}>
+            <Input
+              id="login-username"
+              required
+              value={username}
+              onChange={(e) => setUsername(e.target.value.replace(/\s/g, ""))}
+              placeholder="mendel"
+              autoComplete="username"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+            />
           </Field>
-          {needsPassword && (
-            <Field label="Password" htmlFor="login-password" hint={isSignUp ? "Use at least 6 characters." : undefined}>
-              <Input
-                id="login-password"
-                type="password"
-                required
-                minLength={6}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete={isSignUp ? "new-password" : "current-password"}
-              />
-            </Field>
-          )}
+          <Field label="Password" htmlFor="login-password" hint={isSignUp ? "Use at least 6 characters." : undefined}>
+            <Input
+              id="login-password"
+              type="password"
+              required
+              minLength={6}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete={isSignUp ? "new-password" : "current-password"}
+            />
+          </Field>
           {message && (
             <p className={message.kind === "error" ? "rounded-2xl bg-danger-soft px-4 py-3 text-sm text-danger" : "rounded-2xl bg-sage-soft px-4 py-3 text-sm text-sage-on-soft"}>
               {message.text}
             </p>
           )}
-          {!needsPassword && <p className="px-1 text-sm text-muted">{backend?.storageLabel}</p>}
+          {backend?.kind === "local" && <p className="px-1 text-sm text-muted">{backend.storageLabel}</p>}
 
           <div className="mt-6 flex items-center justify-end gap-2">
             <Button variant="ghost" onClick={toggle}>

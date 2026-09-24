@@ -1,9 +1,22 @@
 import type { Profile, TableName, Tables } from "../types";
-import { newId, type Backend } from "./index";
+import { checkPassword, newId, normalizeUsername, type Backend } from "./index";
 
 const KEY = "shiur-daled-mivtzoim:v1";
 
-type Store = { [K in TableName]: Tables[K][] } & { session: string | null };
+type LocalProfile = Profile & { password_hash?: string };
+type Store = { [K in Exclude<TableName, "profiles">]: Tables[K][] } & { profiles: LocalProfile[]; session: string | null };
+
+/** Salted SHA-256 so passwords are never stored as plain text. */
+async function hashPassword(password: string, salt: string) {
+  const data = new TextEncoder().encode(`${salt}:${password}`);
+  if (typeof crypto !== "undefined" && crypto.subtle) {
+    const digest = await crypto.subtle.digest("SHA-256", data);
+    return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+  }
+  let h = 5381;
+  for (const b of data) h = ((h << 5) + h + b) >>> 0;
+  return "djb2-" + h.toString(16);
+}
 
 function empty(): Store {
   return {
@@ -46,29 +59,30 @@ export function createLocalBackend(): Backend {
     kind: "local",
     storageLabel: "Saved in this browser on this device only.",
     hasAuth: true,
-    usesPassword: false,
 
     async currentUser() {
       const s = load();
-      return s.profiles.find((p) => p.id === s.session) ?? null;
+      const p = s.profiles.find((x) => x.id === s.session);
+      return p ? { id: p.id, name: p.name, username: p.username } : null;
     },
-    async signIn(email) {
+    async signIn(rawUsername, password) {
+      const username = rawUsername.trim().toLowerCase().replace(/^@/, "");
       const s = load();
-      const p = s.profiles.find((x) => x.email?.toLowerCase() === email.trim().toLowerCase());
-      if (!p) throw new Error("No account with that email on this device. Create one instead.");
+      const p = s.profiles.find((x) => x.username === username);
+      if (!p || !p.password_hash || p.password_hash !== (await hashPassword(password, p.id))) {
+        throw new Error("That username and password don't match.");
+      }
       s.session = p.id;
       save(s);
     },
-    async signUp(name, email) {
+    async signUp(name, rawUsername, password) {
+      const username = normalizeUsername(rawUsername);
+      checkPassword(password);
       const s = load();
-      const existing = s.profiles.find((x) => x.email?.toLowerCase() === email.trim().toLowerCase());
-      if (existing) {
-        s.session = existing.id;
-      } else {
-        const p: Profile = { id: newId(), name: name.trim(), email: email.trim() };
-        s.profiles.push(p);
-        s.session = p.id;
-      }
+      if (s.profiles.some((x) => x.username === username)) throw new Error("That username is taken. Try another.");
+      const id = newId();
+      s.profiles.push({ id, name: name.trim(), username, password_hash: await hashPassword(password, id) });
+      s.session = id;
       save(s);
       return { needsConfirmation: false };
     },
@@ -85,6 +99,7 @@ export function createLocalBackend(): Backend {
     },
 
     async list(table) {
+      if (table === "profiles") return load().profiles.map(({ id, name, username }) => ({ id, name, username })) as Tables[typeof table][];
       return [...load()[table]] as unknown as Tables[typeof table][];
     },
     async insert(table, row) {

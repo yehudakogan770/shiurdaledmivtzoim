@@ -64,8 +64,8 @@ interface DataContextValue {
   notify(message: string): void;
   refresh(): Promise<void>;
   auth: {
-    signIn(email: string, password: string): Promise<void>;
-    signUp(name: string, email: string, password: string): Promise<{ needsConfirmation: boolean }>;
+    signIn(username: string, password: string): Promise<void>;
+    signUp(name: string, username: string, password: string): Promise<{ needsConfirmation: boolean }>;
     signOut(): Promise<void>;
     updateName(name: string): Promise<void>;
   };
@@ -202,8 +202,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       notify,
       refresh,
       auth: {
-        signIn: (email, password) => run(() => b.signIn(email, password)),
-        signUp: (name, email, password) => run(() => b.signUp(name, email, password)),
+        signIn: (username, password) => run(() => b.signIn(username, password)),
+        signUp: (name, username, password) => run(() => b.signUp(name, username, password)),
         signOut: () => run(() => b.signOut()),
         updateName: (name) => run(() => b.updateProfile({ name })),
       },

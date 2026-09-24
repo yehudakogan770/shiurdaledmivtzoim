@@ -42,11 +42,10 @@ export async function createClaudeBackend(): Promise<Backend | null> {
     kind: "claude",
     storageLabel: "Shared with everyone this page is shared with. You're signed in with your Claude account.",
     hasAuth: false,
-    usesPassword: false,
 
     async currentUser() {
       const m = await user.me();
-      return { id: myId, name: m.name || "You", email: null };
+      return { id: myId, name: m.name || "You", username: null };
     },
     async signIn() {},
     async signUp() {

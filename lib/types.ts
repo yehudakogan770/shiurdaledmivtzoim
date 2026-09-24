@@ -3,7 +3,7 @@ export type CategoryType = "tefillin" | "shabbos_candles" | "personal";
 export interface Profile {
   id: string;
   name: string;
-  email?: string | null;
+  username?: string | null;
 }
 
 export interface Group {

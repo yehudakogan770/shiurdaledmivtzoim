@@ -79,7 +79,7 @@ export function ProfileView() {
               <div>
                 <p className="text-sm font-medium text-muted">Name</p>
                 <p className="text-2xl font-medium">{me?.name}</p>
-                {me?.email && <p className="text-muted">{me.email}</p>}
+                {me?.username && <p className="text-muted">@{me.username}</p>}
               </div>
             )}
             <div className="grid grid-cols-3 gap-3 rounded-2xl bg-paper p-4 text-center">

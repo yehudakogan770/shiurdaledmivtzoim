@@ -11,12 +11,10 @@ export interface Backend {
   storageLabel: string;
   /** false when identity comes from the host and there is no sign-in form. */
   hasAuth: boolean;
-  /** true when the sign-in form needs a password. */
-  usesPassword: boolean;
 
   currentUser(): Promise<Profile | null>;
-  signIn(email: string, password: string): Promise<void>;
-  signUp(name: string, email: string, password: string): Promise<{ needsConfirmation: boolean }>;
+  signIn(username: string, password: string): Promise<void>;
+  signUp(name: string, username: string, password: string): Promise<{ needsConfirmation: boolean }>;
   signOut(): Promise<void>;
   updateProfile(patch: { name: string }): Promise<void>;
 
@@ -33,6 +31,19 @@ export interface Backend {
 export function newId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
   return "id-" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+/** Usernames: 3–20 lowercase letters, numbers, dots, dashes or underscores. */
+export function normalizeUsername(raw: string) {
+  const u = raw.trim().toLowerCase().replace(/^@/, "");
+  if (!/^[a-z0-9._-]{3,20}$/.test(u)) {
+    throw new Error("Usernames are 3 to 20 characters: letters, numbers, dots, dashes or underscores.");
+  }
+  return u;
+}
+
+export function checkPassword(password: string) {
+  if (password.length < 6) throw new Error("Passwords need at least 6 characters.");
 }
 
 export function newJoinCode() {
