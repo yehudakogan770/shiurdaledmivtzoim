@@ -145,8 +145,8 @@ function ModalDrawer({ open, onClose }: { open: boolean; onClose: () => void }) 
         aria-label="Side panel"
         inert={!open}
         className={cx(
-          "fixed inset-y-0 left-0 z-50 w-[85%] max-w-80 rounded-r-[28px] bg-paper pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] shadow-pop transition-transform duration-250 ease-out",
-          open ? "translate-x-0" : "-translate-x-full",
+          "fixed inset-y-0 left-0 z-50 w-[85%] max-w-80 rounded-r-[28px] bg-paper pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] transition-transform duration-250 ease-out",
+          open ? "translate-x-0 shadow-pop" : "-translate-x-full",
         )}
       >
         <PanelContent expanded onNavigate={onClose} />
@@ -174,35 +174,6 @@ function TopAppBar({ onMenu }: { onMenu: () => void }) {
         </Link>
       )}
     </header>
-  );
-}
-
-/** Material 3 navigation bar (phones), with a pill indicator behind the active icon. */
-function NavigationBar() {
-  const { path, Link } = useNav();
-  const tabs = links;
-  return (
-    <nav
-      aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 bg-card pt-3 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] shadow-[0_-1px_0_var(--line)] lg:hidden"
-    >
-      {tabs.map(({ href, short, icon: Icon, match }) => {
-        const active = isActive(path, match);
-        return (
-          <Link key={href} href={href} aria-current={active ? "page" : undefined} className="flex flex-col items-center gap-1 text-xs font-medium">
-            <span
-              className={cx(
-                "grid h-8 w-16 place-items-center rounded-full transition-colors",
-                active ? "bg-secondary-soft text-secondary-on-soft" : "text-muted",
-              )}
-            >
-              <Icon size={22} strokeWidth={active ? 2.2 : 1.8} aria-hidden />
-            </span>
-            <span className={active ? "text-ink" : "text-muted"}>{short}</span>
-          </Link>
-        );
-      })}
-    </nav>
   );
 }
 
@@ -258,11 +229,10 @@ export function AppShell({ children }: { children: ReactNode }) {
       <ModalDrawer open={menuOpen} onClose={closeMenu} />
       <div className="min-w-0 flex-1">
         <TopAppBar onMenu={() => setMenuOpen(true)} />
-        <main className="px-4 pt-2 pb-36 sm:px-6 lg:px-8 lg:pt-8 lg:pb-12">
+        <main className="px-4 pt-2 pb-16 sm:px-6 lg:px-8 lg:pt-8 lg:pb-12">
           <div className="mx-auto max-w-6xl">{body}</div>
         </main>
       </div>
-      <NavigationBar />
       <Snackbar message={toast} />
     </div>
   );
@@ -273,7 +243,7 @@ function Snackbar({ message }: { message: string | null }) {
   return (
     <div
       aria-live="polite"
-      className="pointer-events-none fixed inset-x-0 bottom-[calc(6.5rem+env(safe-area-inset-bottom,0px))] z-50 flex justify-center pr-20 pl-4 lg:bottom-6 lg:px-4"
+      className="pointer-events-none fixed inset-x-0 bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px))] z-50 flex justify-center px-4"
     >
       {message && <div className="min-h-12 rounded-xl bg-ink px-4 py-3.5 text-sm text-paper shadow-pop">{message}</div>}
     </div>
