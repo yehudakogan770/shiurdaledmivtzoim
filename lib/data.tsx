@@ -100,6 +100,7 @@ interface DataContextValue {
     addCategory(name: string, description?: string, shared?: boolean): Promise<void>;
     archiveCategory(id: string, archived: boolean): Promise<void>;
     deleteCategory(id: string): Promise<void>;
+    updateCategory(id: string, name: string, description: string): Promise<void>;
     saveSettings(settings: SiteSettings): Promise<void>;
     setRole(userId: string, role: "user" | "admin"): Promise<void>;
     adminSetPassword(userId: string, password: string): Promise<void>;
@@ -356,6 +357,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
         adminSetPassword: (userId, password) => b.adminSetPassword(userId, password),
         archiveCategory: (id, archived) => run(() => b.update("personal_categories", id, { status: archived ? "archived" : "active" })),
         deleteCategory: (id) => run(() => b.remove("personal_categories", id)),
+        updateCategory: (id, name, description) =>
+          run(async () => {
+            if (!name.trim()) throw new Error("Give it a name.");
+            await b.update("personal_categories", id, { name: name.trim(), description: description.trim() || null });
+          }),
       },
     };
   }, [backend, status, error, me, data, mine, settings, people, recovering, toast, notify, refresh, load]);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { ChevronDown, ClipboardList, Eye, EyeOff, KeyRound, Flame, ShieldCheck, Sparkles, Trash2, Users } from "lucide-react";
+import { ChevronDown, ClipboardList, Eye, EyeOff, KeyRound, Flame, Pencil, ShieldCheck, Sparkles, Trash2, Users } from "lucide-react";
 import { TefillinIcon } from "../icons";
 import { categoryName } from "@/lib/categories";
 import { activityWeek, currentWeek } from "@/lib/dates";
@@ -119,6 +119,19 @@ function SharedCategoriesCard() {
   }
 
   const [removing, setRemoving] = useState<string | null>(null);
+  const [editing, setEditing] = useState<{ id: string; name: string; description: string } | null>(null);
+
+  async function saveEdit(e: FormEvent) {
+    e.preventDefault();
+    if (!editing) return;
+    try {
+      await actions.updateCategory(editing.id, editing.name, editing.description);
+      notify(`${editing.name.trim()} was updated for everyone.`);
+      setEditing(null);
+    } catch (err) {
+      notify((err as Error).message);
+    }
+  }
 
   async function remove(id: string, label: string) {
     try {
@@ -145,34 +158,60 @@ function SharedCategoriesCard() {
         <ul className={listClass}>
           {shared.map((c) => (
             <li key={c.id} className="flex flex-wrap items-center gap-2 px-6 py-3">
-              <span className="min-w-0 flex-1">
-                <span className={c.status === "archived" ? "block font-medium text-muted line-through" : "block font-medium"}>{c.name}</span>
-                {c.description && <span className="block truncate text-sm text-muted">{c.description}</span>}
-              </span>
-              {removing === c.id ? (
-                <span className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
-                  <span className="text-sm">Remove {c.name} for everyone?</span>
-                  <Button variant="danger" className="h-9 px-4" onClick={() => remove(c.id, c.name)}>
-                    Remove
-                  </Button>
-                  <Button variant="ghost" className="h-9 px-3" onClick={() => setRemoving(null)}>
-                    Keep
-                  </Button>
-                </span>
+              {editing?.id === c.id ? (
+                <form onSubmit={saveEdit} className="grid w-full gap-3 py-1">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field label="Name" htmlFor={`edit-name-${c.id}`}>
+                      <Input id={`edit-name-${c.id}`} required autoFocus value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
+                    </Field>
+                    <Field label="Button text (optional)" htmlFor={`edit-desc-${c.id}`}>
+                      <Input id={`edit-desc-${c.id}`} value={editing.description} onChange={(e) => setEditing({ ...editing, description: e.target.value })} />
+                    </Field>
+                  </div>
+                  <span className="flex gap-2">
+                    <Button type="submit" variant="tonal" className="h-9 px-4">
+                      Save
+                    </Button>
+                    <Button type="button" variant="ghost" className="h-9 px-3" onClick={() => setEditing(null)}>
+                      Cancel
+                    </Button>
+                  </span>
+                </form>
               ) : (
                 <>
-                  {c.status === "archived" ? (
-                    <Button variant="ghost" className="h-9 px-3" onClick={() => toggle(c.id, false)}>
-                      <Eye size={16} aria-hidden /> Show
-                    </Button>
+                  <span className="min-w-0 flex-1">
+                    <span className={c.status === "archived" ? "block font-medium text-muted line-through" : "block font-medium"}>{c.name}</span>
+                    {c.description && <span className="block truncate text-sm text-muted">{c.description}</span>}
+                  </span>
+                  {removing === c.id ? (
+                    <span className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
+                      <span className="text-sm">Remove {c.name} for everyone?</span>
+                      <Button variant="danger" className="h-9 px-4" onClick={() => remove(c.id, c.name)}>
+                        Remove
+                      </Button>
+                      <Button variant="ghost" className="h-9 px-3" onClick={() => setRemoving(null)}>
+                        Keep
+                      </Button>
+                    </span>
                   ) : (
-                    <Button variant="ghost" className="h-9 px-3" onClick={() => toggle(c.id, true)}>
-                      <EyeOff size={16} aria-hidden /> Hide
-                    </Button>
+                    <>
+                      {c.status === "archived" ? (
+                        <Button variant="ghost" className="h-9 px-3" onClick={() => toggle(c.id, false)}>
+                          <Eye size={16} aria-hidden /> Show
+                        </Button>
+                      ) : (
+                        <Button variant="ghost" className="h-9 px-3" onClick={() => toggle(c.id, true)}>
+                          <EyeOff size={16} aria-hidden /> Hide
+                        </Button>
+                      )}
+                      <IconButton aria-label={`Edit ${c.name}`} onClick={() => setEditing({ id: c.id, name: c.name, description: c.description ?? "" })}>
+                        <Pencil size={18} />
+                      </IconButton>
+                      <IconButton aria-label={`Remove ${c.name}`} onClick={() => setRemoving(c.id)}>
+                        <Trash2 size={18} />
+                      </IconButton>
+                    </>
                   )}
-                  <IconButton aria-label={`Remove ${c.name}`} onClick={() => setRemoving(c.id)}>
-                    <Trash2 size={18} />
-                  </IconButton>
                 </>
               )}
             </li>

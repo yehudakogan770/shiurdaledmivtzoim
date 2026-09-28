@@ -475,5 +475,8 @@ end $$;
 revoke all on function public.admin_set_password(uuid, text) from public, anon;
 grant execute on function public.admin_set_password(uuid, text) to authenticated;
 
--- Where address suggestions are searched (set on the Admin page).
-alter table site_settings add column if not exists address_area text not null default '';
+-- Any admin can edit, hide or remove the mivtzoim shared with everyone,
+-- not only the admin who added them.
+drop policy if exists "Admins manage shared categories" on personal_categories;
+create policy "Admins manage shared categories" on personal_categories for all
+  using (shared and public.is_admin()) with check (shared and public.is_admin());
