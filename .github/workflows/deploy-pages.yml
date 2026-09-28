@@ -31,6 +31,7 @@ jobs:
           # public by design; row level security in the database protects the data.
           NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL || 'https://rtmpafeqpqbmblssnyoz.supabase.co' }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0bXBhZmVxcHFibWJsc3NueW96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAyNzk0MzksImV4cCI6MjEwNTg1NTQzOX0.Dqd1wWsA31-1946rlVUSMZBwjwsTpKf47sM3TroW5_w' }}
+          NEXT_PUBLIC_GOOGLE_MAPS_KEY: ${{ vars.NEXT_PUBLIC_GOOGLE_MAPS_KEY }}
       - name: Publish to the gh-pages branch
         uses: peaceiris/actions-gh-pages@v4
         with:
