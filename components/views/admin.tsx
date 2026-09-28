@@ -106,7 +106,7 @@ function SharedCategoriesCard() {
     setBusy(true);
     try {
       await actions.addCategory(name, description, true);
-      notify(`${name.trim()} is now on everyone's log form.`);
+      notify(`${name.trim()} is now on everyone's front page.`);
       setName("");
       setDescription("");
     } catch (err) {
@@ -126,7 +126,7 @@ function SharedCategoriesCard() {
 
   return (
     <Card>
-      <CardTitle sub="Offered to everyone next to Tefillin and Shabbos Candles">Mivtzoim for everyone</CardTitle>
+      <CardTitle sub="Each one gets its own counter and +1 button on everyone's front page, next to Tefillin and Shabbos Candles">Mivtzoim for everyone</CardTitle>
       {shared.length > 0 && (
         <ul className={listClass}>
           {shared.map((c) => (
@@ -153,7 +153,7 @@ function SharedCategoriesCard() {
           <Field label="Name" htmlFor="shared-name">
             <Input id="shared-name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Mezuzah" />
           </Field>
-          <Field label="What's counted" htmlFor="shared-desc">
+          <Field label="Button text (optional)" htmlFor="shared-desc">
             <Input id="shared-desc" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Mezuzos checked or put up" />
           </Field>
         </div>

@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ComponentType } from "react";
 import { ClipboardList, Flame, Megaphone, Plus, Sparkles } from "lucide-react";
 import { TefillinIcon } from "../icons";
-import { useData } from "@/lib/data";
+import { useData, type LogInput } from "@/lib/data";
 import { useNav } from "@/lib/nav";
 import { STANDARD, categoryName } from "@/lib/categories";
 import { addDays, formatDay, formatShort, hebrewDate, longDate, recentWeeks, today, weekStart } from "@/lib/dates";
@@ -21,6 +21,67 @@ function niceMax(n: number) {
   return 10 * pow;
 }
 
+/** The front-page counters: Tefillin, Shabbos Candles, and every mivtza an admin adds for everyone. */
+type Counter = {
+  key: string;
+  title: string;
+  short: string;
+  text: string;
+  icon: ComponentType<{ size?: number }>;
+  tone: "accent" | "candle" | "sage" | "ink";
+  soft: string;
+  chip: string;
+  matches: (a: Activity) => boolean;
+  log: LogInput;
+};
+
+const EXTRA_TONES = [
+  { tone: "sage" as const, soft: "bg-sage-soft text-sage-on-soft", chip: "bg-sage text-card" },
+  { tone: "ink" as const, soft: "bg-secondary-soft text-secondary-on-soft", chip: "bg-ink text-card" },
+];
+
+export function useCounters(): Counter[] {
+  const { shared } = useData();
+  return [
+    {
+      key: "tefillin",
+      title: "Tefillin",
+      short: "Tefillin",
+      text: "Someone just put on tefillin",
+      icon: TefillinIcon,
+      tone: "accent",
+      soft: "bg-accent-soft text-accent-on-soft",
+      chip: "bg-accent text-accent-ink",
+      matches: (a) => a.category_type === "tefillin",
+      log: { category_type: "tefillin", quantity: 1 },
+    },
+    {
+      key: "shabbos_candles",
+      title: "Shabbos Candles",
+      short: "Candles",
+      text: "Gave out candles or a kit",
+      icon: Flame,
+      tone: "candle",
+      soft: "bg-candle-soft text-candle-on-soft",
+      chip: "bg-candle text-card",
+      matches: (a) => a.category_type === "shabbos_candles",
+      log: { category_type: "shabbos_candles", quantity: 1 },
+    },
+    ...shared
+      .filter((c) => c.status === "active")
+      .map((c, i) => ({
+        key: c.id,
+        title: c.name,
+        short: c.name,
+        text: c.description || `Add one ${c.name}`,
+        icon: Sparkles,
+        ...EXTRA_TONES[i % EXTRA_TONES.length],
+        matches: (a: Activity) => a.category_type === "personal" && a.personal_category_id === c.id,
+        log: { category_type: "personal" as const, personal_category_id: c.id, quantity: 1 },
+      })),
+  ];
+}
+
 export function DashboardView() {
   const { me, mine, data, settings } = useData();
   const { Link } = useNav();
@@ -28,7 +89,7 @@ export function DashboardView() {
   const lastWeek = addDays(thisWeek, -7);
   const weekRows = mine.activity.filter((a) => a.activity_date >= thisWeek);
   const lastRows = mine.activity.filter((a) => a.activity_date >= lastWeek && a.activity_date < thisWeek);
-  const by = (rows: Activity[], t: CategoryType) => sum(rows.filter((a) => a.category_type === t));
+  const counters = useCounters();
   const recent = [...mine.activity].sort((a, b) => (b.activity_date + b.created_at).localeCompare(a.activity_date + a.created_at)).slice(0, 6);
   const firstName = me?.name.split(" ")[0] || "";
   const hd = hebrewDate();
@@ -49,9 +110,11 @@ export function DashboardView() {
       )}
 
       <div>
-        <div className="grid grid-cols-2 gap-3">
-          <Stat label="Tefillin" icon={TefillinIcon} value={by(weekRows, "tefillin")} delta={by(weekRows, "tefillin") - by(lastRows, "tefillin")} note="vs last week" tone="accent" />
-          <Stat label="Candles" icon={Flame} value={by(weekRows, "shabbos_candles")} delta={by(weekRows, "shabbos_candles") - by(lastRows, "shabbos_candles")} note="vs last week" tone="candle" />
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]">
+          {counters.map((c) => {
+            const now = sum(weekRows.filter(c.matches));
+            return <Stat key={c.key} label={c.short} icon={c.icon} value={now} delta={now - sum(lastRows.filter(c.matches))} note="vs last week" tone={c.tone} />;
+          })}
         </div>
       </div>
 
@@ -93,14 +156,15 @@ export function DashboardView() {
 }
 
 function QuickLog() {
-  const { actions, notify, mine } = useData();
+  const { actions, notify } = useData();
+  const counters = useCounters();
   const [busy, setBusy] = useState<string | null>(null);
 
-  async function add(type: CategoryType, label: string) {
-    setBusy(type);
+  async function add(c: Counter) {
+    setBusy(c.key);
     try {
-      await actions.log({ category_type: type, quantity: 1 });
-      notify(`Added 1 ${label}`);
+      await actions.log(c.log);
+      notify(`Added 1 ${c.title}`);
     } catch (e) {
       notify((e as Error).message);
     } finally {
@@ -108,29 +172,24 @@ function QuickLog() {
     }
   }
 
-  const items = [
-    { type: "tefillin" as const, label: "tefillin", title: "Tefillin", text: "Someone just put on tefillin", icon: TefillinIcon, tone: "bg-accent-soft text-accent-on-soft", chip: "bg-accent text-accent-ink" },
-    { type: "shabbos_candles" as const, label: "Shabbos candles", title: "Shabbos Candles", text: "Gave out candles or a kit", icon: Flame, tone: "bg-candle-soft text-candle-on-soft", chip: "bg-candle text-card" },
-  ];
-
   return (
     <div className="grid gap-3 sm:grid-cols-2">
-      {items.map((it) => (
+      {counters.map((c) => (
         <button
-          key={it.type}
+          key={c.key}
           type="button"
           disabled={busy !== null}
-          onClick={() => add(it.type, it.label)}
-          className={cx("flex items-center gap-4 rounded-[28px] p-5 text-left transition hover:shadow-card active:scale-[0.99] disabled:opacity-60", it.tone)}
+          onClick={() => add(c)}
+          className={cx("flex items-center gap-4 rounded-[28px] p-5 text-left transition hover:shadow-card active:scale-[0.99] disabled:opacity-60", c.soft)}
         >
-          <span className={cx("grid h-14 w-14 shrink-0 place-items-center rounded-2xl", it.chip)}>
-            <it.icon size={26} />
+          <span className={cx("grid h-14 w-14 shrink-0 place-items-center rounded-2xl", c.chip)}>
+            <c.icon size={26} />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-xl font-medium">+1 {it.title}</span>
-            <span className="block text-sm opacity-80">{it.text}</span>
+            <span className="block text-xl font-medium">+1 {c.title}</span>
+            <span className="block truncate text-sm opacity-80">{c.text}</span>
           </span>
-          <Plus size={24} aria-hidden className="opacity-70" />
+          <Plus size={24} aria-hidden className="shrink-0 opacity-70" />
         </button>
       ))}
     </div>
