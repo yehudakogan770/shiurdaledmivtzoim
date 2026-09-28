@@ -116,6 +116,18 @@ function SharedCategoriesCard() {
     }
   }
 
+  const [removing, setRemoving] = useState<string | null>(null);
+
+  async function remove(id: string, label: string) {
+    try {
+      await actions.deleteCategory(id);
+      notify(`${label} was removed from everyone's front page.`);
+    } catch (err) {
+      notify((err as Error).message);
+    }
+    setRemoving(null);
+  }
+
   async function toggle(id: string, archive: boolean) {
     try {
       await actions.archiveCategory(id, archive);
@@ -130,19 +142,36 @@ function SharedCategoriesCard() {
       {shared.length > 0 && (
         <ul className={listClass}>
           {shared.map((c) => (
-            <li key={c.id} className="flex items-center gap-3 px-6 py-3">
+            <li key={c.id} className="flex flex-wrap items-center gap-2 px-6 py-3">
               <span className="min-w-0 flex-1">
                 <span className={c.status === "archived" ? "block font-medium text-muted line-through" : "block font-medium"}>{c.name}</span>
                 {c.description && <span className="block truncate text-sm text-muted">{c.description}</span>}
               </span>
-              {c.status === "archived" ? (
-                <Button variant="ghost" className="h-9 px-3" onClick={() => toggle(c.id, false)}>
-                  <Eye size={16} aria-hidden /> Show
-                </Button>
+              {removing === c.id ? (
+                <span className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
+                  <span className="text-sm">Remove {c.name} for everyone?</span>
+                  <Button variant="danger" className="h-9 px-4" onClick={() => remove(c.id, c.name)}>
+                    Remove
+                  </Button>
+                  <Button variant="ghost" className="h-9 px-3" onClick={() => setRemoving(null)}>
+                    Keep
+                  </Button>
+                </span>
               ) : (
-                <Button variant="ghost" className="h-9 px-3" onClick={() => toggle(c.id, true)}>
-                  <EyeOff size={16} aria-hidden /> Hide
-                </Button>
+                <>
+                  {c.status === "archived" ? (
+                    <Button variant="ghost" className="h-9 px-3" onClick={() => toggle(c.id, false)}>
+                      <Eye size={16} aria-hidden /> Show
+                    </Button>
+                  ) : (
+                    <Button variant="ghost" className="h-9 px-3" onClick={() => toggle(c.id, true)}>
+                      <EyeOff size={16} aria-hidden /> Hide
+                    </Button>
+                  )}
+                  <IconButton aria-label={`Remove ${c.name}`} onClick={() => setRemoving(c.id)}>
+                    <Trash2 size={18} />
+                  </IconButton>
+                </>
               )}
             </li>
           ))}

@@ -97,6 +97,7 @@ interface DataContextValue {
     resetRoute(routeId: string): Promise<void>;
     addCategory(name: string, description?: string, shared?: boolean): Promise<void>;
     archiveCategory(id: string, archived: boolean): Promise<void>;
+    deleteCategory(id: string): Promise<void>;
     saveSettings(settings: SiteSettings): Promise<void>;
     setRole(userId: string, role: "user" | "admin"): Promise<void>;
     adminSetPassword(userId: string, password: string): Promise<void>;
@@ -350,6 +351,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setRole: (userId, role) => run(() => b.setRole(userId, role)),
         adminSetPassword: (userId, password) => b.adminSetPassword(userId, password),
         archiveCategory: (id, archived) => run(() => b.update("personal_categories", id, { status: archived ? "archived" : "active" })),
+        deleteCategory: (id) => run(() => b.remove("personal_categories", id)),
       },
     };
   }, [backend, status, error, me, data, mine, settings, people, recovering, toast, notify, refresh, load]);
