@@ -9,7 +9,7 @@ import { useNav } from "@/lib/nav";
 import { STANDARD } from "@/lib/categories";
 import { today } from "@/lib/dates";
 import type { CategoryType } from "@/lib/types";
-import { Button, Card, CardTitle, Field, Input, PageHeader, Select, Textarea, cx } from "../ui";
+import { Button, Card, CardTitle, Field, Input, PageHeader, Select, cx } from "../ui";
 
 type Choice = { key: string; type: CategoryType; personalId: string | null; label: string; hint: string };
 
@@ -34,38 +34,55 @@ export function LogView() {
     [mine.categories, shared],
   );
 
-  const [choiceKey, setChoiceKey] = useState(query.category && choices.some((c) => c.key === query.category) ? query.category : "tefillin");
-  const [quantity, setQuantity] = useState(1);
+  // Several mivtzoim can be filled in at once; each has its own amount and notes.
+  const [items, setItems] = useState<Record<string, { quantity: number; notes: string }>>(() =>
+    query.category && choices.some((c) => c.key === query.category) ? { [query.category]: { quantity: 1, notes: "" } } : {},
+  );
   const [date, setDate] = useState(today());
   const [routeId, setRouteId] = useState(query.route ?? "");
   const [locationId, setLocationId] = useState(query.location ?? "");
-  const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const choice = choices.find((c) => c.key === choiceKey) ?? choices[0];
+  const selected = choices.filter((c) => items[c.key]);
+  const totalCount = selected.reduce((n, c) => n + (items[c.key]?.quantity || 0), 0);
   const routeStops = data.stops
     .filter((s) => s.route_id === routeId)
     .sort((a, b) => a.position - b.position)
     .map((s) => ({ stop: s, loc: data.locations.find((l) => l.id === s.location_id) }))
     .filter((x) => x.loc);
 
+  function toggle(key: string) {
+    setItems((cur) => {
+      const next = { ...cur };
+      if (next[key]) delete next[key];
+      else next[key] = { quantity: 1, notes: "" };
+      return next;
+    });
+  }
+
+  function change(key: string, patch: Partial<{ quantity: number; notes: string }>) {
+    setItems((cur) => ({ ...cur, [key]: { ...cur[key], ...patch } }));
+  }
+
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (quantity < 1) return notify("Enter at least 1.");
+    const toLog = selected.filter((c) => (items[c.key]?.quantity || 0) > 0);
+    if (toLog.length === 0) return notify("Tap at least one mivtza and enter how many.");
     setBusy(true);
     try {
-      await actions.log({
-        category_type: choice.type,
-        personal_category_id: choice.personalId,
-        quantity,
-        activity_date: date,
-        notes,
-        route_id: routeId || null,
-        location_id: locationId || null,
-      });
-      notify(`Logged ${quantity} × ${choice.label}`);
-      setQuantity(1);
-      setNotes("");
+      for (const c of toLog) {
+        await actions.log({
+          category_type: c.type,
+          personal_category_id: c.personalId,
+          quantity: items[c.key].quantity,
+          activity_date: date,
+          notes: items[c.key].notes,
+          route_id: routeId || null,
+          location_id: locationId || null,
+        });
+      }
+      notify(`Logged ${toLog.map((c) => `${items[c.key].quantity} ${c.label}`).join(", ")}`);
+      setItems({});
       if (query.route) go(`/routes/view?id=${query.route}`);
     } catch (err) {
       notify((err as Error).message);
@@ -76,83 +93,84 @@ export function LogView() {
 
   return (
     <div className="grid grid-cols-1 gap-6">
-      <PageHeader title="Log mivtzoim" subtitle="Record what you did. It counts toward your week." />
+      <PageHeader title="Log mivtzoim" subtitle="Tap each mivtza you did, fill in how many, then log them all at once." />
 
       <form onSubmit={submit} className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_22rem]">
-        <div className="grid content-start gap-3">
+        <div className="grid min-w-0 content-start gap-3">
           <Card>
-            <CardTitle sub="Pick what you're logging">Mivtza</CardTitle>
-            <fieldset className="grid min-w-0 gap-2 px-4 pb-4 sm:grid-cols-2">
-              <legend className="sr-only">Mivtza</legend>
+            <CardTitle sub="Tap one or more">Mivtzoim</CardTitle>
+            <div className="grid grid-cols-1 gap-2 px-4 pb-4">
               {choices.map((c) => {
-                const active = c.key === choice.key;
+                const item = items[c.key];
                 const tone = TONE[c.type];
                 const Icon = tone.icon;
                 return (
-                  <label
-                    key={c.key}
-                    className={cx(
-                      "flex min-w-0 cursor-pointer items-center gap-3 rounded-[20px] p-3 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent",
-                      active ? tone.on : "bg-paper hover:bg-sunken",
+                  <div key={c.key} className={cx("rounded-[20px] transition-colors", item ? tone.on : "bg-paper")}>
+                    <button
+                      type="button"
+                      aria-pressed={!!item}
+                      onClick={() => toggle(c.key)}
+                      className={cx("flex w-full min-w-0 items-center gap-3 rounded-[20px] p-3 text-left", !item && "hover:bg-sunken")}
+                    >
+                      <span className={cx("grid h-11 w-11 shrink-0 place-items-center rounded-full", item ? tone.chip : "bg-card text-muted")}>
+                        {item ? <Check size={20} /> : <Icon size={20} />}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-medium">{c.label}</span>
+                        <span className={cx("block truncate text-sm", item ? "opacity-80" : "text-muted")}>{c.hint}</span>
+                      </span>
+                      {item && <span className="tabular shrink-0 text-2xl">{item.quantity}</span>}
+                    </button>
+                    {item && (
+                      <div className="grid gap-3 px-3 pb-4 sm:grid-cols-[auto_1fr] sm:items-center">
+                        <div className="flex items-center justify-center gap-3">
+                          <button
+                            type="button"
+                            aria-label={`One less ${c.label}`}
+                            onClick={() => change(c.key, { quantity: Math.max(0, item.quantity - 1) })}
+                            className="grid h-12 w-12 place-items-center rounded-2xl bg-card text-ink transition hover:shadow-card"
+                          >
+                            <Minus size={22} />
+                          </button>
+                          <input
+                            id={`qty-${c.key}`}
+                            aria-label={`How many ${c.label}`}
+                            type="number"
+                            inputMode="numeric"
+                            min={0}
+                            value={item.quantity}
+                            onChange={(e) => change(c.key, { quantity: Math.max(0, Number(e.target.value) || 0) })}
+                            className="tabular w-20 bg-transparent text-center text-[2.5rem] leading-none focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                          />
+                          <button
+                            type="button"
+                            aria-label={`One more ${c.label}`}
+                            onClick={() => change(c.key, { quantity: item.quantity + 1 })}
+                            className={cx("grid h-12 w-12 place-items-center rounded-2xl transition hover:shadow-card", tone.chip)}
+                          >
+                            <Plus size={22} />
+                          </button>
+                        </div>
+                        <Input
+                          id={`notes-${c.key}`}
+                          aria-label={`Notes for ${c.label}`}
+                          value={item.notes}
+                          onChange={(e) => change(c.key, { notes: e.target.value })}
+                          placeholder="Notes (optional)"
+                          className="bg-card"
+                        />
+                      </div>
                     )}
-                  >
-                    <input type="radio" name="category" value={c.key} checked={active} onChange={() => setChoiceKey(c.key)} className="sr-only" />
-                    <span className={cx("grid h-11 w-11 shrink-0 place-items-center rounded-full", active ? tone.chip : "bg-card text-muted")}>
-                      {active ? <Check size={20} /> : <Icon size={20} />}
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block font-medium">{c.label}</span>
-                      <span className={cx("block truncate text-sm", active ? "opacity-80" : "text-muted")}>{c.hint}</span>
-                    </span>
-                  </label>
+                  </div>
                 );
               })}
-            </fieldset>
+            </div>
             <p className="px-6 pb-5 text-sm text-muted">
-              Doing mezuzah, tzedakah or another mivtza?{" "}
+              Doing another mivtza?{" "}
               <Link href="/profile" className="font-medium text-accent hover:underline">
                 Add your own category
               </Link>
             </p>
-          </Card>
-
-          <Card className="p-6">
-            <label htmlFor="log-quantity" className="text-lg font-medium">
-              How many
-            </label>
-            <div className="mt-4 flex items-center justify-center gap-6">
-              <button
-                type="button"
-                aria-label="One less"
-                onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="grid h-14 w-14 place-items-center rounded-2xl bg-secondary-soft text-secondary-on-soft transition hover:shadow-card"
-              >
-                <Minus size={24} />
-              </button>
-              <input
-                id="log-quantity"
-                type="number"
-                inputMode="numeric"
-                min={1}
-                value={quantity}
-                onChange={(e) => setQuantity(Number(e.target.value))}
-                className="tabular w-32 bg-transparent text-center text-[4rem] leading-none font-normal focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
-              />
-              <button
-                type="button"
-                aria-label="One more"
-                onClick={() => setQuantity(quantity + 1)}
-                className="grid h-14 w-14 place-items-center rounded-2xl bg-accent-soft text-accent-on-soft transition hover:shadow-card"
-              >
-                <Plus size={24} />
-              </button>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <Field label="Notes (optional)" htmlFor="log-notes">
-              <Textarea id="log-notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Put on tefillin with the manager at the pizza shop" />
-            </Field>
           </Card>
         </div>
 
@@ -192,8 +210,12 @@ export function LogView() {
               </Field>
             )}
           </Card>
-          <Button type="submit" disabled={busy} className="h-14 w-full rounded-2xl text-base">
-            {busy ? "Saving…" : `Log ${quantity} × ${choice.label}`}
+          <Button type="submit" disabled={busy || totalCount === 0} className="h-14 w-full rounded-2xl text-base">
+            {busy
+              ? "Saving…"
+              : selected.length === 0
+                ? "Tap a mivtza to start"
+                : `Log ${selected.length === 1 ? `${totalCount} ${selected[0].label}` : `all ${selected.length} (${totalCount} total)`}`}
           </Button>
         </div>
       </form>

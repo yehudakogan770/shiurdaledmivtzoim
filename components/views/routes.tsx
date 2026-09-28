@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { Check, MapPin, Plus, RotateCcw, Trash2, X } from "lucide-react";
 import { useData } from "@/lib/data";
+import { AddressInput, googleMapsLink } from "../address-input";
 import { useNav } from "@/lib/nav";
 import { Button, ButtonLink, Card, CardTitle, Empty, Field, IconButton, Input, PageHeader, Select, Textarea, cx } from "../ui";
 
@@ -72,9 +73,17 @@ function StopFields({ value, onChange, idPrefix }: { value: StopDraft; onChange(
           ))}
         </Select>
       </Field>
-      <Field label="Address" htmlFor={`${idPrefix}-address`}>
-        <Input id={`${idPrefix}-address`} value={value.address} onChange={(e) => onChange({ ...value, address: e.target.value })} placeholder="412 Kingston Ave" />
-      </Field>
+      <div className="sm:col-span-2">
+        <Field label="Address" htmlFor={`${idPrefix}-address`} hint="Start typing and pick the address from the list.">
+          <AddressInput
+            id={`${idPrefix}-address`}
+            value={value.address}
+            onChange={(address) => onChange({ ...value, address })}
+            onPick={({ address, placeName }) => onChange({ ...value, address, name: value.name.trim() ? value.name : placeName ?? address.split(",")[0] })}
+            placeholder="412 Kingston Ave"
+          />
+        </Field>
+      </div>
       <Field label="Notes" htmlFor={`${idPrefix}-notes`}>
         <Input id={`${idPrefix}-notes`} value={value.notes} onChange={(e) => onChange({ ...value, notes: e.target.value })} placeholder="Ask for David at the counter" />
       </Field>
@@ -114,7 +123,7 @@ export function NewRouteView() {
   return (
     <div className="grid grid-cols-1 gap-6">
       <PageHeader back={{ href: "/routes", label: "Routes" }} title="New route" subtitle="List the places you visit, in the order you visit them." />
-      <form onSubmit={submit} className="grid max-w-3xl gap-3">
+      <form onSubmit={submit} className="grid max-w-3xl grid-cols-1 gap-3">
         <Card className="grid gap-4 p-6">
           <Field label="Route name" htmlFor="route-name">
             <Input id="route-name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="(general location)" />
@@ -258,6 +267,11 @@ export function RouteDetailView() {
                   <span className={cx("block font-medium", stop.completed && "text-muted line-through")}>{loc?.name ?? "Unknown place"}</span>
                   <span className="block text-sm text-muted">
                     {[loc?.type, loc?.address].filter(Boolean).join(" · ")}
+                    {loc?.address && (
+                      <a href={googleMapsLink(loc.address)} target="_blank" rel="noopener noreferrer" className="ml-2 inline-flex items-center gap-1 font-medium text-accent hover:underline">
+                        <MapPin size={13} aria-hidden /> Open in Google Maps
+                      </a>
+                    )}
                     {loc?.notes && <span className="block italic">{loc.notes}</span>}
                   </span>
                 </span>
