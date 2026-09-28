@@ -14,7 +14,6 @@ import { sum } from "./dashboard";
 export function HistoryView() {
   const { mine, data, actions, notify } = useData();
   const [filter, setFilter] = useState("all");
-  const [confirmId, setConfirmId] = useState<string | null>(null);
 
   const rows = mine.activity
     .filter((a) => filter === "all" || (filter === a.category_type && a.category_type !== "personal") || a.personal_category_id === filter)
@@ -33,7 +32,6 @@ export function HistoryView() {
     } catch (err) {
       notify((err as Error).message);
     }
-    setConfirmId(null);
   }
 
   return (
@@ -99,20 +97,9 @@ export function HistoryView() {
                       {a.notes && <span className="block text-sm">{a.notes}</span>}
                     </span>
                     <span className="tabular w-10 text-right text-2xl">{a.quantity}</span>
-                    {confirmId === a.id ? (
-                      <span className="flex gap-1">
-                        <Button variant="danger" className="h-9 px-4" onClick={() => remove(a.id)}>
-                          Delete
-                        </Button>
-                        <Button variant="ghost" className="h-9 px-3" onClick={() => setConfirmId(null)}>
-                          Keep
-                        </Button>
-                      </span>
-                    ) : (
-                      <IconButton aria-label="Delete entry" onClick={() => setConfirmId(a.id)}>
-                        <Trash2 size={18} />
-                      </IconButton>
-                    )}
+                    <IconButton aria-label="Delete entry" onClick={() => remove(a.id)}>
+                      <Trash2 size={18} />
+                    </IconButton>
                   </li>
                 );
               })}

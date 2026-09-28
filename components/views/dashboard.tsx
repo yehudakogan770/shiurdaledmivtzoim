@@ -10,7 +10,7 @@ import { categoryName } from "@/lib/categories";
 import { activityMoment, activityWeek, addDays, allWeeks, currentWeek, formatDay, formatShort, hebrewDate, longDate, recentWeeks, today, weekLabel } from "@/lib/dates";
 import { parshaName, parshaOfWeek, weekTitle } from "@/lib/parsha";
 import type { Activity } from "@/lib/types";
-import { Button, Card, CardTitle, CategoryIcon, Empty, IconButton, PageHeader, Select, Stat, cx, listClass } from "../ui";
+import { Card, CardTitle, CategoryIcon, Empty, IconButton, PageHeader, Select, Stat, cx, listClass } from "../ui";
 
 export function sum(rows: Activity[]) {
   return rows.reduce((n, a) => n + a.quantity, 0);
@@ -263,7 +263,6 @@ function WeekEntries({ week, rows, counters }: { week: string; rows: Activity[];
   const { data, actions, notify } = useData();
   const { Link } = useNav();
   const [busy, setBusy] = useState<string | null>(null);
-  const [confirmId, setConfirmId] = useState<string | null>(null);
 
   async function setQty(a: Activity, quantity: number) {
     setBusy(a.id);
@@ -274,7 +273,6 @@ function WeekEntries({ week, rows, counters }: { week: string; rows: Activity[];
       notify((e as Error).message);
     } finally {
       setBusy(null);
-      setConfirmId(null);
     }
   }
 
@@ -302,29 +300,18 @@ function WeekEntries({ week, rows, counters }: { week: string; rows: Activity[];
                   {a.notes ? ` · ${a.notes}` : ""}
                 </span>
               </span>
-              {confirmId === a.id ? (
-                <span className="flex items-center gap-1">
-                  <Button variant="danger" className="h-9 px-4" disabled={busy !== null} onClick={() => setQty(a, 0)}>
-                    Delete
-                  </Button>
-                  <Button variant="ghost" className="h-9 px-3" onClick={() => setConfirmId(null)}>
-                    Keep
-                  </Button>
-                </span>
-              ) : (
-                <span className="flex items-center gap-1">
-                  <IconButton aria-label="One less" disabled={busy !== null || a.quantity <= 1} onClick={() => setQty(a, a.quantity - 1)}>
-                    <Minus size={18} />
-                  </IconButton>
-                  <span className="tabular w-8 text-center text-xl">{a.quantity}</span>
-                  <IconButton aria-label="One more" disabled={busy !== null} onClick={() => setQty(a, a.quantity + 1)}>
-                    <Plus size={18} />
-                  </IconButton>
-                  <IconButton aria-label="Delete entry" disabled={busy !== null} onClick={() => setConfirmId(a.id)}>
-                    <Trash2 size={18} />
-                  </IconButton>
-                </span>
-              )}
+              <span className="flex items-center gap-1">
+                <IconButton aria-label="One less" disabled={busy !== null || a.quantity <= 1} onClick={() => setQty(a, a.quantity - 1)}>
+                  <Minus size={18} />
+                </IconButton>
+                <span className="tabular w-8 text-center text-xl">{a.quantity}</span>
+                <IconButton aria-label="One more" disabled={busy !== null} onClick={() => setQty(a, a.quantity + 1)}>
+                  <Plus size={18} />
+                </IconButton>
+                <IconButton aria-label="Delete entry" disabled={busy !== null} onClick={() => setQty(a, 0)}>
+                  <Trash2 size={18} />
+                </IconButton>
+              </span>
             </li>
           ))}
         </ul>
