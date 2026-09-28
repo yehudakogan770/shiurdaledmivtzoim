@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { ClipboardList, Flame, Sparkles, Trash2 } from "lucide-react";
+import { ChevronDown, ClipboardList, Flame, Sparkles, Trash2 } from "lucide-react";
 import { TefillinIcon } from "../icons";
 import { useData } from "@/lib/data";
 import { categoryName } from "@/lib/categories";
-import { formatDay, weekLabel, weekStart } from "@/lib/dates";
+import { activityMoment, activityWeek, currentWeek, formatDay, weekLabel } from "@/lib/dates";
+import { parshaOfWeek } from "@/lib/parsha";
 import { Button, ButtonLink, Card, CategoryIcon, Empty, IconButton, PageHeader, Select } from "../ui";
 import { sum } from "./dashboard";
 
@@ -16,11 +17,11 @@ export function HistoryView() {
 
   const rows = mine.activity
     .filter((a) => filter === "all" || (filter === a.category_type && a.category_type !== "personal") || a.personal_category_id === filter)
-    .sort((a, b) => (b.activity_date + b.created_at).localeCompare(a.activity_date + a.created_at));
+    .sort((a, b) => activityMoment(b).getTime() - activityMoment(a).getTime());
 
   const weeks = new Map<string, typeof rows>();
   for (const a of rows) {
-    const w = weekStart(a.activity_date);
+    const w = activityWeek(a);
     weeks.set(w, [...(weeks.get(w) ?? []), a]);
   }
 
@@ -61,17 +62,29 @@ export function HistoryView() {
       {rows.length === 0 ? (
         <Card>
           <Empty title="No entries yet" icon={ClipboardList} action={<ButtonLink href="/log">Add an entry</ButtonLink>}>
-            Everything you log shows up here, grouped by week.
+            Everything you log shows up here in weekly folders. Weeks run from Friday 5am to the next Friday 5am.
           </Empty>
         </Card>
       ) : (
         [...weeks.entries()].map(([week, list]) => (
-          <Card key={week}>
-            <div className="flex items-baseline justify-between gap-3 px-6 pt-5 pb-2">
-              <h2 className="text-lg font-medium">{weekLabel(week)}</h2>
-              <span className="tabular text-sm text-muted">{sum(list)} total</span>
-            </div>
-            <ul className="divide-y divide-line/60">
+          <details key={week} open={week === currentWeek()} className="group overflow-hidden rounded-[28px] bg-card">
+            <summary className="flex cursor-pointer list-none items-center gap-3 px-6 py-4 hover:bg-ink/5 [&::-webkit-details-marker]:hidden">
+              <span className="min-w-0 flex-1">
+                <span className="block text-lg font-medium">
+                  {parshaOfWeek(week).english}
+                  {week === currentWeek() && <span className="ml-2 text-sm font-normal text-accent">This week</span>}
+                </span>
+                <span className="block text-sm text-muted">
+                  {weekLabel(week)} · {list.length} {list.length === 1 ? "entry" : "entries"}
+                </span>
+              </span>
+              <span className="text-right">
+                <span className="tabular block text-2xl">{sum(list)}</span>
+                <span className="block text-xs text-muted">mivtzoim</span>
+              </span>
+              <ChevronDown size={20} aria-hidden className="shrink-0 text-muted transition-transform group-open:rotate-180" />
+            </summary>
+            <ul className="divide-y divide-line/60 border-t border-line/60">
               {list.map((a) => {
                 const route = data.routes.find((r) => r.id === a.route_id);
                 const place = data.locations.find((l) => l.id === a.location_id);
@@ -103,7 +116,7 @@ export function HistoryView() {
                 );
               })}
             </ul>
-          </Card>
+          </details>
         ))
       )}
     </div>

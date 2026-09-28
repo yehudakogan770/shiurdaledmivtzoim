@@ -6,9 +6,10 @@ import { TefillinIcon } from "../icons";
 import { useData, type LogInput } from "@/lib/data";
 import { useNav } from "@/lib/nav";
 import { STANDARD, categoryName } from "@/lib/categories";
-import { addDays, formatDay, formatShort, hebrewDate, longDate, recentWeeks, today, weekStart } from "@/lib/dates";
+import { activityWeek, addDays, currentWeek, formatDay, formatShort, hebrewDate, longDate, recentWeeks, weekLabel } from "@/lib/dates";
+import { parshaOfWeek } from "@/lib/parsha";
 import type { Activity, CategoryType } from "@/lib/types";
-import { Card, CardTitle, CategoryIcon, Empty, PageHeader, Stat, cx, listClass } from "../ui";
+import { Card, CardTitle, CategoryIcon, Empty, PageHeader, Select, Stat, cx, listClass } from "../ui";
 
 export function sum(rows: Activity[]) {
   return rows.reduce((n, a) => n + a.quantity, 0);
@@ -85,22 +86,20 @@ export function useCounters(): Counter[] {
 export function DashboardView() {
   const { me, mine, data, settings } = useData();
   const { Link } = useNav();
-  const thisWeek = weekStart(today());
-  const lastWeek = addDays(thisWeek, -7);
-  const weekRows = mine.activity.filter((a) => a.activity_date >= thisWeek);
-  const lastRows = mine.activity.filter((a) => a.activity_date >= lastWeek && a.activity_date < thisWeek);
+  const thisWeek = currentWeek();
+  const [week, setWeek] = useState(thisWeek);
+  const lastWeek = addDays(week, -7);
+  const weekRows = mine.activity.filter((a) => activityWeek(a) === week);
+  const lastRows = mine.activity.filter((a) => activityWeek(a) === lastWeek);
   const counters = useCounters();
   const recent = [...mine.activity].sort((a, b) => (b.activity_date + b.created_at).localeCompare(a.activity_date + a.created_at)).slice(0, 6);
-  const firstName = me?.name.split(" ")[0] || "";
   const hd = hebrewDate();
 
   return (
     <div className="grid grid-cols-1 gap-6">
-      <PageHeader
-        eyebrow={`${longDate()}${hd ? ` · ${hd}` : ""}`}
-        title={firstName ? `Shalom, ${firstName}` : "Dashboard"}
-        subtitle={`Here is your mivtzoim for the week of ${formatShort(thisWeek)}.`}
-      />
+      <PageHeader eyebrow={`${longDate()}${hd ? ` · ${hd}` : ""}`} title={me?.name || "Dashboard"} />
+
+      <WeekPicker week={week} onChange={setWeek} />
 
       {settings.announcement.trim() && (
         <div role="status" className="flex items-start gap-3 rounded-[28px] bg-secondary-soft px-5 py-4 text-secondary-on-soft">
@@ -123,7 +122,7 @@ export function DashboardView() {
       <div className="grid grid-cols-1 gap-6">
         <Card>
           <CardTitle sub="Everything you logged, by week">Activity</CardTitle>
-          <WeeklyChart rows={mine.activity} />
+          <WeeklyChart rows={mine.activity} last={week} />
         </Card>
       </div>
 
@@ -196,16 +195,52 @@ function QuickLog() {
   );
 }
 
-function WeeklyChart({ rows }: { rows: Activity[] }) {
-  const weeks = recentWeeks(8);
+/** The parsha of the week on top, with a small menu to look at another week. */
+function WeekPicker({ week, onChange }: { week: string; onChange(week: string): void }) {
+  const thisWeek = currentWeek();
+  const weeks = recentWeeks(26).reverse();
+  const parsha = parshaOfWeek(week);
+  return (
+    <section className="flex flex-wrap items-center justify-between gap-4 rounded-[28px] bg-card px-6 py-5">
+      <div className="min-w-0">
+        <p lang="he" dir="rtl" className="text-right text-3xl font-medium leading-tight sm:text-left" style={{ fontFamily: '"Frank Ruhl Libre", "David", "Times New Roman", serif' }}>
+          {parsha.hebrew}
+        </p>
+        <p className="mt-1 text-sm text-muted">
+          {parsha.english} · {weekLabel(week)}
+          {week !== thisWeek && (
+            <button type="button" onClick={() => onChange(thisWeek)} className="ml-2 font-medium text-accent hover:underline">
+              Back to this week
+            </button>
+          )}
+        </p>
+      </div>
+      <div className="w-full sm:w-auto">
+        <label htmlFor="week-picker" className="sr-only">
+          Week
+        </label>
+        <Select id="week-picker" value={week} onChange={(e) => onChange(e.target.value)} className="h-11 py-2 text-sm sm:w-64">
+          {weeks.map((w) => (
+            <option key={w} value={w}>
+              {w === thisWeek ? "This week · " : ""}
+              {parshaOfWeek(w).english} ({formatShort(w)})
+            </option>
+          ))}
+        </Select>
+      </div>
+    </section>
+  );
+}
+
+function WeeklyChart({ rows, last }: { rows: Activity[]; last: string }) {
+  const weeks = recentWeeks(8, last);
   const series: { key: CategoryType; label: string; color: string }[] = [
     { key: "tefillin", label: STANDARD.tefillin.short, color: "bg-accent" },
     { key: "shabbos_candles", label: STANDARD.shabbos_candles.short, color: "bg-candle" },
     { key: "personal", label: "Other", color: "bg-sage" },
   ];
   const totals = weeks.map((w, i) => {
-    const end = weeks[i + 1] ?? "9999-12-31";
-    const inWeek = rows.filter((a) => a.activity_date >= w && a.activity_date < end);
+    const inWeek = rows.filter((a) => activityWeek(a) === w);
     return { week: w, parts: series.map((s) => sum(inWeek.filter((a) => a.category_type === s.key))) };
   });
   const top = niceMax(Math.max(0, ...totals.map((t) => t.parts.reduce((a, b) => a + b, 0))));

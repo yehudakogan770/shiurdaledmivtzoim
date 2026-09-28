@@ -9,6 +9,7 @@
     "build:single": "node scripts/build-spa.mjs"
   },
   "dependencies": {
+    "@hebcal/core": "^6.9.3",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.1",
     "lucide-react": "^1.48.0",

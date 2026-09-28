@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { ChevronDown, ClipboardList, Eye, EyeOff, KeyRound, Flame, ShieldCheck, Sparkles, Trash2, Users } from "lucide-react";
 import { TefillinIcon } from "../icons";
 import { categoryName } from "@/lib/categories";
-import { formatDay, today, weekStart } from "@/lib/dates";
+import { activityWeek, currentWeek, formatDay } from "@/lib/dates";
 import type { Activity, Profile } from "@/lib/types";
 import { useData } from "@/lib/data";
 import { handle, isAdminIdentifier } from "@/lib/admin";
@@ -266,7 +266,7 @@ function PersonDetails({ person }: { person: Profile }) {
   const rows = data.activity
     .filter((a) => a.user_id === userId)
     .sort((a, b) => (b.activity_date + b.created_at).localeCompare(a.activity_date + a.created_at));
-  const thisWeek = weekStart(today());
+  const thisWeek = currentWeek();
   const routes = data.routes.filter((r) => r.created_by === userId).length;
   const categories = data.categories.filter((c) => c.user_id === userId && !c.shared).map((c) => c.name);
   const facts: [string, string][] = [
@@ -281,7 +281,7 @@ function PersonDetails({ person }: { person: Profile }) {
     ["Tefillin", sum(rows.filter((a) => a.category_type === "tefillin"))],
     ["Candles", sum(rows.filter((a) => a.category_type === "shabbos_candles"))],
     ["Other", sum(rows.filter((a) => a.category_type === "personal"))],
-    ["This week", sum(rows.filter((a) => a.activity_date >= thisWeek))],
+    ["This week", sum(rows.filter((a) => activityWeek(a) === thisWeek))],
   ];
   return (
     <div className="mx-4 mb-4 grid gap-4 rounded-[20px] bg-paper p-4">

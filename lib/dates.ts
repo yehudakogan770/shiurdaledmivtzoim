@@ -1,4 +1,8 @@
-/** Dates are stored as local YYYY-MM-DD strings. A mivtzoim week runs Sunday through Shabbos. */
+/**
+ * Dates are stored as local YYYY-MM-DD strings. A mivtzoim week runs from
+ * Friday 5:00am to the next Friday 5:00am, and is named by the date of its
+ * starting Friday (YYYY-MM-DD).
+ */
 
 export function toISODate(d: Date) {
   const y = d.getFullYear();
@@ -16,11 +20,37 @@ export function parseDate(s: string) {
   return new Date(y, m - 1, d);
 }
 
-/** Sunday that starts the week containing `s`. */
-export function weekStart(s: string) {
-  const d = parseDate(s);
-  d.setDate(d.getDate() - d.getDay());
+const WEEK_START_DAY = 5; // Friday
+const WEEK_START_HOUR = 5; // 5:00am
+
+/** The Friday (YYYY-MM-DD) that starts the mivtzoim week containing this moment. */
+export function weekOf(moment: Date) {
+  const d = new Date(moment);
+  d.setHours(d.getHours() - WEEK_START_HOUR); // before 5am belongs to the day before
+  d.setDate(d.getDate() - ((d.getDay() - WEEK_START_DAY + 7) % 7));
   return toISODate(d);
+}
+
+/**
+ * When an entry happened. Entries logged for today use the time they were
+ * saved; entries dated another day count as that day at noon.
+ */
+export function activityMoment(a: { activity_date: string; created_at?: string | null }) {
+  if (a.created_at) {
+    const saved = new Date(a.created_at);
+    if (!Number.isNaN(saved.getTime()) && toISODate(saved) === a.activity_date) return saved;
+  }
+  const d = parseDate(a.activity_date);
+  d.setHours(12);
+  return d;
+}
+
+export function activityWeek(a: { activity_date: string; created_at?: string | null }) {
+  return weekOf(activityMoment(a));
+}
+
+export function currentWeek() {
+  return weekOf(new Date());
 }
 
 export function addDays(s: string, n: number) {
@@ -29,10 +59,9 @@ export function addDays(s: string, n: number) {
   return toISODate(d);
 }
 
-/** The last `n` week starts, oldest first, ending with this week. */
-export function recentWeeks(n: number) {
-  const current = weekStart(today());
-  return Array.from({ length: n }, (_, i) => addDays(current, (i - n + 1) * 7));
+/** The last `n` weeks, oldest first, ending with `last` (this week by default). */
+export function recentWeeks(n: number, last = currentWeek()) {
+  return Array.from({ length: n }, (_, i) => addDays(last, (i - n + 1) * 7));
 }
 
 const short = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
@@ -48,8 +77,9 @@ export function formatDay(s: string) {
   return long.format(parseDate(s));
 }
 
+/** "Fri Sep 25 – Thu Oct 1" */
 export function weekLabel(start: string) {
-  return `${formatShort(start)} – ${formatShort(addDays(start, 6))}`;
+  return `Fri ${formatShort(start)} – Thu ${formatShort(addDays(start, 6))}`;
 }
 
 const HEBREW_MONTHS: Record<string, string> = {
