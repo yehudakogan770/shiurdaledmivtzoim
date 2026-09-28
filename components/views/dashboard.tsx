@@ -5,10 +5,10 @@ import { ClipboardList, Flame, Megaphone, Plus, Sparkles } from "lucide-react";
 import { TefillinIcon } from "../icons";
 import { useData, type LogInput } from "@/lib/data";
 import { useNav } from "@/lib/nav";
-import { STANDARD, categoryName } from "@/lib/categories";
+import { categoryName } from "@/lib/categories";
 import { activityWeek, addDays, allWeeks, currentWeek, formatDay, formatShort, hebrewDate, longDate, recentWeeks, weekLabel } from "@/lib/dates";
 import { parshaOfWeek } from "@/lib/parsha";
-import type { Activity, CategoryType } from "@/lib/types";
+import type { Activity } from "@/lib/types";
 import { Card, CardTitle, CategoryIcon, Empty, PageHeader, Select, Stat, cx, listClass } from "../ui";
 
 export function sum(rows: Activity[]) {
@@ -32,14 +32,16 @@ type Counter = {
   tone: "accent" | "candle" | "sage" | "ink";
   soft: string;
   chip: string;
+  /** Color of this mivtza in the Activity chart (and, for admin-added ones, its icon and button). */
+  color: string;
+  /** Set for admin-added mivtzoim: styles the button and icon with `color`. */
+  custom?: boolean;
   matches: (a: Activity) => boolean;
   log: LogInput;
 };
 
-const EXTRA_TONES = [
-  { tone: "sage" as const, soft: "bg-sage-soft text-sage-on-soft", chip: "bg-sage text-card" },
-  { tone: "ink" as const, soft: "bg-secondary-soft text-secondary-on-soft", chip: "bg-ink text-card" },
-];
+/** Distinct colors for admin-added mivtzoim, in the order they were added. */
+const EXTRA_COLORS = ["#2e8b57", "#6a5acd", "#c0563a", "#1f7fa3", "#a07a12", "#b03a78", "#4b7f2a", "#8a4fb8"];
 
 export function useCounters(): Counter[] {
   const { shared } = useData();
@@ -53,6 +55,7 @@ export function useCounters(): Counter[] {
       tone: "accent",
       soft: "bg-accent-soft text-accent-on-soft",
       chip: "bg-accent text-accent-ink",
+      color: "var(--accent)",
       matches: (a) => a.category_type === "tefillin",
       log: { category_type: "tefillin", quantity: 1 },
     },
@@ -65,6 +68,7 @@ export function useCounters(): Counter[] {
       tone: "candle",
       soft: "bg-candle-soft text-candle-on-soft",
       chip: "bg-candle text-card",
+      color: "var(--candle)",
       matches: (a) => a.category_type === "shabbos_candles",
       log: { category_type: "shabbos_candles", quantity: 1 },
     },
@@ -76,7 +80,11 @@ export function useCounters(): Counter[] {
         short: c.name,
         text: c.description || `Add one ${c.name}`,
         icon: Sparkles,
-        ...EXTRA_TONES[i % EXTRA_TONES.length],
+        tone: "sage" as const,
+        soft: "text-ink",
+        chip: "text-white",
+        color: EXTRA_COLORS[i % EXTRA_COLORS.length],
+        custom: true,
         matches: (a: Activity) => a.category_type === "personal" && a.personal_category_id === c.id,
         log: { category_type: "personal" as const, personal_category_id: c.id, quantity: 1 },
       })),
@@ -112,7 +120,18 @@ export function DashboardView() {
         <div className="grid grid-cols-2 gap-3 md:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]">
           {counters.map((c) => {
             const now = sum(weekRows.filter(c.matches));
-            return <Stat key={c.key} label={c.short} icon={c.icon} value={now} delta={now - sum(lastRows.filter(c.matches))} note="vs last week" tone={c.tone} />;
+            return (
+              <Stat
+                key={c.key}
+                label={c.short}
+                icon={c.icon}
+                value={now}
+                delta={now - sum(lastRows.filter(c.matches))}
+                note="vs last week"
+                tone={c.tone}
+                color={c.custom ? c.color : undefined}
+              />
+            );
           })}
         </div>
       </div>
@@ -138,7 +157,7 @@ export function DashboardView() {
           <ul className={listClass}>
             {recent.map((a) => (
               <li key={a.id} className="flex items-center gap-3 px-6 py-3.5">
-                <CategoryIcon type={a.category_type} icon={a.category_type === "tefillin" ? TefillinIcon : a.category_type === "shabbos_candles" ? Flame : Sparkles} />
+                <RowIcon a={a} counters={counters} />
                 <span className="min-w-0 flex-1">
                   <span className="font-medium">{categoryName(a, data.categories)}</span>
                   {a.notes && <span className="block truncate text-sm text-muted">{a.notes}</span>}
@@ -152,6 +171,19 @@ export function DashboardView() {
       </Card>
     </div>
   );
+}
+
+/** The entry's icon, in the same color as its front-page counter. */
+function RowIcon({ a, counters }: { a: Activity; counters: Counter[] }) {
+  const c = counters.find((x) => x.matches(a));
+  if (c?.custom) {
+    return (
+      <span aria-hidden className="grid h-10 w-10 shrink-0 place-items-center rounded-full" style={{ background: `color-mix(in srgb, ${c.color} 22%, var(--card))`, color: c.color }}>
+        <c.icon size={18} />
+      </span>
+    );
+  }
+  return <CategoryIcon type={a.category_type} icon={a.category_type === "tefillin" ? TefillinIcon : a.category_type === "shabbos_candles" ? Flame : Sparkles} />;
 }
 
 function QuickLog() {
@@ -180,8 +212,9 @@ function QuickLog() {
           disabled={busy !== null}
           onClick={() => add(c)}
           className={cx("flex items-center gap-4 rounded-[28px] p-5 text-left transition hover:shadow-card active:scale-[0.99] disabled:opacity-60", c.soft)}
+          style={c.custom ? { background: `color-mix(in srgb, ${c.color} 18%, var(--card))` } : undefined}
         >
-          <span className={cx("grid h-14 w-14 shrink-0 place-items-center rounded-2xl", c.chip)}>
+          <span className={cx("grid h-14 w-14 shrink-0 place-items-center rounded-2xl", c.chip)} style={c.custom ? { background: c.color } : undefined}>
             <c.icon size={26} />
           </span>
           <span className="min-w-0 flex-1">
@@ -219,7 +252,7 @@ function WeekPicker({ week, onChange }: { week: string; onChange(week: string): 
         <label htmlFor="week-picker" className="sr-only">
           Week
         </label>
-        <Select id="week-picker" value={week} onChange={(e) => onChange(e.target.value)} className="h-11 py-2 text-sm sm:w-64">
+        <Select id="week-picker" value={week} onChange={(e) => onChange(e.target.value)} className="h-11 py-2 text-sm sm:w-auto sm:min-w-72">
           {weeks.map((w) => (
             <option key={w} value={w}>
               {w === thisWeek ? "This week · " : ""}
@@ -234,15 +267,17 @@ function WeekPicker({ week, onChange }: { week: string; onChange(week: string): 
 
 function WeeklyChart({ rows, last }: { rows: Activity[]; last: string }) {
   const weeks = recentWeeks(8, last);
-  const series: { key: CategoryType; label: string; color: string }[] = [
-    { key: "tefillin", label: STANDARD.tefillin.short, color: "bg-accent" },
-    { key: "shabbos_candles", label: STANDARD.shabbos_candles.short, color: "bg-candle" },
-    { key: "personal", label: "Other", color: "bg-sage" },
+  const counters = useCounters();
+  // One colored part per front-page mivtza, plus "Other" for people's own categories.
+  const series: { key: string; label: string; color: string; matches: (a: Activity) => boolean }[] = [
+    ...counters.map((c) => ({ key: c.key, label: c.short, color: c.color, matches: c.matches })),
+    { key: "other", label: "Other", color: "var(--outline)", matches: (a: Activity) => !counters.some((c) => c.matches(a)) },
   ];
-  const totals = weeks.map((w, i) => {
+  const totals = weeks.map((w) => {
     const inWeek = rows.filter((a) => activityWeek(a) === w);
-    return { week: w, parts: series.map((s) => sum(inWeek.filter((a) => a.category_type === s.key))) };
+    return { week: w, parts: series.map((s) => sum(inWeek.filter(s.matches))) };
   });
+  const shown = series.filter((s, j) => s.key !== "other" || totals.some((t) => t.parts[j] > 0));
   const top = niceMax(Math.max(0, ...totals.map((t) => t.parts.reduce((a, b) => a + b, 0))));
   const ticks = [top, (top * 3) / 4, top / 2, top / 4, 0];
 
@@ -280,7 +315,7 @@ function WeeklyChart({ rows, last }: { rows: Activity[]; last: string }) {
                       <span className={cx("tabular absolute inset-x-0 -top-5 text-center text-[11px] font-bold", current ? "text-ink" : "text-muted")}>{total}</span>
                     )}
                     {t.parts.map((v, j) =>
-                      v ? <div key={j} className={cx(series[j].color, "last:rounded-t-lg")} style={{ height: `${(v / total) * 100}%` }} /> : null,
+                      v ? <div key={j} className="last:rounded-t-lg" style={{ height: `${(v / total) * 100}%`, background: series[j].color }} /> : null,
                     )}
                   </div>
                 </div>
@@ -304,9 +339,9 @@ function WeeklyChart({ rows, last }: { rows: Activity[]; last: string }) {
         ))}
       </div>
       <div className="mt-5 flex flex-wrap gap-4 text-xs font-medium text-muted">
-        {series.map((s) => (
+        {shown.map((s) => (
           <span key={s.key} className="inline-flex items-center gap-1.5">
-            <span className={`h-2.5 w-2.5 rounded-sm ${s.color}`} aria-hidden /> {s.label}
+            <span className="h-2.5 w-2.5 rounded-sm" style={{ background: s.color }} aria-hidden /> {s.label}
           </span>
         ))}
       </div>

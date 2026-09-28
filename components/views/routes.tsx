@@ -117,7 +117,7 @@ export function NewRouteView() {
       <form onSubmit={submit} className="grid max-w-3xl gap-3">
         <Card className="grid gap-4 p-6">
           <Field label="Route name" htmlFor="route-name">
-            <Input id="route-name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Friday – Main Street stores" />
+            <Input id="route-name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="(general location)" />
           </Field>
           <Field label="Description" htmlFor="route-description" hint="Optional.">
             <Textarea id="route-description" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Start at the bakery and work down to the post office." />

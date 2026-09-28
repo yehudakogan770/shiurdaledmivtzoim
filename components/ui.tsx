@@ -153,6 +153,7 @@ export function Stat({
   note,
   delta,
   tone = "accent",
+  color,
   icon: Icon,
 }: {
   label: string;
@@ -160,13 +161,18 @@ export function Stat({
   note?: string;
   delta?: number | null;
   tone?: Tone;
+  /** A specific color for the icon (used for admin-added mivtzoim). */
+  color?: string;
   icon?: ComponentType<{ size?: number; className?: string }>;
 }) {
   return (
     <div className="flex flex-col gap-4 rounded-[28px] bg-card p-5">
       <div className="flex items-center gap-3">
         {Icon && (
-          <span className={cx("grid h-10 w-10 place-items-center rounded-full", toneSoft[tone])}>
+          <span
+            className={cx("grid h-10 w-10 place-items-center rounded-full", !color && toneSoft[tone])}
+            style={color ? { background: `color-mix(in srgb, ${color} 22%, var(--card))`, color } : undefined}
+          >
             <Icon size={20} />
           </span>
         )}
