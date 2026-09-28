@@ -111,6 +111,8 @@ export interface SiteSettings {
   tagline: string;
   welcome: string;
   announcement: string;
+  /** Where address suggestions are searched, e.g. "Crown Heights, Brooklyn, NY". Empty: the United States. */
+  address_area: string;
 }
 
 export const DEFAULT_SETTINGS: SiteSettings = {
@@ -118,4 +120,5 @@ export const DEFAULT_SETTINGS: SiteSettings = {
   tagline: "",
   welcome: "Start tracking tefillin, Shabbos candles and every other mivtza.",
   announcement: "",
+  address_area: "",
 };

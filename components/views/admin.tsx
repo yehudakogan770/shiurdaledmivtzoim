@@ -5,7 +5,8 @@ import { ChevronDown, ClipboardList, Eye, EyeOff, KeyRound, Flame, ShieldCheck, 
 import { TefillinIcon } from "../icons";
 import { categoryName } from "@/lib/categories";
 import { activityWeek, currentWeek, formatDay } from "@/lib/dates";
-import type { Activity, Profile } from "@/lib/types";
+import type { Activity, PersonalCategory, Profile } from "@/lib/types";
+import { iconForActivity } from "@/lib/category-icons";
 import { useData } from "@/lib/data";
 import { handle, isAdminIdentifier } from "@/lib/admin";
 import type { SiteSettings } from "@/lib/types";
@@ -53,6 +54,7 @@ function SiteSettingsCard() {
         tagline: draft.tagline.trim(),
         welcome: draft.welcome.trim(),
         announcement: draft.announcement.trim(),
+        address_area: draft.address_area.trim(),
       });
       notify("Website updated.");
     } catch (err) {
@@ -76,6 +78,13 @@ function SiteSettingsCard() {
         </div>
         <Field label="Welcome text" htmlFor="admin-welcome" hint="Shown on the sign-up screen.">
           <Textarea id="admin-welcome" rows={2} value={draft.welcome} onChange={set("welcome")} maxLength={200} />
+        </Field>
+        <Field
+          label="Area for address suggestions"
+          htmlFor="admin-area"
+          hint="Where your routes are, e.g. Crown Heights, Brooklyn, NY. Address suggestions stay inside this area. Leave empty to search the whole United States."
+        >
+          <Input id="admin-area" value={draft.address_area} onChange={set("address_area")} maxLength={80} placeholder="Crown Heights, Brooklyn, NY" />
         </Field>
         <Field label="Announcement" htmlFor="admin-announcement" hint="Shown at the top of everyone's dashboard. Leave empty to hide it.">
           <Textarea
@@ -265,7 +274,7 @@ function PeopleCard() {
   );
 }
 
-const iconFor = (a: Activity) => (a.category_type === "tefillin" ? TefillinIcon : a.category_type === "shabbos_candles" ? Flame : Sparkles);
+const iconFor = (a: Activity, categories: PersonalCategory[]) => iconForActivity(a, categories);
 
 function ActivityRow({ a, showPerson }: { a: Activity; showPerson?: boolean }) {
   const { data } = useData();
@@ -275,7 +284,7 @@ function ActivityRow({ a, showPerson }: { a: Activity; showPerson?: boolean }) {
   const meta = [formatDay(a.activity_date), route?.name, place?.name].filter(Boolean).join(" · ");
   return (
     <li className="flex items-center gap-3 px-6 py-3">
-      {showPerson ? <Avatar name={who} id={a.user_id} size={36} /> : <CategoryIcon type={a.category_type} icon={iconFor(a)} />}
+      {showPerson ? <Avatar name={who} id={a.user_id} size={36} /> : <CategoryIcon type={a.category_type} icon={iconFor(a, data.categories)} />}
       <span className="min-w-0 flex-1">
         <span className="block font-medium">
           {showPerson && <>{who} · </>}

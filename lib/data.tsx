@@ -85,6 +85,8 @@ interface DataContextValue {
   actions: {
     log(input: LogInput): Promise<void>;
     deleteActivity(id: string): Promise<void>;
+    /** Change how many an entry counts; 0 deletes it. */
+    setActivityQuantity(id: string, quantity: number): Promise<void>;
     createGroup(name: string): Promise<Group>;
     joinGroup(code: string): Promise<string>;
     leaveGroup(groupId: string): Promise<void>;
@@ -259,6 +261,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
             });
           }),
         deleteActivity: (id) => run(() => b.remove("mivtzoim_activity", id)),
+        setActivityQuantity: (id, quantity) =>
+          run(() => (quantity <= 0 ? b.remove("mivtzoim_activity", id) : b.update("mivtzoim_activity", id, { quantity: Math.round(quantity) }))),
         createGroup: (name) =>
           run(async () => {
             const g = await b.insert("groups", { name: name.trim(), join_code: newJoinCode(), created_by: uid() });

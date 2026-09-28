@@ -2,11 +2,13 @@
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { MapPin } from "lucide-react";
+import { useData } from "@/lib/data";
 import { Input, cx } from "./ui";
 
 /**
  * Address box with suggestions as you type, from OpenStreetMap's free
- * address search (Photon). No account or key is needed.
+ * address search (Photon). No account or key is needed. Results stay inside
+ * the area set on the Admin page (or the United States).
  */
 const SEARCH_URL = "https://photon.komoot.io/api/";
 const BIAS_KEY = "shiur-daled-mivtzoim:address-bias";
@@ -57,6 +59,116 @@ function readBias(): { lat: number; lon: number } | null {
   }
 }
 
+type Area = { bbox: string; lat?: number; lon?: number };
+const US: Area = { bbox: "-125,24,-66,50" };
+const areaCache = new Map<string, Promise<Area>>();
+
+/** Turn the admin's area ("Crown Heights, Brooklyn, NY") into a search box on the map. */
+function resolveArea(area: string): Promise<Area> {
+  const key = area.trim().toLowerCase();
+  if (!key) return Promise.resolve(US);
+  if (!areaCache.has(key)) {
+    areaCache.set(
+      key,
+      (async () => {
+        try {
+          const stored = localStorage.getItem(`${BIAS_KEY}:area:${key}`);
+          if (stored) return JSON.parse(stored) as Area;
+        } catch {
+          // Look it up again.
+        }
+        try {
+          const res = await fetch(`${SEARCH_URL}?${new URLSearchParams({ q: area, limit: "1", lang: "en" })}`);
+          const f = ((await res.json()) as { features: (PhotonFeature & { properties: { extent?: number[] } })[] }).features[0];
+          if (!f) return US;
+          const [lon, lat] = f.geometry.coordinates;
+          const e = f.properties.extent as unknown as number[] | undefined;
+          // At least ~15 km around the center, so nearby streets are included.
+          const minLon = Math.min(e?.[0] ?? lon, lon - 0.18);
+          const maxLat = Math.max(e?.[1] ?? lat, lat + 0.14);
+          const maxLon = Math.max(e?.[2] ?? lon, lon + 0.18);
+          const minLat = Math.min(e?.[3] ?? lat, lat - 0.14);
+          const out: Area = { bbox: [minLon, minLat, maxLon, maxLat].map((n) => n.toFixed(4)).join(","), lat, lon };
+          try {
+            localStorage.setItem(`${BIAS_KEY}:area:${key}`, JSON.stringify(out));
+          } catch {
+            // Fine: it's looked up again next time.
+          }
+          return out;
+        } catch {
+          return US;
+        }
+      })(),
+    );
+  }
+  return areaCache.get(key)!;
+}
+
+async function photon(params: Record<string, string>, signal: AbortSignal) {
+  const res = await fetch(`${SEARCH_URL}?${new URLSearchParams({ lang: "en", ...params })}`, { signal });
+  return ((await res.json()) as { features: PhotonFeature[] }).features;
+}
+
+/**
+ * Suggestions for what was typed, inside the area. The free map doesn't have
+ * every house number, so "412 Kingston Ave" also offers "412 Kingston Avenue"
+ * built from the matching street.
+ */
+async function suggest(q: string, area: Area, signal: AbortSignal): Promise<Suggestion[]> {
+  const near: Record<string, string> = { bbox: area.bbox };
+  const bias = area.lat != null ? { lat: area.lat, lon: area.lon! } : readBias();
+  if (bias) Object.assign(near, { lat: String(bias.lat), lon: String(bias.lon) });
+
+  const m = q.match(/^(\d+[a-z]?)\s+(.{2,})$/i);
+  const number = m?.[1];
+  const [places, streets] = await Promise.all([
+    photon({ q, limit: "10", ...near }, signal),
+    // Building an address from a street only makes sense inside a known area.
+    m && area.lat != null ? photon({ q: m[2], limit: "8", layer: "street", ...near }, signal) : Promise.resolve([] as PhotonFeature[]),
+  ]);
+
+  const exact: Suggestion[] = [];
+  const others: Suggestion[] = [];
+  for (const f of places) {
+    // Without an area, stay in the United States (the search box also touches Canada and Mexico).
+    if (area.lat == null && f.properties.countrycode && f.properties.countrycode !== "US") continue;
+    const s = toSuggestion(f);
+    if (!s) continue;
+    const hn = f.properties.housenumber;
+    if (number) {
+      if (hn && hn.toLowerCase() === number.toLowerCase()) exact.push(s);
+      else if (hn && hn.toLowerCase().startsWith(number.toLowerCase())) others.push(s);
+      // Other house numbers on other streets don't match what was typed.
+    } else {
+      others.push(s);
+    }
+  }
+  const built: Suggestion[] = [];
+  if (number) {
+    for (const f of streets) {
+      const p = f.properties;
+      if (!p.name) continue;
+      const town = p.district && p.city && p.district !== p.city ? p.district : p.city || p.town || p.village || p.county;
+      // No zip code here: long streets are split into pieces with different zip codes.
+      const region = p.state ?? "";
+      const street = `${number} ${p.name}`;
+      built.push({
+        address: [street, town, region].filter(Boolean).join(", "),
+        placeName: null,
+        line1: street,
+        line2: [town, region, p.country].filter(Boolean).join(", "),
+        lat: f.geometry.coordinates[1],
+        lon: f.geometry.coordinates[0],
+      });
+    }
+  }
+  // When the map already has the exact address, drop the copy built from the street.
+  const known = new Set([...exact, ...others].map((x) => x.line1.toLowerCase()));
+  const extra = built.filter((x) => !known.has(x.line1.toLowerCase()));
+  const seen = new Set<string>();
+  return [...exact, ...extra, ...others].filter((s) => !seen.has(s.address.toLowerCase()) && !!seen.add(s.address.toLowerCase())).slice(0, 7);
+}
+
 export function AddressInput({
   id,
   value,
@@ -71,6 +183,8 @@ export function AddressInput({
   placeholder?: string;
 }) {
   const listId = useId();
+  const { settings } = useData();
+  const area = settings.address_area;
   const [results, setResults] = useState<Suggestion[]>([]);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
@@ -87,18 +201,7 @@ export function AddressInput({
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
-        const params = new URLSearchParams({ q, limit: "6", lang: "en" });
-        const bias = readBias();
-        if (bias) {
-          params.set("lat", String(bias.lat));
-          params.set("lon", String(bias.lon));
-        }
-        const res = await fetch(`${SEARCH_URL}?${params}`, { signal: controller.signal });
-        const json = (await res.json()) as { features: PhotonFeature[] };
-        const seen = new Set<string>();
-        const list = json.features
-          .map(toSuggestion)
-          .filter((s): s is Suggestion => !!s && !seen.has(s.address) && !!seen.add(s.address));
+        const list = await suggest(q, await resolveArea(area), controller.signal);
         setResults(list);
         setActive(-1);
         setOpen(true);
@@ -112,7 +215,7 @@ export function AddressInput({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [value]);
+  }, [value, area]);
 
   function choose(s: Suggestion) {
     typed.current = false;

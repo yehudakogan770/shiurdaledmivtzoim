@@ -1,15 +1,16 @@
 "use client";
 
 import { useState, type ComponentType } from "react";
-import { ClipboardList, Flame, Megaphone, Plus, Sparkles } from "lucide-react";
+import { ClipboardList, Flame, Megaphone, Minus, Plus, Sparkles, Trash2 } from "lucide-react";
 import { TefillinIcon } from "../icons";
 import { useData, type LogInput } from "@/lib/data";
+import { iconForActivity, iconForName } from "@/lib/category-icons";
 import { useNav } from "@/lib/nav";
 import { categoryName } from "@/lib/categories";
-import { activityWeek, addDays, allWeeks, currentWeek, formatDay, formatShort, hebrewDate, longDate, recentWeeks, weekLabel } from "@/lib/dates";
+import { activityMoment, activityWeek, addDays, allWeeks, currentWeek, formatDay, formatShort, hebrewDate, longDate, recentWeeks, today, weekLabel } from "@/lib/dates";
 import { parshaOfWeek } from "@/lib/parsha";
 import type { Activity } from "@/lib/types";
-import { Card, CardTitle, CategoryIcon, Empty, PageHeader, Select, Stat, cx, listClass } from "../ui";
+import { Button, Card, CardTitle, CategoryIcon, Empty, IconButton, PageHeader, Select, Stat, cx, listClass } from "../ui";
 
 export function sum(rows: Activity[]) {
   return rows.reduce((n, a) => n + a.quantity, 0);
@@ -79,7 +80,7 @@ export function useCounters(): Counter[] {
         title: c.name,
         short: c.name,
         text: c.description || `Add one ${c.name}`,
-        icon: Sparkles,
+        icon: iconForName(c.name),
         tone: "sage" as const,
         soft: "text-ink",
         chip: "text-white",
@@ -100,7 +101,7 @@ export function DashboardView() {
   const weekRows = mine.activity.filter((a) => activityWeek(a) === week);
   const lastRows = mine.activity.filter((a) => activityWeek(a) === lastWeek);
   const counters = useCounters();
-  const recent = [...mine.activity].sort((a, b) => (b.activity_date + b.created_at).localeCompare(a.activity_date + a.created_at)).slice(0, 6);
+  const weekEntries = [...weekRows].sort((x, y) => activityMoment(y).getTime() - activityMoment(x).getTime());
   const hd = hebrewDate();
 
   return (
@@ -136,7 +137,13 @@ export function DashboardView() {
         </div>
       </div>
 
-      <QuickLog />
+      {week !== thisWeek && (
+        <p role="status" className="rounded-[20px] bg-candle-soft px-5 py-3 text-sm text-candle-on-soft">
+          You&apos;re looking at the week of {weekLabel(week)}. Anything you add, remove or change here counts for that week.
+        </p>
+      )}
+
+      <QuickLog week={week} />
 
       <div className="grid grid-cols-1 gap-6">
         <Card>
@@ -145,36 +152,15 @@ export function DashboardView() {
         </Card>
       </div>
 
-      <Card>
-        <CardTitle sub="Your latest entries" action={<Link href="/history" className="inline-flex h-9 items-center rounded-full px-3 text-sm font-medium text-accent hover:bg-accent/8">Full history</Link>}>
-          Recent activity
-        </CardTitle>
-        {recent.length === 0 ? (
-          <Empty title="Nothing logged yet" icon={ClipboardList}>
-            Use the buttons above after your next mivtzoim stop.
-          </Empty>
-        ) : (
-          <ul className={listClass}>
-            {recent.map((a) => (
-              <li key={a.id} className="flex items-center gap-3 px-6 py-3.5">
-                <RowIcon a={a} counters={counters} />
-                <span className="min-w-0 flex-1">
-                  <span className="font-medium">{categoryName(a, data.categories)}</span>
-                  {a.notes && <span className="block truncate text-sm text-muted">{a.notes}</span>}
-                </span>
-                <span className="hidden text-sm text-muted sm:inline">{formatDay(a.activity_date)}</span>
-                <span className="tabular w-12 text-right text-xl">{a.quantity}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
+      <WeekEntries week={week} rows={weekEntries} counters={counters} />
     </div>
   );
 }
 
 /** The entry's icon, in the same color as its front-page counter. */
 function RowIcon({ a, counters }: { a: Activity; counters: Counter[] }) {
+  const { data } = useData();
+  const categories = data.categories;
   const c = counters.find((x) => x.matches(a));
   if (c?.custom) {
     return (
@@ -183,19 +169,45 @@ function RowIcon({ a, counters }: { a: Activity; counters: Counter[] }) {
       </span>
     );
   }
-  return <CategoryIcon type={a.category_type} icon={a.category_type === "tefillin" ? TefillinIcon : a.category_type === "shabbos_candles" ? Flame : Sparkles} />;
+  return <CategoryIcon type={a.category_type} icon={iconForActivity(a, categories)} />;
 }
 
-function QuickLog() {
-  const { actions, notify } = useData();
+/** The date an entry is saved with: today, or (when looking at an earlier week) that week's Friday. */
+export function dateForWeek(week: string) {
+  return week === currentWeek() ? today() : week;
+}
+
+function newestInWeek(rows: Activity[], week: string, c: Counter) {
+  return rows
+    .filter((a) => activityWeek(a) === week && c.matches(a))
+    .sort((x, y) => activityMoment(y).getTime() - activityMoment(x).getTime() || (y.created_at ?? "").localeCompare(x.created_at ?? ""))[0];
+}
+
+function QuickLog({ week }: { week: string }) {
+  const { actions, notify, mine } = useData();
   const counters = useCounters();
   const [busy, setBusy] = useState<string | null>(null);
+  const past = week !== currentWeek();
 
   async function add(c: Counter) {
     setBusy(c.key);
     try {
-      await actions.log(c.log);
-      notify(`Added 1 ${c.title}`);
+      await actions.log({ ...c.log, activity_date: dateForWeek(week) });
+      notify(past ? `Added 1 ${c.title} to the week of ${weekLabel(week)}` : `Added 1 ${c.title}`);
+    } catch (e) {
+      notify((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function subtract(c: Counter) {
+    const last = newestInWeek(mine.activity, week, c);
+    if (!last) return;
+    setBusy(c.key);
+    try {
+      await actions.setActivityQuantity(last.id, last.quantity - 1);
+      notify(`Removed 1 ${c.title}${past ? ` from the week of ${weekLabel(week)}` : ""}`);
     } catch (e) {
       notify((e as Error).message);
     } finally {
@@ -204,27 +216,120 @@ function QuickLog() {
   }
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      {counters.map((c) => (
-        <button
-          key={c.key}
-          type="button"
-          disabled={busy !== null}
-          onClick={() => add(c)}
-          className={cx("flex items-center gap-4 rounded-[28px] p-5 text-left transition hover:shadow-card active:scale-[0.99] disabled:opacity-60", c.soft)}
-          style={c.custom ? { background: `color-mix(in srgb, ${c.color} 18%, var(--card))` } : undefined}
-        >
-          <span className={cx("grid h-14 w-14 shrink-0 place-items-center rounded-2xl", c.chip)} style={c.custom ? { background: c.color } : undefined}>
-            <c.icon size={26} />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-xl font-medium">{c.title}</span>
-            <span className="block truncate text-sm opacity-80">{c.text}</span>
-          </span>
-          <Plus size={24} aria-hidden className="shrink-0 opacity-70" />
-        </button>
-      ))}
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {counters.map((c) => {
+        const count = sum(mine.activity.filter((a) => activityWeek(a) === week && c.matches(a)));
+        return (
+          <div
+            key={c.key}
+            className={cx("flex items-center gap-2 rounded-[28px] p-3 pr-4", c.soft)}
+            style={c.custom ? { background: `color-mix(in srgb, ${c.color} 18%, var(--card))` } : undefined}
+          >
+            <button
+              type="button"
+              disabled={busy !== null}
+              onClick={() => add(c)}
+              aria-label={`Add 1 ${c.title}`}
+              className="flex min-w-0 flex-1 items-center gap-4 rounded-[22px] p-2 text-left transition hover:bg-ink/5 active:scale-[0.99] disabled:opacity-60"
+            >
+              <span className={cx("grid h-14 w-14 shrink-0 place-items-center rounded-2xl", c.chip)} style={c.custom ? { background: c.color } : undefined}>
+                <c.icon size={26} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-xl font-medium">{c.title}</span>
+                <span className="block truncate text-sm opacity-80">{c.text}</span>
+              </span>
+              <Plus size={24} aria-hidden className="shrink-0 opacity-70" />
+            </button>
+            <button
+              type="button"
+              disabled={busy !== null || count === 0}
+              onClick={() => subtract(c)}
+              aria-label={`Remove 1 ${c.title}`}
+              title={`Remove 1 ${c.title}`}
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-card/70 text-ink transition hover:bg-card disabled:opacity-30"
+            >
+              <Minus size={20} />
+            </button>
+          </div>
+        );
+      })}
     </div>
+  );
+}
+
+/** The chosen week's entries, where amounts can be changed or entries deleted. */
+function WeekEntries({ week, rows, counters }: { week: string; rows: Activity[]; counters: Counter[] }) {
+  const { data, actions, notify } = useData();
+  const { Link } = useNav();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+
+  async function setQty(a: Activity, quantity: number) {
+    setBusy(a.id);
+    try {
+      await actions.setActivityQuantity(a.id, quantity);
+      if (quantity <= 0) notify("Entry deleted.");
+    } catch (e) {
+      notify((e as Error).message);
+    } finally {
+      setBusy(null);
+      setConfirmId(null);
+    }
+  }
+
+  return (
+    <Card>
+      <CardTitle
+        sub={week === currentWeek() ? "Change an amount or delete an entry" : `Week of ${weekLabel(week)} · change an amount or delete an entry`}
+        action={<Link href="/history" className="inline-flex h-9 items-center rounded-full px-3 text-sm font-medium text-accent hover:bg-accent/8">Full history</Link>}
+      >
+        {week === currentWeek() ? "This week's entries" : `Entries · ${parshaOfWeek(week).english}`}
+      </CardTitle>
+      {rows.length === 0 ? (
+        <Empty title="Nothing logged this week" icon={ClipboardList}>
+          Tap a mivtza above to add one.
+        </Empty>
+      ) : (
+        <ul className={listClass}>
+          {rows.map((a) => (
+            <li key={a.id} className="flex flex-wrap items-center gap-3 px-6 py-3">
+              <RowIcon a={a} counters={counters} />
+              <span className="min-w-0 flex-1">
+                <span className="block font-medium">{categoryName(a, data.categories)}</span>
+                <span className="block truncate text-sm text-muted">
+                  {formatDay(a.activity_date)}
+                  {a.notes ? ` · ${a.notes}` : ""}
+                </span>
+              </span>
+              {confirmId === a.id ? (
+                <span className="flex items-center gap-1">
+                  <Button variant="danger" className="h-9 px-4" disabled={busy !== null} onClick={() => setQty(a, 0)}>
+                    Delete
+                  </Button>
+                  <Button variant="ghost" className="h-9 px-3" onClick={() => setConfirmId(null)}>
+                    Keep
+                  </Button>
+                </span>
+              ) : (
+                <span className="flex items-center gap-1">
+                  <IconButton aria-label="One less" disabled={busy !== null || a.quantity <= 1} onClick={() => setQty(a, a.quantity - 1)}>
+                    <Minus size={18} />
+                  </IconButton>
+                  <span className="tabular w-8 text-center text-xl">{a.quantity}</span>
+                  <IconButton aria-label="One more" disabled={busy !== null} onClick={() => setQty(a, a.quantity + 1)}>
+                    <Plus size={18} />
+                  </IconButton>
+                  <IconButton aria-label="Delete entry" disabled={busy !== null} onClick={() => setConfirmId(a.id)}>
+                    <Trash2 size={18} />
+                  </IconButton>
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
   );
 }
 

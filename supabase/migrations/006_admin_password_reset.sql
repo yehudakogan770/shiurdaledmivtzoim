@@ -23,3 +23,6 @@ end $$;
 
 revoke all on function public.admin_set_password(uuid, text) from public, anon;
 grant execute on function public.admin_set_password(uuid, text) to authenticated;
+
+-- Where address suggestions are searched (set on the Admin page).
+alter table site_settings add column if not exists address_area text not null default '';

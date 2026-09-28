@@ -5,13 +5,14 @@ import { useMemo, useState, type FormEvent } from "react";
 import { Check, Flame, Minus, Plus, Sparkles } from "lucide-react";
 import { TefillinIcon } from "../icons";
 import { useData } from "@/lib/data";
+import { iconForName } from "@/lib/category-icons";
 import { useNav } from "@/lib/nav";
 import { STANDARD } from "@/lib/categories";
 import { today } from "@/lib/dates";
 import type { CategoryType } from "@/lib/types";
 import { Button, Card, CardTitle, Field, Input, PageHeader, Select, cx } from "../ui";
 
-type Choice = { key: string; type: CategoryType; personalId: string | null; label: string; hint: string };
+type Choice = { key: string; type: CategoryType; personalId: string | null; label: string; hint: string; icon?: ComponentType<{ size?: number }> };
 
 const TONE: Record<CategoryType, { on: string; chip: string; icon: ComponentType<{ size?: number }> }> = {
   tefillin: { on: "bg-accent-soft text-accent-on-soft", chip: "bg-accent text-accent-ink", icon: TefillinIcon },
@@ -29,7 +30,7 @@ export function LogView() {
       { key: "shabbos_candles", type: "shabbos_candles", personalId: null, label: STANDARD.shabbos_candles.label, hint: "Women and girls who received candles" },
       ...[...shared, ...mine.categories]
         .filter((c) => c.status === "active")
-        .map((c) => ({ key: c.id, type: "personal" as const, personalId: c.id, label: c.name, hint: c.description || "Your own category" })),
+        .map((c) => ({ key: c.id, type: "personal" as const, personalId: c.id, label: c.name, hint: c.description || "Your own category", icon: iconForName(c.name) })),
     ],
     [mine.categories, shared],
   );
@@ -103,7 +104,7 @@ export function LogView() {
               {choices.map((c) => {
                 const item = items[c.key];
                 const tone = TONE[c.type];
-                const Icon = tone.icon;
+                const Icon = c.icon ?? tone.icon;
                 return (
                   <div key={c.key} className={cx("rounded-[20px] transition-colors", item ? tone.on : "bg-paper")}>
                     <button
