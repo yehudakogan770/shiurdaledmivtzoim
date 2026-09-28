@@ -8,7 +8,7 @@ import { iconForActivity, iconForName } from "@/lib/category-icons";
 import { useNav } from "@/lib/nav";
 import { categoryName } from "@/lib/categories";
 import { activityMoment, activityWeek, addDays, allWeeks, currentWeek, formatDay, formatShort, hebrewDate, longDate, recentWeeks, today, weekLabel } from "@/lib/dates";
-import { parshaOfWeek } from "@/lib/parsha";
+import { parshaName, parshaOfWeek, weekTitle } from "@/lib/parsha";
 import type { Activity } from "@/lib/types";
 import { Button, Card, CardTitle, CategoryIcon, Empty, IconButton, PageHeader, Select, Stat, cx, listClass } from "../ui";
 
@@ -106,7 +106,7 @@ export function DashboardView() {
 
   return (
     <div className="grid grid-cols-1 gap-6">
-      <PageHeader eyebrow={`${longDate()}${hd ? ` · ${hd}` : ""}`} title={me?.name || "Dashboard"} />
+      <PageHeader eyebrow={`${longDate()}${hd ? ` · ${hd}` : ""} · ${parshaOfWeek(currentWeek()).english}`} title={me?.name || "Dashboard"} />
 
       <WeekPicker week={week} onChange={setWeek} />
 
@@ -139,7 +139,7 @@ export function DashboardView() {
 
       {week !== thisWeek && (
         <p role="status" className="rounded-[20px] bg-candle-soft px-5 py-3 text-sm text-candle-on-soft">
-          You&apos;re looking at the week of {weekLabel(week)}. Anything you add, remove or change here counts for that week.
+          You&apos;re looking at the week of {weekTitle(week)}. Anything you add, remove or change here counts for that week.
         </p>
       )}
 
@@ -193,7 +193,7 @@ function QuickLog({ week }: { week: string }) {
     setBusy(c.key);
     try {
       await actions.log({ ...c.log, activity_date: dateForWeek(week) });
-      notify(past ? `Added 1 ${c.title} to the week of ${weekLabel(week)}` : `Added 1 ${c.title}`);
+      notify(past ? `Added 1 ${c.title} to the week of ${weekTitle(week)}` : `Added 1 ${c.title}`);
     } catch (e) {
       notify((e as Error).message);
     } finally {
@@ -207,7 +207,7 @@ function QuickLog({ week }: { week: string }) {
     setBusy(c.key);
     try {
       await actions.setActivityQuantity(last.id, last.quantity - 1);
-      notify(`Removed 1 ${c.title}${past ? ` from the week of ${weekLabel(week)}` : ""}`);
+      notify(`Removed 1 ${c.title}${past ? ` from the week of ${weekTitle(week)}` : ""}`);
     } catch (e) {
       notify((e as Error).message);
     } finally {
@@ -281,7 +281,7 @@ function WeekEntries({ week, rows, counters }: { week: string; rows: Activity[];
   return (
     <Card>
       <CardTitle
-        sub={week === currentWeek() ? "Change an amount or delete an entry" : `Week of ${weekLabel(week)} · change an amount or delete an entry`}
+        sub={week === currentWeek() ? "Change an amount or delete an entry" : `Week of ${weekTitle(week)} · change an amount or delete an entry`}
         action={<Link href="/history" className="inline-flex h-9 items-center rounded-full px-3 text-sm font-medium text-accent hover:bg-accent/8">Full history</Link>}
       >
         {week === currentWeek() ? "This week's entries" : `Entries · ${parshaOfWeek(week).english}`}
@@ -411,7 +411,7 @@ function WeeklyChart({ rows, last }: { rows: Activity[]; last: string }) {
               const total = t.parts.reduce((a, b) => a + b, 0);
               const current = i === totals.length - 1;
               return (
-                <div key={t.week} className="relative flex h-full flex-1 items-end" title={`Week of ${formatShort(t.week)}: ${total}`}>
+                <div key={t.week} className="relative flex h-full flex-1 items-end" title={`${weekTitle(t.week)}: ${total}`}>
                   <div
                     className={cx("relative mx-auto flex w-full max-w-10 flex-col-reverse rounded-t-lg", !current && "opacity-70")}
                     style={{ height: `${(total / top) * 100}%` }}
@@ -436,7 +436,8 @@ function WeeklyChart({ rows, last }: { rows: Activity[]; last: string }) {
               "Now"
             ) : (
               <>
-                <span className="hidden sm:inline">{formatShort(t.week)}</span>
+                <span className="hidden sm:block">{formatShort(t.week)}</span>
+                <span className="hidden truncate text-[10px] sm:block">{parshaName(t.week)}</span>
                 <span className="sm:hidden">{Number(t.week.slice(5, 7))}/{Number(t.week.slice(8))}</span>
               </>
             )}

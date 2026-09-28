@@ -46,11 +46,10 @@ export function ChallahIcon({ size = 24, className, strokeWidth = 2 }: { size?: 
       aria-hidden
       className={className}
     >
-      <path d="M2 12.5c0-3.3 2.6-5.6 5.6-6 2.9-.4 5.9-.4 8.8 0 3 .4 5.6 2.7 5.6 6 0 2.4-1.6 4.4-3.9 4.7-4 .5-8.2.5-12.2 0C3.6 16.9 2 14.9 2 12.5z" />
-      <ellipse cx="6.5" cy="11.8" rx="2" ry="3.4" transform="rotate(-35 6.5 11.8)" />
-      <ellipse cx="10.2" cy="11.8" rx="2" ry="3.4" transform="rotate(35 10.2 11.8)" />
-      <ellipse cx="13.8" cy="11.8" rx="2" ry="3.4" transform="rotate(-35 13.8 11.8)" />
-      <ellipse cx="17.5" cy="11.8" rx="2" ry="3.4" transform="rotate(35 17.5 11.8)" />
+      {/* A plain challah roll: a round loaf with three soft sections. */}
+      <path d="M4.5 18c-2 0-2.2-4-.5-5.4.6-3 4-3.6 5.5-1.8 1-2.8 4-2.8 5 0 1.5-1.8 4.9-1.2 5.5 1.8 1.7 1.4 1.5 5.4-.5 5.4z" />
+      <path d="M9.5 10.8c.7 2.2.8 4.6.5 7.2" />
+      <path d="M14.5 10.8c-.7 2.2-.8 4.6-.5 7.2" />
     </svg>
   );
 }

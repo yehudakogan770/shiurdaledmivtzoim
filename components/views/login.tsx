@@ -3,7 +3,8 @@
 import { useState, type FormEvent } from "react";
 import { Plus, X } from "lucide-react";
 import { useData } from "@/lib/data";
-import { hebrewDate } from "@/lib/dates";
+import { currentWeek, hebrewDate } from "@/lib/dates";
+import { parshaOfWeek } from "@/lib/parsha";
 import { ADMIN_EMAILS } from "@/lib/admin";
 import { LogoMark } from "../brand";
 import { Button, Field, IconButton, Input } from "../ui";
@@ -232,7 +233,9 @@ export function LoginView({ initialMode = "signin" }: { initialMode?: Mode }) {
       </form>
       <div className="mt-6 flex w-full max-w-[64rem] flex-wrap justify-between gap-2 px-4 text-xs text-muted">
         <span>{settings.site_name}</span>
-        <span>{hebrewDate()}</span>
+        <span>
+          {hebrewDate()} · {parshaOfWeek(currentWeek()).english}
+        </span>
       </div>
     </div>
   );

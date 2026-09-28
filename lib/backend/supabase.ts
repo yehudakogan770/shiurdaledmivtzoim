@@ -130,14 +130,6 @@ export function createSupabaseBackend(url: string, key: string): Backend {
     async saveSettings(settings) {
       const row = { ...settings, updated_at: new Date().toISOString(), updated_by: await uid() };
       const { error } = await sb.from("site_settings").update(row).eq("id", 1);
-      if (error?.message.includes("address_area")) {
-        // The database doesn't have the address area yet: save the rest, then explain.
-        const { address_area: _skip, ...rest } = row;
-        void _skip;
-        const retry = await sb.from("site_settings").update(rest).eq("id", 1);
-        fail(retry.error);
-        throw new Error("Saved, except the address area: run the latest setup file in Supabase first.");
-      }
       fail(error);
     },
     async setRole(userId, role) {

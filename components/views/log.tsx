@@ -8,7 +8,8 @@ import { useData } from "@/lib/data";
 import { iconForName } from "@/lib/category-icons";
 import { useNav } from "@/lib/nav";
 import { STANDARD } from "@/lib/categories";
-import { today } from "@/lib/dates";
+import { activityWeek, today } from "@/lib/dates";
+import { weekTitle } from "@/lib/parsha";
 import type { CategoryType } from "@/lib/types";
 import { Button, Card, CardTitle, Field, Input, PageHeader, Select, cx } from "../ui";
 
@@ -178,7 +179,7 @@ export function LogView() {
         <div className="grid content-start gap-3">
           <Card className="grid gap-4 p-6">
             <h2 className="text-lg font-medium">Details</h2>
-            <Field label="Date" htmlFor="log-date">
+            <Field label="Date" htmlFor="log-date" hint={date ? `Counts for ${weekTitle(activityWeek({ activity_date: date }))}` : undefined}>
               <Input id="log-date" type="date" value={date} max={today()} onChange={(e) => setDate(e.target.value)} />
             </Field>
             <Field label="Route" htmlFor="log-route">
