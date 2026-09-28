@@ -1,13 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { History, LayoutDashboard, LogOut, Map, Menu, ShieldCheck, UserRound } from "lucide-react";
+import { History, LayoutDashboard, LogOut, Map, Menu, ShieldCheck, Sunset, UserRound } from "lucide-react";
 import { handle } from "@/lib/admin";
 import { useData } from "@/lib/data";
 import { displayName } from "@/lib/types";
 import { useNav } from "@/lib/nav";
 import { currentWeek, hebrewDate } from "@/lib/dates";
 import { parshaOfWeek } from "@/lib/parsha";
+import { useShkiah } from "@/lib/shkiah";
 import { Avatar, IconButton, cx } from "./ui";
 import { LogoMark } from "./brand";
 import { LoginView } from "./views/login";
@@ -165,9 +166,12 @@ function TopAppBar({ onMenu }: { onMenu: () => void }) {
       <IconButton onClick={onMenu} aria-label="Open menu" className="h-12 w-12 text-ink">
         <Menu size={24} />
       </IconButton>
-      <Link href="/" className="flex items-center gap-2.5">
-        <LogoMark className="h-8 w-8" />
-        <span className="truncate text-lg font-medium">{settings.site_name}</span>
+      <Link href="/" className="flex min-w-0 items-center gap-2.5">
+        <LogoMark className="h-8 w-8 shrink-0" />
+        <span className="min-w-0 leading-tight">
+          <span className="block truncate text-lg font-medium">{settings.site_name}</span>
+          <ShkiahLine short className="block truncate text-xs text-muted" />
+        </span>
       </Link>
       {me && (
         <Link href="/profile" aria-label="Profile" className="ml-auto mr-2 rounded-full">
@@ -230,12 +234,30 @@ export function AppShell({ children }: { children: ReactNode }) {
       <ModalDrawer open={menuOpen} onClose={closeMenu} />
       <div className="min-w-0 flex-1">
         <TopAppBar onMenu={() => setMenuOpen(true)} />
-        <main className="px-4 pt-2 pb-16 sm:px-6 lg:px-8 lg:pt-8 lg:pb-12">
+        <div className="hidden justify-end px-8 pt-6 lg:flex">
+          <span className="inline-flex items-center gap-2 rounded-full bg-card px-4 py-2 text-sm text-muted">
+            <Sunset size={16} aria-hidden className="text-candle" />
+            <ShkiahLine />
+          </span>
+        </div>
+        <main className="px-4 pt-2 pb-16 sm:px-6 lg:px-8 lg:pt-4 lg:pb-12">
           <div className="mx-auto max-w-6xl">{body}</div>
         </main>
       </div>
       <Snackbar message={toast} />
     </div>
+  );
+}
+
+/** "Shkiah Fri Oct 2 · 6:36 PM": this Friday's sundown where the person is. */
+function ShkiahLine({ className, short }: { className?: string; short?: boolean }) {
+  const shkiah = useShkiah();
+  if (!shkiah) return null;
+  return (
+    <span className={className} title={shkiah.located ? "Sundown at your location" : "Sundown in Crown Heights. Allow location to see yours."}>
+      Shkiah Fri{short ? " " : ` ${shkiah.date} · `}<span className="font-medium text-ink">{shkiah.time}</span>
+      {!shkiah.located && (short ? " · Crown Hts" : " (Crown Heights)")}
+    </span>
   );
 }
 
