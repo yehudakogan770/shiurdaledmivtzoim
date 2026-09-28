@@ -126,7 +126,7 @@ function SharedCategoriesCard() {
 
   return (
     <Card>
-      <CardTitle sub="Each one gets its own counter and +1 button on everyone's front page, next to Tefillin and Shabbos Candles">Mivtzoim for everyone</CardTitle>
+      <CardTitle sub="Each one gets its own counter and quick-add button on everyone's front page, next to Tefillin and Shabbos Candles">Mivtzoim for everyone</CardTitle>
       {shared.length > 0 && (
         <ul className={listClass}>
           {shared.map((c) => (

@@ -218,7 +218,7 @@ function QuickLog() {
             <c.icon size={26} />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-xl font-medium">+1 {c.title}</span>
+            <span className="block text-xl font-medium">{c.title}</span>
             <span className="block truncate text-sm opacity-80">{c.text}</span>
           </span>
           <Plus size={24} aria-hidden className="shrink-0 opacity-70" />
