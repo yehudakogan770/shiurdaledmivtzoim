@@ -6,7 +6,7 @@ import { TefillinIcon } from "../icons";
 import { useData, type LogInput } from "@/lib/data";
 import { useNav } from "@/lib/nav";
 import { STANDARD, categoryName } from "@/lib/categories";
-import { activityWeek, addDays, currentWeek, formatDay, formatShort, hebrewDate, longDate, recentWeeks, weekLabel } from "@/lib/dates";
+import { activityWeek, addDays, allWeeks, currentWeek, formatDay, formatShort, hebrewDate, longDate, recentWeeks, weekLabel } from "@/lib/dates";
 import { parshaOfWeek } from "@/lib/parsha";
 import type { Activity, CategoryType } from "@/lib/types";
 import { Card, CardTitle, CategoryIcon, Empty, PageHeader, Select, Stat, cx, listClass } from "../ui";
@@ -198,7 +198,7 @@ function QuickLog() {
 /** The parsha of the week on top, with a small menu to look at another week. */
 function WeekPicker({ week, onChange }: { week: string; onChange(week: string): void }) {
   const thisWeek = currentWeek();
-  const weeks = recentWeeks(26).reverse();
+  const weeks = allWeeks();
   const parsha = parshaOfWeek(week);
   return (
     <section className="flex flex-wrap items-center justify-between gap-4 rounded-[28px] bg-card px-6 py-5">
@@ -223,7 +223,7 @@ function WeekPicker({ week, onChange }: { week: string; onChange(week: string): 
           {weeks.map((w) => (
             <option key={w} value={w}>
               {w === thisWeek ? "This week · " : ""}
-              {parshaOfWeek(w).english} ({formatShort(w)})
+              {parshaOfWeek(w).english} · {weekLabel(w)}
             </option>
           ))}
         </Select>
@@ -292,7 +292,7 @@ function WeeklyChart({ rows, last }: { rows: Activity[]; last: string }) {
       <div className="mt-2 flex gap-2 pl-10 sm:gap-3">
         {totals.map((t, i) => (
           <span key={t.week} className={cx("flex-1 text-center text-[11px]", i === totals.length - 1 ? "font-bold text-ink" : "text-muted")}>
-            {i === totals.length - 1 ? (
+            {t.week === currentWeek() ? (
               "Now"
             ) : (
               <>

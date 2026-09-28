@@ -59,9 +59,19 @@ export function addDays(s: string, n: number) {
   return toISODate(d);
 }
 
-/** The last `n` weeks, oldest first, ending with `last` (this week by default). */
+/** The first week the site counts: Parshas Ki Seitzei 5786 (Friday Aug 21, 2026). Earlier weeks aren't shown. */
+export const FIRST_WEEK = "2026-08-21";
+
+/** The last `n` weeks, oldest first, ending with `last` (this week by default), never before FIRST_WEEK. */
 export function recentWeeks(n: number, last = currentWeek()) {
-  return Array.from({ length: n }, (_, i) => addDays(last, (i - n + 1) * 7));
+  return Array.from({ length: n }, (_, i) => addDays(last, (i - n + 1) * 7)).filter((w) => w >= FIRST_WEEK);
+}
+
+/** Every week from FIRST_WEEK through this week, newest first. */
+export function allWeeks() {
+  const out: string[] = [];
+  for (let w = currentWeek(); w >= FIRST_WEEK; w = addDays(w, -7)) out.push(w);
+  return out;
 }
 
 const short = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
@@ -77,9 +87,9 @@ export function formatDay(s: string) {
   return long.format(parseDate(s));
 }
 
-/** "Fri Sep 25 – Thu Oct 1" */
+/** "Fri Sep 25" (the Friday the week starts) */
 export function weekLabel(start: string) {
-  return `Fri ${formatShort(start)} – Thu ${formatShort(addDays(start, 6))}`;
+  return `Fri ${formatShort(start)}`;
 }
 
 const HEBREW_MONTHS: Record<string, string> = {
