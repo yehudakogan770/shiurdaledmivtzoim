@@ -99,6 +99,7 @@ interface DataContextValue {
     archiveCategory(id: string, archived: boolean): Promise<void>;
     saveSettings(settings: SiteSettings): Promise<void>;
     setRole(userId: string, role: "user" | "admin"): Promise<void>;
+    adminSetPassword(userId: string, password: string): Promise<void>;
   };
 }
 
@@ -347,6 +348,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           }),
         saveSettings: (next) => run(() => b.saveSettings(next)),
         setRole: (userId, role) => run(() => b.setRole(userId, role)),
+        adminSetPassword: (userId, password) => b.adminSetPassword(userId, password),
         archiveCategory: (id, archived) => run(() => b.update("personal_categories", id, { status: archived ? "archived" : "active" })),
       },
     };

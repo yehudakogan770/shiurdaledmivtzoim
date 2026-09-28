@@ -42,6 +42,8 @@ export interface Backend {
   setRole(userId: string, role: "user" | "admin"): Promise<void>;
   /** Every account (admins only; others get just the people they share a group with). */
   listPeople(): Promise<Profile[]>;
+  /** Admins only: give someone who forgot their password a new one. */
+  adminSetPassword(userId: string, password: string): Promise<void>;
 }
 
 export function newId() {

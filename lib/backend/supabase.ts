@@ -135,6 +135,11 @@ export function createSupabaseBackend(url: string, key: string): Backend {
       const { error } = await sb.from("profiles").update({ role }).eq("id", userId);
       fail(error);
     },
+    async adminSetPassword(userId, password) {
+      checkPassword(password);
+      const { error } = await sb.rpc("admin_set_password", { p_user: userId, p_password: password });
+      fail(error);
+    },
     async listPeople() {
       const withEmail = await sb.rpc("admin_people");
       if (!withEmail.error && withEmail.data) return withEmail.data as Profile[];

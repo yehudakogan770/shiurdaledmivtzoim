@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { ChevronDown, ClipboardList, Eye, EyeOff, Flame, ShieldCheck, Sparkles, Trash2, Users } from "lucide-react";
+import { ChevronDown, ClipboardList, Eye, EyeOff, KeyRound, Flame, ShieldCheck, Sparkles, Trash2, Users } from "lucide-react";
 import { TefillinIcon } from "../icons";
 import { categoryName } from "@/lib/categories";
 import { formatDay, today, weekStart } from "@/lib/dates";
@@ -301,6 +301,7 @@ function PersonDetails({ person }: { person: Profile }) {
           </div>
         ))}
       </dl>
+      <SetPassword person={person} />
       <div className="overflow-hidden rounded-2xl bg-card">
         <p className="px-6 pt-4 pb-1 text-sm font-medium">Entries ({rows.length})</p>
         {rows.length === 0 ? (
@@ -373,5 +374,62 @@ function ActivityCard() {
       )}
       {rows.length <= limit && <div className="pb-3" />}
     </Card>
+  );
+}
+
+function SetPassword({ person }: { person: Profile }) {
+  const { actions, notify } = useData();
+  const [open, setOpen] = useState(false);
+  const [pw, setPw] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    if (pw !== pw2) return notify("The two passwords don't match.");
+    setBusy(true);
+    try {
+      await actions.adminSetPassword(person.id, pw);
+      notify(`New password set for ${person.name}. Tell them it, and they can sign in now.`);
+      setOpen(false);
+      setPw("");
+      setPw2("");
+    } catch (err) {
+      notify((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!open) {
+    return (
+      <Button variant="tonal" className="h-9 justify-self-start px-4" onClick={() => setOpen(true)}>
+        <KeyRound size={16} aria-hidden /> Set a new password
+      </Button>
+    );
+  }
+  return (
+    <form onSubmit={save} className="grid gap-3 rounded-2xl bg-card p-4">
+      <p className="text-sm">
+        For when {person.name} forgot their password. Choose a new one, then tell them it along with their username
+        {person.username ? ` (${handle(person.username)})` : ""}.
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="New password" htmlFor={`pw-${person.id}`}>
+          <Input id={`pw-${person.id}`} type="text" autoComplete="off" required minLength={6} value={pw} onChange={(e) => setPw(e.target.value)} />
+        </Field>
+        <Field label="Type it again" htmlFor={`pw2-${person.id}`}>
+          <Input id={`pw2-${person.id}`} type="text" autoComplete="off" required minLength={6} value={pw2} onChange={(e) => setPw2(e.target.value)} />
+        </Field>
+      </div>
+      <div className="flex gap-2">
+        <Button type="submit" disabled={busy} className="h-9 px-4">
+          {busy ? "Saving…" : "Save new password"}
+        </Button>
+        <Button variant="ghost" className="h-9 px-3" onClick={() => setOpen(false)}>
+          Cancel
+        </Button>
+      </div>
+    </form>
   );
 }

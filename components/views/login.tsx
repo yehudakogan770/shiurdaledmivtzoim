@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { Plus, X } from "lucide-react";
 import { useData } from "@/lib/data";
 import { hebrewDate } from "@/lib/dates";
+import { ADMIN_EMAILS } from "@/lib/admin";
 import { LogoMark } from "../brand";
 import { Button, Field, IconButton, Input } from "../ui";
 
@@ -76,7 +77,7 @@ export function LoginView({ initialMode = "signin" }: { initialMode?: Mode }) {
     mode === "signup"
       ? settings.welcome
       : mode === "forgot"
-        ? "Enter the email you signed up with. We'll send you a link to set a new password, along with your username."
+        ? "No problem. The admin can look up your username and give you a new password."
         : mode === "reset"
           ? "Type your new password twice."
           : `to continue to ${settings.site_name}`;
@@ -146,8 +147,16 @@ export function LoginView({ initialMode = "signin" }: { initialMode?: Mode }) {
             </Field>
           )}
 
-          {(mode === "signup" || mode === "forgot") && (
-            <Field label="Email" htmlFor="login-email" hint={mode === "signup" ? "We'll send a link to confirm your account. It's also how you reset a forgotten password." : undefined}>
+          {mode === "forgot" && (
+            <div className="grid gap-3 rounded-2xl bg-paper p-5">
+              <p className="font-medium">Contact the admin</p>
+              <p className="text-sm text-muted">Send a message with your full name and the email you signed up with. You&apos;ll get your username and a new password back.</p>
+              <p className="text-base font-medium break-all text-accent select-all">{ADMIN_EMAILS[0]}</p>
+            </div>
+          )}
+
+          {mode === "signup" && (
+            <Field label="Email" htmlFor="login-email" hint="So the admin can reach you, and help if you forget your password.">
               <Input
                 id="login-email"
                 type="email"
@@ -213,9 +222,11 @@ export function LoginView({ initialMode = "signin" }: { initialMode?: Mode }) {
                 Back to sign in
               </Button>
             )}
-            <Button type="submit" disabled={busy}>
-              {busy ? "Please wait…" : mode === "forgot" ? "Send reset link" : mode === "reset" ? "Save password" : mode === "signup" ? "Create account" : "Sign in"}
-            </Button>
+            {mode !== "forgot" && (
+              <Button type="submit" disabled={busy}>
+                {busy ? "Please wait…" : mode === "reset" ? "Save password" : mode === "signup" ? "Create account" : "Sign in"}
+              </Button>
+            )}
           </div>
         </div>
       </form>

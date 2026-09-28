@@ -192,6 +192,15 @@ export function createLocalBackend(): Backend {
       if (p) p.role = role;
       save(s);
     },
+    async adminSetPassword(userId, password) {
+      checkPassword(password);
+      const s = load();
+      requireAdmin(s);
+      const p = s.profiles.find((x) => x.id === userId);
+      if (!p) throw new Error("No account found.");
+      p.password_hash = await hashPassword(password, p.id);
+      save(s);
+    },
     async listPeople() {
       return load().profiles.map(publicProfile);
     },

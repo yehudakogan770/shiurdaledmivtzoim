@@ -136,6 +136,9 @@ export async function createClaudeBackend(): Promise<Backend | null> {
         throw explain(e);
       }
     },
+    async adminSetPassword() {
+      throw new Error("People here sign in with their Claude account, so there's no password to set.");
+    },
     async listPeople() {
       const [members, activity, roles] = await Promise.all([
         db.collection("group_members").get(),
