@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { newJoinCode, pickBackend, type Backend, type PersonPatch } from "./backend";
+import { newId, newJoinCode, pickBackend, type Backend, type PersonPatch } from "./backend";
 import type {
   Activity,
   Group,
@@ -128,6 +128,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [recovering, setRecovering] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Quick changes (add, −/+, delete, check off a stop) show on screen at once and
+  // are saved in the background, one after another, in the order they were made.
+  const saveQueue = useRef<Promise<void>>(Promise.resolve());
+  const unsaved = useRef(0);
+  const savedIds = useRef(new Map<string, string>());
 
   const notify = useCallback((message: string) => {
     setToast(message);
@@ -146,9 +151,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setPeople([]);
       return;
     }
-    const everyone = user.role === "admin" ? await b.listPeople().catch(() => []) : [];
-    setPeople(everyone);
-    const [groups, members, routes, locations, stops, categories, activity] = await Promise.all([
+    const [everyone, groups, members, routes, locations, stops, categories, activity] = await Promise.all([
+      user.role === "admin" ? b.listPeople().catch(() => [] as Profile[]) : Promise.resolve([] as Profile[]),
       b.list("groups"),
       b.list("group_members"),
       b.list("routes"),
@@ -163,6 +167,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     everyone.forEach((p) => ids.add(p.id));
     const names = await b.names([...ids]);
     names[user.id] = user.name || names[user.id];
+    setPeople(everyone);
     setData({ groups, members, routes, locations, stops, categories, activity, names });
   }, []);
 
@@ -192,7 +197,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!backend) return;
     const onVisible = () => {
-      if (document.visibilityState === "visible") load(backend).catch(() => {});
+      if (document.visibilityState === "visible" && unsaved.current === 0) load(backend).catch(() => {});
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
@@ -223,6 +228,26 @@ export function DataProvider({ children }: { children: ReactNode }) {
       await load(b);
       return result;
     };
+    /** Save in the background after the screen already changed; on failure, reload what's really saved. */
+    const saveLater = (job: () => Promise<void>) => {
+      unsaved.current++;
+      saveQueue.current = saveQueue.current
+        .then(job)
+        .catch(async (e: Error) => {
+          notify(`That didn't save: ${e.message}`);
+          await load(b).catch(() => {});
+        })
+        .finally(() => {
+          unsaved.current--;
+        });
+    };
+    /** Rows added a moment ago have a temporary id until the server gives them their real one. */
+    const realId = (id: string) => savedIds.current.get(id) ?? id;
+    const patchActivity = (fn: (rows: Activity[]) => Activity[]) => setData((d) => ({ ...d, activity: fn(d.activity) }));
+    const removeActivity = (id: string) => {
+      patchActivity((rows) => rows.filter((a) => a.id !== id));
+      saveLater(() => b.remove("mivtzoim_activity", realId(id)));
+    };
 
     return {
       status,
@@ -249,23 +274,34 @@ export function DataProvider({ children }: { children: ReactNode }) {
         updateProfile: (name, partners) => run(() => b.updateProfile({ name, partners })),
       },
       actions: {
-        log: (input) =>
-          run(async () => {
-            await b.insert("mivtzoim_activity", {
-              user_id: uid(),
-              category_type: input.category_type,
-              personal_category_id: input.category_type === "personal" ? input.personal_category_id ?? null : null,
-              quantity: Math.max(0, Math.round(input.quantity)),
-              notes: input.notes?.trim() || null,
-              activity_date: input.activity_date || today(),
-              group_id: input.group_id ?? null,
-              route_id: input.route_id ?? null,
-              location_id: input.location_id ?? null,
-            });
-          }),
-        deleteActivity: (id) => run(() => b.remove("mivtzoim_activity", id)),
-        setActivityQuantity: (id, quantity) =>
-          run(() => (quantity <= 0 ? b.remove("mivtzoim_activity", id) : b.update("mivtzoim_activity", id, { quantity: Math.round(quantity) }))),
+        log: async (input) => {
+          const row = {
+            user_id: uid(),
+            category_type: input.category_type,
+            personal_category_id: input.category_type === "personal" ? input.personal_category_id ?? null : null,
+            quantity: Math.max(0, Math.round(input.quantity)),
+            notes: input.notes?.trim() || null,
+            activity_date: input.activity_date || today(),
+            group_id: input.group_id ?? null,
+            route_id: input.route_id ?? null,
+            location_id: input.location_id ?? null,
+          };
+          const tempId = `new-${newId()}`;
+          patchActivity((rows) => [...rows, { ...row, id: tempId, created_at: new Date().toISOString() }]);
+          saveLater(async () => {
+            const saved = await b.insert("mivtzoim_activity", row);
+            savedIds.current.set(tempId, saved.id);
+            // Keep what's on screen (it may have been changed meanwhile); just take the real id.
+            patchActivity((rows) => rows.map((x) => (x.id === tempId ? { ...x, id: saved.id, created_at: saved.created_at } : x)));
+          });
+        },
+        deleteActivity: async (id) => removeActivity(id),
+        setActivityQuantity: async (id, quantity) => {
+          if (quantity <= 0) return removeActivity(id);
+          const q = Math.round(quantity);
+          patchActivity((rows) => rows.map((x) => (x.id === id ? { ...x, quantity: q } : x)));
+          saveLater(() => b.update("mivtzoim_activity", realId(id), { quantity: q }));
+        },
         createGroup: (name) =>
           run(async () => {
             const g = await b.insert("groups", { name: name.trim(), join_code: newJoinCode(), created_by: uid() });
@@ -335,8 +371,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
             const last = Math.max(-1, ...data.stops.filter((x) => x.route_id === routeId).map((x) => x.position));
             await b.insert("route_locations", { route_id: routeId, location_id: loc.id, position: last + 1, completed: false });
           }),
-        removeStop: (stopId) => run(() => b.remove("route_locations", stopId)),
-        toggleStop: (stop) => run(() => b.update("route_locations", stop.id, { completed: !stop.completed })),
+        removeStop: async (stopId) => {
+          setData((d) => ({ ...d, stops: d.stops.filter((x) => x.id !== stopId) }));
+          saveLater(() => b.remove("route_locations", stopId));
+        },
+        toggleStop: async (stop) => {
+          const completed = !stop.completed;
+          setData((d) => ({ ...d, stops: d.stops.map((x) => (x.id === stop.id ? { ...x, completed } : x)) }));
+          saveLater(() => b.update("route_locations", stop.id, { completed }));
+        },
         resetRoute: (routeId) =>
           run(async () => {
             for (const s of data.stops.filter((x) => x.route_id === routeId && x.completed)) {

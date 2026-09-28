@@ -186,32 +186,25 @@ function newestInWeek(rows: Activity[], week: string, c: Counter) {
 function QuickLog({ week }: { week: string }) {
   const { actions, notify, mine } = useData();
   const counters = useCounters();
-  const [busy, setBusy] = useState<string | null>(null);
   const past = week !== currentWeek();
 
   async function add(c: Counter) {
-    setBusy(c.key);
     try {
       await actions.log({ ...c.log, activity_date: dateForWeek(week) });
       notify(past ? `Added 1 ${c.title} to the week of ${weekTitle(week)}` : `Added 1 ${c.title}`);
     } catch (e) {
       notify((e as Error).message);
-    } finally {
-      setBusy(null);
     }
   }
 
   async function subtract(c: Counter) {
     const last = newestInWeek(mine.activity, week, c);
     if (!last) return;
-    setBusy(c.key);
     try {
       await actions.setActivityQuantity(last.id, last.quantity - 1);
       notify(`Removed 1 ${c.title}${past ? ` from the week of ${weekTitle(week)}` : ""}`);
     } catch (e) {
       notify((e as Error).message);
-    } finally {
-      setBusy(null);
     }
   }
 
@@ -227,7 +220,7 @@ function QuickLog({ week }: { week: string }) {
           >
             <button
               type="button"
-              disabled={busy !== null}
+             
               onClick={() => add(c)}
               aria-label={`Add 1 ${c.title}`}
               className="flex min-w-0 flex-1 items-center gap-4 rounded-[22px] p-2 text-left transition hover:bg-ink/5 active:scale-[0.99] disabled:opacity-60"
@@ -243,7 +236,7 @@ function QuickLog({ week }: { week: string }) {
             </button>
             <button
               type="button"
-              disabled={busy !== null || count === 0}
+              disabled={count === 0}
               onClick={() => subtract(c)}
               aria-label={`Remove 1 ${c.title}`}
               title={`Remove 1 ${c.title}`}
@@ -262,17 +255,13 @@ function QuickLog({ week }: { week: string }) {
 function WeekEntries({ week, rows, counters }: { week: string; rows: Activity[]; counters: Counter[] }) {
   const { data, actions, notify } = useData();
   const { Link } = useNav();
-  const [busy, setBusy] = useState<string | null>(null);
 
   async function setQty(a: Activity, quantity: number) {
-    setBusy(a.id);
     try {
       await actions.setActivityQuantity(a.id, quantity);
       if (quantity <= 0) notify("Entry deleted.");
     } catch (e) {
       notify((e as Error).message);
-    } finally {
-      setBusy(null);
     }
   }
 
@@ -301,14 +290,14 @@ function WeekEntries({ week, rows, counters }: { week: string; rows: Activity[];
                 </span>
               </span>
               <span className="flex items-center gap-1">
-                <IconButton aria-label="One less" disabled={busy !== null || a.quantity <= 1} onClick={() => setQty(a, a.quantity - 1)}>
+                <IconButton aria-label="One less" disabled={a.quantity <= 1} onClick={() => setQty(a, a.quantity - 1)}>
                   <Minus size={18} />
                 </IconButton>
                 <span className="tabular w-8 text-center text-xl">{a.quantity}</span>
-                <IconButton aria-label="One more" disabled={busy !== null} onClick={() => setQty(a, a.quantity + 1)}>
+                <IconButton aria-label="One more" onClick={() => setQty(a, a.quantity + 1)}>
                   <Plus size={18} />
                 </IconButton>
-                <IconButton aria-label="Delete entry" disabled={busy !== null} onClick={() => setQty(a, 0)}>
+                <IconButton aria-label="Delete entry" onClick={() => setQty(a, 0)}>
                   <Trash2 size={18} />
                 </IconButton>
               </span>
