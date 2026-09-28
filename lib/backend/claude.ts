@@ -139,6 +139,12 @@ export async function createClaudeBackend(): Promise<Backend | null> {
     async adminSetPassword() {
       throw new Error("People here sign in with their Claude account, so there's no password to set.");
     },
+    async adminUpdatePerson() {
+      throw new Error("People here sign in with their Claude account, so their account can't be edited here.");
+    },
+    async adminDeletePerson() {
+      throw new Error("People here sign in with their Claude account, so their account can't be deleted here.");
+    },
     async listPeople() {
       const [members, activity, roles] = await Promise.all([
         db.collection("group_members").get(),

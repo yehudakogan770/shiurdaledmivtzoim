@@ -201,6 +201,31 @@ export function createLocalBackend(): Backend {
       p.password_hash = await hashPassword(password, p.id);
       save(s);
     },
+    async adminUpdatePerson(userId, { name, username: rawUsername, email: rawEmail, partners }) {
+      const s = load();
+      requireAdmin(s);
+      const username = normalizeUsername(rawUsername);
+      const email = checkEmail(rawEmail);
+      if (!name.trim()) throw new Error("Enter their name.");
+      if (s.profiles.some((x) => x.id !== userId && x.username === username)) throw new Error("That username is taken.");
+      if (s.profiles.some((x) => x.id !== userId && x.email === email)) throw new Error("That email already has an account.");
+      const p = s.profiles.find((x) => x.id === userId);
+      if (!p) throw new Error("No account found.");
+      Object.assign(p, { name: name.trim(), username, email, partners });
+      save(s);
+    },
+    async adminDeletePerson(userId) {
+      const s = load();
+      requireAdmin(s);
+      if (userId === s.session) throw new Error("You can't delete your own account from here.");
+      if (!s.profiles.some((x) => x.id === userId)) throw new Error("No account found.");
+      s.profiles = s.profiles.filter((x) => x.id !== userId);
+      s.mivtzoim_activity = s.mivtzoim_activity.filter((x) => x.user_id !== userId);
+      s.personal_categories = s.personal_categories.filter((x) => x.user_id !== userId || x.shared);
+      s.routes = s.routes.filter((x) => x.created_by !== userId);
+      s.group_members = s.group_members.filter((x) => x.user_id !== userId);
+      save(s);
+    },
     async listPeople() {
       return load().profiles.map(publicProfile);
     },

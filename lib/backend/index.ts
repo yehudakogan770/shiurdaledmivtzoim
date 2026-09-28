@@ -44,6 +44,17 @@ export interface Backend {
   listPeople(): Promise<Profile[]>;
   /** Admins only: give someone who forgot their password a new one. */
   adminSetPassword(userId: string, password: string): Promise<void>;
+  /** Admins only: change someone's name, username, email and chavrusas. */
+  adminUpdatePerson(userId: string, patch: PersonPatch): Promise<void>;
+  /** Admins only: delete an account and everything in it. */
+  adminDeletePerson(userId: string): Promise<void>;
+}
+
+export interface PersonPatch {
+  name: string;
+  username: string;
+  email: string;
+  partners: string[];
 }
 
 export function newId() {

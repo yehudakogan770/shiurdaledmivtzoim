@@ -309,7 +309,7 @@ function PeopleCard() {
 const iconFor = (a: Activity, categories: PersonalCategory[]) => iconForActivity(a, categories);
 
 function ActivityRow({ a, showPerson }: { a: Activity; showPerson?: boolean }) {
-  const { data } = useData();
+  const { data, actions, notify } = useData();
   const route = data.routes.find((r) => r.id === a.route_id);
   const place = data.locations.find((l) => l.id === a.location_id);
   const who = data.names[a.user_id] || "Someone";
@@ -326,6 +326,12 @@ function ActivityRow({ a, showPerson }: { a: Activity; showPerson?: boolean }) {
         {a.notes && <span className="block text-sm">{a.notes}</span>}
       </span>
       <span className="tabular text-2xl">{a.quantity}</span>
+      <IconButton
+        aria-label="Delete entry"
+        onClick={() => actions.deleteActivity(a.id).then(() => notify("Entry deleted."), (err: Error) => notify(err.message))}
+      >
+        <Trash2 size={18} />
+      </IconButton>
     </li>
   );
 }
@@ -371,7 +377,11 @@ function PersonDetails({ person }: { person: Profile }) {
           </div>
         ))}
       </dl>
-      <SetPassword person={person} />
+      <div className="flex flex-wrap gap-2">
+        <EditPerson person={person} />
+        <SetPassword person={person} />
+        <DeletePerson person={person} />
+      </div>
       <div className="overflow-hidden rounded-2xl bg-card">
         <p className="px-6 pt-4 pb-1 text-sm font-medium">Entries ({rows.length})</p>
         {rows.length === 0 ? (
@@ -447,6 +457,115 @@ function ActivityCard() {
   );
 }
 
+function EditPerson({ person }: { person: Profile }) {
+  const { actions, notify } = useData();
+  const [draft, setDraft] = useState<{ name: string; username: string; email: string; partners: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    if (!draft) return;
+    setBusy(true);
+    try {
+      await actions.adminUpdatePerson(person.id, {
+        name: draft.name,
+        username: draft.username,
+        email: draft.email,
+        partners: draft.partners.split(",").map((x) => x.trim()).filter(Boolean),
+      });
+      notify(`${draft.name.trim()}'s account was updated.`);
+      setDraft(null);
+    } catch (err) {
+      notify((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!draft) {
+    return (
+      <Button
+        variant="tonal"
+        className="h-9 px-4"
+        onClick={() =>
+          setDraft({ name: person.name, username: person.username ?? "", email: person.email ?? "", partners: (person.partners ?? []).join(", ") })
+        }
+      >
+        <Pencil size={16} aria-hidden /> Edit account
+      </Button>
+    );
+  }
+  const id = (k: string) => `person-${k}-${person.id}`;
+  return (
+    <form onSubmit={save} className="grid w-full gap-3 rounded-2xl bg-card p-4">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Name" htmlFor={id("name")}>
+          <Input id={id("name")} required value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+        </Field>
+        <Field label="Username" htmlFor={id("username")} hint="What they sign in with.">
+          <Input id={id("username")} required autoCapitalize="none" value={draft.username} onChange={(e) => setDraft({ ...draft, username: e.target.value })} />
+        </Field>
+        <Field label="Email" htmlFor={id("email")}>
+          <Input id={id("email")} type="email" required value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} />
+        </Field>
+        <Field label="Chavrusas" htmlFor={id("partners")} hint="Separate names with commas.">
+          <Input id={id("partners")} value={draft.partners} onChange={(e) => setDraft({ ...draft, partners: e.target.value })} />
+        </Field>
+      </div>
+      <div className="flex gap-2">
+        <Button type="submit" disabled={busy} className="h-9 px-4">
+          Save
+        </Button>
+        <Button type="button" variant="ghost" className="h-9 px-3" onClick={() => setDraft(null)}>
+          Cancel
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function DeletePerson({ person }: { person: Profile }) {
+  const { me, actions, notify } = useData();
+  const [asking, setAsking] = useState(false);
+  const [busy, setBusy] = useState(false);
+  if (person.id === me?.id) return null;
+
+  async function remove() {
+    setBusy(true);
+    try {
+      await actions.adminDeletePerson(person.id);
+      notify(`${person.name}'s account was deleted.`);
+    } catch (err) {
+      notify((err as Error).message);
+      setBusy(false);
+      setAsking(false);
+    }
+  }
+
+  if (!asking) {
+    return (
+      <Button variant="ghost" className="h-9 px-3 text-danger" onClick={() => setAsking(true)}>
+        <Trash2 size={16} aria-hidden /> Delete account
+      </Button>
+    );
+  }
+  return (
+    <div role="alert" className="grid w-full gap-3 rounded-2xl bg-card p-4">
+      <p className="text-sm">
+        Delete {person.name}&apos;s account? Their entries, routes and own mivtzoim are deleted too, and they can&apos;t sign in anymore. This can&apos;t be undone.
+      </p>
+      <div className="flex gap-2">
+        <Button variant="danger" disabled={busy} className="h-9 px-4" onClick={remove}>
+          Delete account
+        </Button>
+        <Button variant="ghost" className="h-9 px-3" onClick={() => setAsking(false)}>
+          Keep
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function SetPassword({ person }: { person: Profile }) {
   const { actions, notify } = useData();
   const [open, setOpen] = useState(false);
@@ -479,7 +598,7 @@ function SetPassword({ person }: { person: Profile }) {
     );
   }
   return (
-    <form onSubmit={save} className="grid gap-3 rounded-2xl bg-card p-4">
+    <form onSubmit={save} className="grid w-full gap-3 rounded-2xl bg-card p-4">
       <p className="text-sm">
         For when {person.name} forgot their password. Choose a new one, then tell them it along with their username
         {person.username ? ` (${handle(person.username)})` : ""}.

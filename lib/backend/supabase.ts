@@ -141,6 +141,22 @@ export function createSupabaseBackend(url: string, key: string): Backend {
       const { error } = await sb.rpc("admin_set_password", { p_user: userId, p_password: password });
       fail(error);
     },
+    async adminUpdatePerson(userId, { name, username, email, partners }) {
+      const { error } = await sb.rpc("admin_update_person", {
+        p_user: userId,
+        p_name: name.trim(),
+        p_username: normalizeUsername(username),
+        p_email: checkEmail(email),
+        p_partners: partners,
+      });
+      if (error?.message.includes("admin_update_person")) throw new Error("Run the latest setup file in Supabase first.");
+      fail(error);
+    },
+    async adminDeletePerson(userId) {
+      const { error } = await sb.rpc("admin_delete_person", { p_user: userId });
+      if (error?.message.includes("admin_delete_person")) throw new Error("Run the latest setup file in Supabase first.");
+      fail(error);
+    },
     async listPeople() {
       const withEmail = await sb.rpc("admin_people");
       if (!withEmail.error && withEmail.data) return withEmail.data as Profile[];
