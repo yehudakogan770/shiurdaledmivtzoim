@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ComponentType } from "react";
+import { useEffect, useState, type ComponentType } from "react";
 import { ClipboardList, Flame, Megaphone, Minus, Plus, Sparkles, Trash2 } from "lucide-react";
 import { TefillinIcon } from "../icons";
 import { useData, type LogInput } from "@/lib/data";
@@ -186,7 +186,21 @@ function newestInWeek(rows: Activity[], week: string, c: Counter) {
     .sort((x, y) => activityMoment(y).getTime() - activityMoment(x).getTime() || (y.created_at ?? "").localeCompare(x.created_at ?? ""))[0];
 }
 
+/** true on phones and tablets (a finger, no mouse), so buttons can say "Tap" instead of "Click". */
+function useTouch() {
+  const [touch, setTouch] = useState(true);
+  useEffect(() => {
+    const query = window.matchMedia("(hover: none) and (pointer: coarse)");
+    const update = () => setTouch(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  return touch;
+}
+
 function QuickLog({ week }: { week: string }) {
+  const touch = useTouch();
   const { actions, notify, mine } = useData();
   const counters = useCounters();
   const past = week !== currentWeek();
@@ -223,7 +237,6 @@ function QuickLog({ week }: { week: string }) {
           >
             <button
               type="button"
-             
               onClick={() => add(c)}
               aria-label={`Add 1 ${c.title}`}
               className="flex min-w-0 flex-1 items-center gap-4 rounded-[22px] p-2 text-left transition hover:bg-ink/5 active:scale-[0.99] disabled:opacity-60"
@@ -233,9 +246,8 @@ function QuickLog({ week }: { week: string }) {
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-xl font-medium">{c.title}</span>
-                <span className="block truncate text-sm opacity-80">{c.text}</span>
+                <span className="block truncate text-sm opacity-80">{touch ? "Tap here to add" : "Click here to add"}</span>
               </span>
-              <Plus size={24} aria-hidden className="shrink-0 opacity-70" />
             </button>
             <button
               type="button"

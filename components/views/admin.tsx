@@ -52,7 +52,7 @@ function SiteSettingsCard() {
     try {
       await actions.saveSettings({
         site_name: draft.site_name.trim(),
-        tagline: draft.tagline.trim(),
+        tagline: "",
         welcome: draft.welcome.trim(),
         announcement: draft.announcement.trim(),
       });
@@ -68,14 +68,9 @@ function SiteSettingsCard() {
     <Card>
       <CardTitle sub="Shown to everyone who opens the site">Website</CardTitle>
       <form onSubmit={save} className="grid gap-4 px-6 pb-6">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Site name" htmlFor="admin-name">
-            <Input id="admin-name" value={draft.site_name} onChange={set("site_name")} maxLength={40} />
-          </Field>
-          <Field label="Tagline" htmlFor="admin-tagline">
-            <Input id="admin-tagline" value={draft.tagline} onChange={set("tagline")} maxLength={40} />
-          </Field>
-        </div>
+        <Field label="Site name" htmlFor="admin-name">
+          <Input id="admin-name" value={draft.site_name} onChange={set("site_name")} maxLength={40} />
+        </Field>
         <Field label="Welcome text" htmlFor="admin-welcome" hint="Shown on the sign-up screen.">
           <Textarea id="admin-welcome" rows={2} value={draft.welcome} onChange={set("welcome")} maxLength={200} />
         </Field>
@@ -100,17 +95,15 @@ function SiteSettingsCard() {
 function SharedCategoriesCard() {
   const { shared, actions, notify } = useData();
   const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
   const [busy, setBusy] = useState(false);
 
   async function add(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
     try {
-      await actions.addCategory(name, description, true);
+      await actions.addCategory(name, "", true);
       notify(`${name.trim()} is now on everyone's front page.`);
       setName("");
-      setDescription("");
     } catch (err) {
       notify((err as Error).message);
     } finally {
@@ -119,13 +112,13 @@ function SharedCategoriesCard() {
   }
 
   const [removing, setRemoving] = useState<string | null>(null);
-  const [editing, setEditing] = useState<{ id: string; name: string; description: string } | null>(null);
+  const [editing, setEditing] = useState<{ id: string; name: string } | null>(null);
 
   async function saveEdit(e: FormEvent) {
     e.preventDefault();
     if (!editing) return;
     try {
-      await actions.updateCategory(editing.id, editing.name, editing.description);
+      await actions.updateCategory(editing.id, editing.name, "");
       notify(`${editing.name.trim()} was updated for everyone.`);
       setEditing(null);
     } catch (err) {
@@ -160,14 +153,9 @@ function SharedCategoriesCard() {
             <li key={c.id} className="flex flex-wrap items-center gap-2 px-6 py-3">
               {editing?.id === c.id ? (
                 <form onSubmit={saveEdit} className="grid w-full gap-3 py-1">
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <Field label="Name" htmlFor={`edit-name-${c.id}`}>
-                      <Input id={`edit-name-${c.id}`} required autoFocus value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
-                    </Field>
-                    <Field label="Button text (optional)" htmlFor={`edit-desc-${c.id}`}>
-                      <Input id={`edit-desc-${c.id}`} value={editing.description} onChange={(e) => setEditing({ ...editing, description: e.target.value })} />
-                    </Field>
-                  </div>
+                  <Field label="Name" htmlFor={`edit-name-${c.id}`}>
+                    <Input id={`edit-name-${c.id}`} required autoFocus value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
+                  </Field>
                   <span className="flex gap-2">
                     <Button type="submit" variant="tonal" className="h-9 px-4">
                       Save
@@ -181,7 +169,6 @@ function SharedCategoriesCard() {
                 <>
                   <span className="min-w-0 flex-1">
                     <span className={c.status === "archived" ? "block font-medium text-muted line-through" : "block font-medium"}>{c.name}</span>
-                    {c.description && <span className="block truncate text-sm text-muted">{c.description}</span>}
                   </span>
                   {removing === c.id ? (
                     <span className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
@@ -204,7 +191,7 @@ function SharedCategoriesCard() {
                           <EyeOff size={16} aria-hidden /> Hide
                         </Button>
                       )}
-                      <IconButton aria-label={`Edit ${c.name}`} onClick={() => setEditing({ id: c.id, name: c.name, description: c.description ?? "" })}>
+                      <IconButton aria-label={`Edit ${c.name}`} onClick={() => setEditing({ id: c.id, name: c.name })}>
                         <Pencil size={18} />
                       </IconButton>
                       <IconButton aria-label={`Remove ${c.name}`} onClick={() => setRemoving(c.id)}>
@@ -219,14 +206,9 @@ function SharedCategoriesCard() {
         </ul>
       )}
       <form onSubmit={add} className="grid gap-3 px-6 pt-3 pb-6">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Name" htmlFor="shared-name">
-            <Input id="shared-name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Mezuzah" />
-          </Field>
-          <Field label="Button text (optional)" htmlFor="shared-desc">
-            <Input id="shared-desc" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Mezuzos checked or put up" />
-          </Field>
-        </div>
+        <Field label="Name" htmlFor="shared-name">
+          <Input id="shared-name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Mezuzah" />
+        </Field>
         <Button type="submit" variant="tonal" disabled={busy} className="justify-self-start">
           Add for everyone
         </Button>

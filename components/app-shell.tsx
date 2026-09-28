@@ -40,7 +40,6 @@ function PanelContent({ expanded, onNavigate }: { expanded: boolean; onNavigate?
             <LogoMark className="h-10 w-10" />
             <span className={cx("leading-tight", label)}>
               <span className="block text-lg font-medium text-ink">{settings.site_name}</span>
-              {settings.tagline && <span className="block text-sm text-muted">{settings.tagline}</span>}
             </span>
           </span>
         </Link>
