@@ -7,6 +7,7 @@ import { useData } from "@/lib/data";
 import { SUGGESTED_PERSONAL } from "@/lib/categories";
 import { Button, Card, CardTitle, Field, IconButton, Input, PageHeader } from "../ui";
 import { sum } from "./dashboard";
+import { InstallCard } from "../install-app";
 
 export function ProfileView() {
   const { me, backend, mine, auth, actions, notify } = useData();
@@ -205,6 +206,8 @@ export function ProfileView() {
           </div>
         </Card>
       </div>
+
+      <InstallCard />
     </div>
   );
 }

@@ -1,0 +1,16 @@
+{
+  "name": "Shiur Daled Mivtzoim",
+  "short_name": "SD Mivtzoim",
+  "description": "Track tefillin, Shabbos candles and every other mivtza.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#efedf0",
+  "theme_color": "#106a7a",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

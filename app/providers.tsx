@@ -1,11 +1,12 @@
 "use client";
 
-import { Suspense, useMemo, type ReactNode } from "react";
+import { Suspense, useEffect, useMemo, type ReactNode } from "react";
 import NextLink from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { DataProvider } from "@/lib/data";
 import { NavProvider, type LinkProps, type Nav } from "@/lib/nav";
+import { registerServiceWorker } from "@/lib/install";
 
 function Link({ href, ...rest }: LinkProps) {
   return <NextLink href={href} {...rest} />;
@@ -33,6 +34,7 @@ function NextNav({ children }: { children: ReactNode }) {
 }
 
 export function Providers({ children }: { children: ReactNode }) {
+  useEffect(registerServiceWorker, []);
   return (
     <Suspense fallback={null}>
       <NextNav>

@@ -2,9 +2,15 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Providers } from "./providers";
 
+const base = process.env.NEXT_PUBLIC_BASE_PATH || "";
+
 export const metadata: Metadata = {
   title: "Shiur Daled Mivtzoim",
-  description: "Track tefillin, Shabbos candles and every other mivtza, on your own and with your group.",
+  description: "Track tefillin, Shabbos candles and every other mivtza.",
+  manifest: `${base}/manifest.webmanifest`,
+  icons: { apple: `${base}/apple-touch-icon.png` },
+  // Opens full screen, like an app, when added to an iPhone home screen.
+  appleWebApp: { capable: true, title: "SD Mivtzoim", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {

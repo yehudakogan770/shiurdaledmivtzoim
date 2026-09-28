@@ -8,6 +8,7 @@ import { iconForActivity, iconForName } from "@/lib/category-icons";
 import { useNav } from "@/lib/nav";
 import { categoryName } from "@/lib/categories";
 import { activityMoment, activityWeek, addDays, allWeeks, currentWeek, formatDay, formatShort, hebrewDate, longDate, recentWeeks, today, weekLabel } from "@/lib/dates";
+import { InstallBanner } from "../install-app";
 import { parshaName, parshaOfWeek, weekTitle } from "@/lib/parsha";
 import type { Activity } from "@/lib/types";
 import { Card, CardTitle, CategoryIcon, Empty, IconButton, PageHeader, Select, Stat, cx, listClass } from "../ui";
@@ -109,6 +110,8 @@ export function DashboardView() {
       <PageHeader eyebrow={`${longDate()}${hd ? ` · ${hd}` : ""} · ${parshaOfWeek(currentWeek()).english}`} title={me?.name || "Dashboard"} />
 
       <WeekPicker week={week} onChange={setWeek} />
+
+      <InstallBanner />
 
       {settings.announcement.trim() && (
         <div role="status" className="flex items-start gap-3 rounded-[28px] bg-secondary-soft px-5 py-4 text-secondary-on-soft">
