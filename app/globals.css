@@ -32,6 +32,8 @@
   --sage-on-soft: #002112;
   --danger: #ba1a1a;
   --danger-soft: #ffdad6;
+  --minus: #ffdad6;
+  --minus-ink: #ba1a1a;
   --brand: #106a7a;
   --brand-neutral: #c5c2c2;
   --elev-1: 0 1px 2px rgba(0, 0, 0, 0.08), 0 1px 3px 1px rgba(0, 0, 0, 0.04);
@@ -64,6 +66,8 @@
     --sage-on-soft: #abf2c9;
     --danger: #ffb4ab;
     --danger-soft: #93000a;
+    --minus: #d9544c;
+    --minus-ink: #fff4f2;
     --brand: #106a7a;
     --brand-neutral: #c5c2c2;
     --elev-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px 1px rgba(0, 0, 0, 0.2);
@@ -96,6 +100,8 @@
   --sage-on-soft: #abf2c9;
   --danger: #ffb4ab;
   --danger-soft: #93000a;
+  --minus: #d9544c;
+  --minus-ink: #fff4f2;
   --brand: #106a7a;
   --brand-neutral: #c5c2c2;
   --elev-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px 1px rgba(0, 0, 0, 0.2);
@@ -127,6 +133,8 @@
   --color-sage-on-soft: var(--sage-on-soft);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
+  --color-minus: var(--minus);
+  --color-minus-ink: var(--minus-ink);
   --color-brand: var(--brand);
   --color-brand-neutral: var(--brand-neutral);
   --shadow-card: var(--elev-1);

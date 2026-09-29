@@ -306,7 +306,7 @@ function QuickButton({ c, count, hint, onAdd, onSubtract }: { c: Counter; count:
         }}
         aria-label={`Remove 1 ${c.title}`}
         title={`Remove 1 ${c.title}`}
-        className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-danger-soft text-danger transition hover:brightness-95 disabled:opacity-30"
+        className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-minus text-minus-ink transition hover:brightness-95 disabled:opacity-30"
       >
         <Minus size={20} strokeWidth={2.5} />
       </button>
