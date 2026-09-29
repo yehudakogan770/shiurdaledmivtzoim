@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
-import { KeyRound, Pencil, Plus, X } from "lucide-react";
+import { useState, type FormEvent } from "react";
+import { AtSign, KeyRound, Mail, Pencil, Plus, X } from "lucide-react";
 import { handle } from "@/lib/admin";
 import { useData } from "@/lib/data";
 import { SUGGESTED_PERSONAL } from "@/lib/categories";
-import { Button, Card, CardTitle, Field, IconButton, Input, PageHeader } from "../ui";
+import { Button, Card, CardTitle, Field, IconButton, Input, Modal, PageHeader } from "../ui";
 import { sum } from "./dashboard";
 import { InstallCard } from "../install-app";
 
@@ -128,20 +128,16 @@ export function ProfileView() {
 /** The person's account: route name and Chavrusas, plus how they sign in (username, email, password). */
 function AccountCard() {
   const { me, backend, mine, auth, notify } = useData();
-  const [open, setOpen] = useState<null | "details" | "username" | "email">(null);
-  const [passwordOpen, setPasswordOpen] = useState(false);
+  const [open, setOpen] = useState<null | "details">(null);
+  const [dialog, setDialog] = useState<null | "username" | "email" | "password">(null);
   const [name, setName] = useState("");
   const [partners, setPartners] = useState<string[]>([""]);
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const editable = backend?.kind !== "claude";
 
   function start(which: NonNullable<typeof open>) {
     setName(me?.name ?? "");
     setPartners(me?.partners?.length ? [...me.partners] : [""]);
-    setUsername(me?.username ?? "");
-    setEmail(me?.email ?? "");
     setOpen(which);
   }
 
@@ -166,12 +162,6 @@ function AccountCard() {
         return "Saved.";
       });
     }
-    if (open === "username") return run(async () => (await auth.changeUsername(username), "Username changed. Use it next time you sign in."));
-    if (open === "email")
-      return run(async () => {
-        const { needsConfirmation } = await auth.changeEmail(email);
-        return needsConfirmation ? `We sent a link to ${email.trim()}. Open it to finish changing your email. (Check Spam too.)` : "Email changed.";
-      });
   };
 
   const buttons = (
@@ -185,14 +175,20 @@ function AccountCard() {
     </div>
   );
 
-  const row = (label: string, value: React.ReactNode, which: NonNullable<typeof open>) => (
+  const row = (label: string, value: React.ReactNode, onChange: () => void) => (
     <div className="flex items-center gap-3 py-3">
       <div className="min-w-0 flex-1">
-        <p className="text-sm text-muted">{label}</p>
-        <div className="break-words font-medium">{value}</div>
+        {value === null ? (
+          <p className="font-medium">{label}</p>
+        ) : (
+          <>
+            <p className="text-sm text-muted">{label}</p>
+            <div className="break-words font-medium">{value}</div>
+          </>
+        )}
       </div>
       {editable && (
-        <Button variant="ghost" className="h-9 shrink-0 px-3" onClick={() => start(which)} aria-label={`Change ${label.toLowerCase()}`}>
+        <Button variant="ghost" className="h-9 shrink-0 px-3" onClick={onChange} aria-label={`Change ${label.toLowerCase()}`}>
           <Pencil size={16} aria-hidden /> Change
         </Button>
       )}
@@ -249,32 +245,9 @@ function AccountCard() {
             </div>
             {backend?.hasAuth && (
               <>
-                {open === "username" ? (
-                  <form onSubmit={submit} className="grid gap-3 py-3">
-                    <Field label="New username" htmlFor="profile-username" hint="3 to 20 letters, numbers, dots or dashes. You'll sign in with it.">
-                      <Input id="profile-username" required autoFocus autoCapitalize="none" value={username} onChange={(e) => setUsername(e.target.value)} />
-                    </Field>
-                    {buttons}
-                  </form>
-                ) : (
-                  row("Username", me?.username ? handle(me.username) : "—", "username")
-                )}
-                {open === "email" ? (
-                  <form onSubmit={submit} className="grid gap-3 py-3">
-                    <Field label="New email" htmlFor="profile-email" hint="We'll send a link to the new address to confirm it.">
-                      <Input id="profile-email" type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} />
-                    </Field>
-                    {buttons}
-                  </form>
-                ) : (
-                  row("Email", me?.email || "—", "email")
-                )}
-                <div className="flex items-center gap-3 py-3">
-                  <p className="min-w-0 flex-1 font-medium">Password</p>
-                  <Button variant="ghost" className="h-9 shrink-0 px-3" onClick={() => setPasswordOpen(true)} aria-label="Change password">
-                    <Pencil size={16} aria-hidden /> Change
-                  </Button>
-                </div>
+                {row("Username", me?.username ? handle(me.username) : "—", () => setDialog("username"))}
+                {row("Email", me?.email || "—", () => setDialog("email"))}
+                {row("Password", null, () => setDialog("password"))}
               </>
             )}
           </div>
@@ -290,7 +263,7 @@ function AccountCard() {
           </div>
         </div>
         <p className="text-sm text-muted">{backend?.storageLabel}</p>
-        {passwordOpen && <ChangePasswordDialog onClose={() => setPasswordOpen(false)} />}
+        {dialog && <SecureChangeDialog kind={dialog} onClose={() => setDialog(null)} />}
         {backend?.hasAuth && (
           <Button variant="secondary" className="justify-self-start" onClick={() => auth.signOut()}>
             Sign out
@@ -302,23 +275,19 @@ function AccountCard() {
 }
 
 /**
- * Changing the password happens in a pop-up, in two steps: first the current
- * password (checked before going on), then the new password typed twice.
+ * Changing the username, email or password happens in a pop-up, in two steps:
+ * first the current password (checked before going on), then the new value.
  */
-function ChangePasswordDialog({ onClose }: { onClose(): void }) {
-  const { auth, notify } = useData();
+function SecureChangeDialog({ kind, onClose }: { kind: "username" | "email" | "password"; onClose(): void }) {
+  const { me, auth, notify } = useData();
   const [step, setStep] = useState<"current" | "new">("current");
   const [current, setCurrent] = useState("");
-  const [pw, setPw] = useState("");
-  const [pw2, setPw2] = useState("");
+  const [value, setValue] = useState("");
+  const [again, setAgain] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  const what = kind === "email" ? "email" : kind;
+  const Icon = kind === "username" ? AtSign : kind === "email" ? Mail : KeyRound;
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -328,11 +297,20 @@ function ChangePasswordDialog({ onClose }: { onClose(): void }) {
       if (step === "current") {
         await auth.verifyPassword(current);
         setStep("new");
-      } else {
-        if (pw.length < 6) throw new Error("Use at least 6 characters.");
-        if (pw !== pw2) throw new Error("The two new passwords don't match.");
-        await auth.changePassword(current, pw);
+      } else if (kind === "password") {
+        if (value.length < 6) throw new Error("Use at least 6 characters.");
+        if (value !== again) throw new Error("The two new passwords don't match.");
+        await auth.changePassword(current, value);
         notify("Password changed.");
+        onClose();
+      } else if (kind === "username") {
+        await auth.changeUsername(value);
+        notify("Username changed. Use it next time you sign in.");
+        onClose();
+      } else {
+        if (value.trim().toLowerCase() !== again.trim().toLowerCase()) throw new Error("The two email addresses don't match.");
+        const { needsConfirmation } = await auth.changeEmail(value);
+        notify(needsConfirmation ? `We sent a link to ${value.trim()}. Open it to finish changing your email. (Check Spam too.)` : "Email changed.");
         onClose();
       }
     } catch (err) {
@@ -343,35 +321,48 @@ function ChangePasswordDialog({ onClose }: { onClose(): void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[60] grid place-items-center bg-black/40 p-4 backdrop-blur-sm" onClick={onClose}>
+    <Modal onClose={onClose} blur>
       <form
         role="dialog"
         aria-modal="true"
-        aria-labelledby="pw-title"
+        aria-labelledby="change-title"
         onSubmit={submit}
         onClick={(e) => e.stopPropagation()}
         className="grid w-full max-w-sm gap-4 rounded-[28px] bg-card p-6 shadow-pop"
       >
         <span className="grid h-12 w-12 place-items-center rounded-2xl bg-accent-soft text-accent-on-soft">
-          <KeyRound size={22} aria-hidden />
+          <Icon size={22} aria-hidden />
         </span>
         <div>
-          <h2 id="pw-title" className="text-xl font-medium">
-            Change password
+          <h2 id="change-title" className="text-xl font-medium">
+            Change {what}
           </h2>
-          <p className="text-sm text-muted">{step === "current" ? "Step 1 of 2: enter your current password." : "Step 2 of 2: choose your new password."}</p>
+          <p className="text-sm text-muted">{step === "current" ? "Step 1 of 2: enter your current password." : `Step 2 of 2: enter your new ${what}.`}</p>
         </div>
         {step === "current" ? (
-          <Field label="Current password" htmlFor="pw-current">
-            <Input id="pw-current" type="password" required autoFocus autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} />
+          <Field label="Current password" htmlFor="change-current">
+            <Input id="change-current" type="password" required autoFocus autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} />
+          </Field>
+        ) : kind === "password" ? (
+          <>
+            <Field label="New password" htmlFor="change-new" hint="At least 6 characters.">
+              <Input id="change-new" type="password" required autoFocus minLength={6} autoComplete="new-password" value={value} onChange={(e) => setValue(e.target.value)} />
+            </Field>
+            <Field label="Type the new password again" htmlFor="change-again">
+              <Input id="change-again" type="password" required minLength={6} autoComplete="new-password" value={again} onChange={(e) => setAgain(e.target.value)} />
+            </Field>
+          </>
+        ) : kind === "username" ? (
+          <Field label="New username" htmlFor="change-new" hint={`Now: ${me?.username ? handle(me.username) : "none"}. 3 to 20 letters, numbers, dots or dashes.`}>
+            <Input id="change-new" required autoFocus autoCapitalize="none" autoComplete="username" value={value} onChange={(e) => setValue(e.target.value)} />
           </Field>
         ) : (
           <>
-            <Field label="New password" htmlFor="pw-new" hint="At least 6 characters.">
-              <Input id="pw-new" type="password" required autoFocus minLength={6} autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} />
+            <Field label="New email" htmlFor="change-new" hint={`Now: ${me?.email ?? "none"}. We'll send a link to the new address to confirm it.`}>
+              <Input id="change-new" type="email" required autoFocus autoComplete="email" value={value} onChange={(e) => setValue(e.target.value)} />
             </Field>
-            <Field label="Type the new password again" htmlFor="pw-new2">
-              <Input id="pw-new2" type="password" required minLength={6} autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} />
+            <Field label="Type the new email again" htmlFor="change-again">
+              <Input id="change-again" type="email" required autoComplete="email" value={again} onChange={(e) => setAgain(e.target.value)} />
             </Field>
           </>
         )}
@@ -385,10 +376,10 @@ function ChangePasswordDialog({ onClose }: { onClose(): void }) {
             Cancel
           </Button>
           <Button type="submit" disabled={busy}>
-            {busy ? "Checking…" : step === "current" ? "Continue" : "Save new password"}
+            {busy ? "Checking…" : step === "current" ? "Continue" : `Save new ${what}`}
           </Button>
         </div>
       </form>
-    </div>
+    </Modal>
   );
 }

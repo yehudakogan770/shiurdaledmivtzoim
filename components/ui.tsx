@@ -1,6 +1,6 @@
 "use client";
 
-import type { ButtonHTMLAttributes, ComponentType, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
+import { useEffect, useState, type ButtonHTMLAttributes, type ComponentType, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { useNav } from "@/lib/nav";
 
@@ -278,5 +278,68 @@ export function Chip({ selected, onClick, children, disabled }: { selected?: boo
     >
       {children}
     </button>
+  );
+}
+
+/**
+ * A pop-up in the middle of the screen. While it's open the page behind it is
+ * locked (no scrolling up or down, also on iPhone), and it stays centered in the
+ * part of the screen you can see, above the keyboard. Closing it puts the page back
+ * exactly where it was.
+ */
+export function Modal({ onClose, blur, children }: { onClose(): void; blur?: boolean; children: ReactNode }) {
+  const [view, setView] = useState<{ top: number; height: number } | null>(null);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  useEffect(() => {
+    const { body, documentElement: html } = document;
+    const y = window.scrollY;
+    const before = { position: body.style.position, top: body.style.top, left: body.style.left, right: body.style.right, width: body.style.width, overflow: body.style.overflow, htmlOverflow: html.style.overflow, overscroll: html.style.overscrollBehavior };
+    // Pin the page in place: iPhones ignore overflow:hidden alone.
+    body.style.position = "fixed";
+    body.style.top = `-${y}px`;
+    body.style.left = "0";
+    body.style.right = "0";
+    body.style.width = "100%";
+    body.style.overflow = "hidden";
+    html.style.overflow = "hidden";
+    html.style.overscrollBehavior = "none";
+
+    // Follow the visible area (it shrinks when the phone keyboard opens).
+    const vv = window.visualViewport;
+    const fit = () => vv && setView({ top: vv.offsetTop, height: vv.height });
+    fit();
+    vv?.addEventListener("resize", fit);
+    vv?.addEventListener("scroll", fit);
+    return () => {
+      vv?.removeEventListener("resize", fit);
+      vv?.removeEventListener("scroll", fit);
+      body.style.position = before.position;
+      body.style.top = before.top;
+      body.style.left = before.left;
+      body.style.right = before.right;
+      body.style.width = before.width;
+      body.style.overflow = before.overflow;
+      html.style.overflow = before.htmlOverflow;
+      html.style.overscrollBehavior = before.overscroll;
+      window.scrollTo(0, y);
+    };
+  }, []);
+
+  return (
+    <div
+      className={cx("fixed inset-x-0 top-0 z-[60] grid h-[100dvh] place-items-center overflow-hidden overscroll-none p-4", blur ? "bg-black/40 backdrop-blur-sm" : "bg-black/50")}
+      style={view ? { top: view.top, height: view.height } : undefined}
+      onClick={onClose}
+    >
+      <div className="grid max-h-full w-full place-items-center overflow-y-auto overscroll-contain">
+        {children}
+      </div>
+    </div>
   );
 }

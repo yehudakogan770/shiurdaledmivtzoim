@@ -11,7 +11,7 @@ import { ICON_CHOICES, iconForActivity, iconForCategory, iconForName } from "@/l
 import { useData } from "@/lib/data";
 import { handle, isAdminIdentifier } from "@/lib/admin";
 import type { SiteSettings } from "@/lib/types";
-import { Avatar, Badge, Button, Card, CardTitle, CategoryIcon, Empty, Field, IconButton, Input, PageHeader, Select, Textarea, cx, listClass } from "../ui";
+import { Avatar, Badge, Button, Card, CardTitle, CategoryIcon, Empty, Field, IconButton, Input, Modal, PageHeader, Select, Textarea, cx, listClass } from "../ui";
 import { sum } from "./dashboard";
 
 export function AdminView() {
@@ -133,13 +133,8 @@ function IconPicker({ name, value, onChange }: { name: string; value: string; on
 
 /** The warning before deleting a mivtza: it takes all of its history with it. */
 function DeleteMivtzaDialog({ name, entries, hidden, onHide, onDelete, onCancel }: { name: string; entries: number; hidden: boolean; onHide(): void; onDelete(): void; onCancel(): void }) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onCancel();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onCancel]);
   return (
-    <div className="fixed inset-0 z-[60] grid place-items-center bg-black/50 p-4" onClick={onCancel}>
+    <Modal onClose={onCancel}>
       <div
         role="alertdialog"
         aria-modal="true"
@@ -176,7 +171,7 @@ function DeleteMivtzaDialog({ name, entries, hidden, onHide, onDelete, onCancel 
           </Button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 
