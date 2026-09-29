@@ -1,6 +1,6 @@
 import type { Activity, PersonalCategory, Profile, Route, Location } from "./types";
 import { activityMoment, activityWeek, formatShort } from "./dates";
-import { categoryName, orderedMivtzoim, type Builtin } from "./categories";
+import { categoryName, reportColumns, type Builtin } from "./categories";
 import { parshaName, weekTitle } from "./parsha";
 
 /** Everything the admin can see, for building the Excel file. */
@@ -30,12 +30,10 @@ export async function buildWorkbook(input: ExportInput): Promise<Blob> {
     .filter((a) => inWeeks.has(activityWeek(a)))
     .sort((a, b) => activityMoment(a).getTime() - activityMoment(b).getTime());
 
-  // One column per mivtza, in the admin's order, plus people's own categories if any were used.
+  // One column per mivtza, in the admin's order (hidden ones too when they have entries),
+  // plus people's own categories if any were used.
   const sharedIds = new Set(input.shared.map((c) => c.id));
-  const columns: Column[] = orderedMivtzoim(input.builtins, input.shared).flatMap((m): Column[] => {
-    if (m.builtin) return m.builtin.removed ? [] : [{ key: m.key, label: m.builtin.name, matches: (a) => a.category_type === m.builtin!.type }];
-    return [{ key: m.key, label: m.category.name, matches: (a) => a.personal_category_id === m.category.id }];
-  });
+  const columns: Column[] = reportColumns(input.builtins, input.shared, rows);
   const isOwn = (a: Activity) => a.category_type === "personal" && !sharedIds.has(a.personal_category_id ?? "");
   if (rows.some(isOwn)) columns.push({ key: "own", label: "Own categories", matches: isOwn });
 

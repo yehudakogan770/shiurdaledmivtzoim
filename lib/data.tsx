@@ -104,6 +104,8 @@ interface DataContextValue {
     addCategory(name: string, description?: string, shared?: boolean, icon?: string): Promise<void>;
     archiveCategory(id: string, archived: boolean): Promise<void>;
     deleteCategory(id: string): Promise<void>;
+    /** Admins: delete a mivtza for everyone together with all of its entries in everyone's history. */
+    deleteMivtzaEverywhere(key: string): Promise<void>;
     updateCategory(id: string, name: string, description: string, icon?: string): Promise<void>;
     /** Admins: rename, hide or remove Tefillin or Shabbos Candles for everyone. */
     updateBuiltin(type: BuiltinType, patch: { name?: string; hidden?: boolean; removed?: boolean }): Promise<void>;
@@ -416,6 +418,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
         adminDeletePerson: (userId) => run(() => b.adminDeletePerson(userId)),
         archiveCategory: (id, archived) => run(() => b.update("personal_categories", id, { status: archived ? "archived" : "active" })),
         deleteCategory: (id) => run(() => b.remove("personal_categories", id)),
+        deleteMivtzaEverywhere: (key) =>
+          run(async () => {
+            // Every entry of this mivtza, from everyone's history, then the mivtza itself.
+            const isBuiltin = key === "tefillin" || key === "shabbos_candles";
+            const entries = data.activity.filter((a) => (isBuiltin ? a.category_type === key : a.personal_category_id === key));
+            for (const a of entries) await b.remove("mivtzoim_activity", a.id);
+            if (isBuiltin) {
+              const current = builtins(data.categories).find((x) => x.type === key)!;
+              const status = current.hidden ? "archived" : "active";
+              if (current.row) await b.update("personal_categories", current.row.id, { description: builtinDescription(true), status });
+              else await b.insert("personal_categories", { user_id: uid(), name: current.name, description: builtinDescription(true), icon: builtinIcon(current.type), status, shared: true });
+            } else {
+              await b.remove("personal_categories", key);
+            }
+          }),
         updateBuiltin: (type, patch) =>
           run(async () => {
             const current = builtins(data.categories).find((x) => x.type === type)!;

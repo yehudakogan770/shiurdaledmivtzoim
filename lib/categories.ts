@@ -73,6 +73,21 @@ export function orderedMivtzoim(builtinList: Builtin[], shared: PersonalCategory
   return all.sort((x, y) => x.pos - y.pos).map((x) => x.item);
 }
 
+/**
+ * Columns for reports (Excel, totals): every mivtza, including hidden ones, so their
+ * history is never lost. Hidden ones only appear when they have entries in `rows`.
+ */
+export function reportColumns(builtinList: Builtin[], shared: PersonalCategory[], rows: Activity[]) {
+  const cols = orderedMivtzoim(builtinList, shared).map((m) => {
+    const matches = m.builtin
+      ? (a: Pick<Activity, "category_type" | "personal_category_id">) => a.category_type === m.builtin!.type
+      : (a: Pick<Activity, "category_type" | "personal_category_id">) => a.personal_category_id === m.category.id;
+    const off = m.builtin ? m.builtin.hidden || m.builtin.removed : m.category.status === "archived";
+    return { key: m.key, label: m.builtin ? m.builtin.name : m.category.name, off, matches };
+  });
+  return cols.filter((c) => !c.off || rows.some(c.matches));
+}
+
 /** The row's description marks a built-in as removed (it stays restorable). */
 export const builtinDescription = (removed: boolean) => (removed ? REMOVED : null);
 

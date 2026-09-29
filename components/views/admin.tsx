@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { ChevronDown, ChevronUp, Download, ClipboardList, Eye, EyeOff, KeyRound, Flame, Pencil, ShieldCheck, Sparkles, Trash2, Users } from "lucide-react";
 import { TefillinIcon } from "../icons";
-import { categoryName, orderedMivtzoim, type BuiltinType } from "@/lib/categories";
+import { categoryName, orderedMivtzoim, reportColumns, type BuiltinType } from "@/lib/categories";
 import { dayWithParsha, weekTitle } from "@/lib/parsha";
 import { allWeeks, currentWeek } from "@/lib/dates";
 import type { Activity, PersonalCategory, Profile } from "@/lib/types";
@@ -12,7 +12,7 @@ import { useData } from "@/lib/data";
 import { handle, isAdminIdentifier } from "@/lib/admin";
 import type { SiteSettings } from "@/lib/types";
 import { Avatar, Badge, Button, Card, CardTitle, CategoryIcon, Empty, Field, IconButton, Input, PageHeader, Select, Textarea, cx, listClass } from "../ui";
-import { sum, useCounters } from "./dashboard";
+import { sum } from "./dashboard";
 
 export function AdminView() {
   const { isAdmin } = useData();
@@ -131,8 +131,57 @@ function IconPicker({ name, value, onChange }: { name: string; value: string; on
   );
 }
 
+/** The warning before deleting a mivtza: it takes all of its history with it. */
+function DeleteMivtzaDialog({ name, entries, hidden, onHide, onDelete, onCancel }: { name: string; entries: number; hidden: boolean; onHide(): void; onDelete(): void; onCancel(): void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onCancel();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+  return (
+    <div className="fixed inset-0 z-[60] grid place-items-center bg-black/50 p-4" onClick={onCancel}>
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="delete-title"
+        aria-describedby="delete-text"
+        className="grid w-full max-w-md gap-4 rounded-[28px] bg-card p-6 shadow-pop"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-danger-soft text-danger">
+          <Trash2 size={24} aria-hidden />
+        </span>
+        <h2 id="delete-title" className="text-xl font-medium">
+          Delete {name} and all its history?
+        </h2>
+        <div id="delete-text" className="grid gap-2 text-sm">
+          <p>
+            This deletes <b className="font-medium">{name}</b> for everyone <b className="font-medium">and every {name} entry in everyone&apos;s history</b>
+            {entries > 0 ? ` (${entries} ${entries === 1 ? "entry" : "entries"})` : ""}. It will be gone from History, the totals and the Excel export.
+          </p>
+          <p className="font-medium text-danger">This can&apos;t be undone.</p>
+          {!hidden && <p className="text-muted">Only want people to stop adding it? Hide it instead: nothing is lost, and you can show it again anytime.</p>}
+        </div>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button variant="ghost" onClick={onCancel} autoFocus>
+            Cancel
+          </Button>
+          {!hidden && (
+            <Button variant="tonal" onClick={onHide}>
+              <EyeOff size={16} aria-hidden /> Hide instead
+            </Button>
+          )}
+          <Button variant="danger" onClick={onDelete}>
+            Delete everything
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SharedCategoriesCard() {
-  const { shared, builtins, actions, notify } = useData();
+  const { shared, builtins, actions, notify, data } = useData();
   const [name, setName] = useState("");
   const [icon, setIcon] = useState("auto");
   const [busy, setBusy] = useState(false);
@@ -196,12 +245,12 @@ function SharedCategoriesCard() {
   }
 
   async function remove(item: Item) {
-    await attempt(
-      () => (item.builtin ? actions.updateBuiltin(item.builtin, { removed: true }) : actions.deleteCategory(item.key)),
-      `${item.name} was removed from everyone's front page.`,
-    );
     setRemoving(null);
+    await attempt(() => actions.deleteMivtzaEverywhere(item.key), `${item.name} and its history were deleted.`);
   }
+  const removingItem = items.find((x) => x.key === removing);
+  const historyCount = (item: Item) =>
+    data.activity.filter((a) => (item.builtin ? a.category_type === item.builtin : a.personal_category_id === item.key)).length;
 
   const toggle = (item: Item, hide: boolean) =>
     attempt(() => (item.builtin ? actions.updateBuiltin(item.builtin, { hidden: hide }) : actions.archiveCategory(item.key, hide)));
@@ -244,18 +293,7 @@ function SharedCategoriesCard() {
                     </span>
                     <span className={item.hidden ? "block font-medium text-muted line-through" : "block font-medium"}>{item.name}</span>
                   </span>
-                  {removing === item.key ? (
-                    <span className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
-                      <span className="text-sm">Remove {item.name} for everyone?</span>
-                      <Button variant="danger" className="h-9 px-4" onClick={() => remove(item)}>
-                        Remove
-                      </Button>
-                      <Button variant="ghost" className="h-9 px-3" onClick={() => setRemoving(null)}>
-                        Keep
-                      </Button>
-                    </span>
-                  ) : (
-                    <>
+                  <>
                       {item.hidden ? (
                         <Button variant="ghost" className="h-9 px-3" onClick={() => toggle(item, false)}>
                           <Eye size={16} aria-hidden /> Show
@@ -268,16 +306,29 @@ function SharedCategoriesCard() {
                       <IconButton aria-label={`Edit ${item.name}`} onClick={() => setEditing({ key: item.key, name: item.name, icon: item.icon ?? "auto" })}>
                         <Pencil size={18} />
                       </IconButton>
-                      <IconButton aria-label={`Remove ${item.name}`} onClick={() => setRemoving(item.key)}>
+                      <IconButton aria-label={`Delete ${item.name}`} onClick={() => setRemoving(item.key)}>
                         <Trash2 size={18} />
                       </IconButton>
-                    </>
-                  )}
+                  </>
                 </>
               )}
             </li>
           ))}
         </ul>
+      )}
+      {removingItem && (
+        <DeleteMivtzaDialog
+          name={removingItem.name}
+          entries={historyCount(removingItem)}
+          hidden={removingItem.hidden}
+          onHide={() => {
+            setRemoving(null);
+            toggle(removingItem, true);
+            notify(`${removingItem.name} is hidden. Its history is kept.`);
+          }}
+          onDelete={() => remove(removingItem)}
+          onCancel={() => setRemoving(null)}
+        />
       )}
       {removedBuiltins.length > 0 && (
         <p className="flex flex-wrap items-center gap-2 px-6 pt-3 text-sm text-muted">
@@ -409,8 +460,7 @@ function ActivityRow({ a, showPerson }: { a: Activity; showPerson?: boolean }) {
 }
 
 function PersonDetails({ person }: { person: Profile }) {
-  const { data } = useData();
-  const counters = useCounters();
+  const { data, builtins, shared } = useData();
   const userId = person.id;
   const rows = data.activity
     .filter((a) => a.user_id === userId)
@@ -425,8 +475,8 @@ function PersonDetails({ person }: { person: Profile }) {
     ["Own categories", categories.length ? categories.join(", ") : "None"],
     ["Last active", rows[0] ? dayWithParsha(rows[0]) : "Never"],
   ];
-  // One box per mivtza on the dashboard (Tefillin, Candles and every one added for everyone).
-  const totals: [string, number][] = counters.map((c) => [c.short, sum(rows.filter(c.matches))]);
+  // One box per mivtza (hidden ones too if this person has history with them).
+  const totals: [string, number][] = reportColumns(builtins, shared, rows).map((c) => [c.label, sum(rows.filter(c.matches))]);
   return (
     <div className="mx-4 mb-4 grid gap-4 rounded-[20px] bg-paper p-4">
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
