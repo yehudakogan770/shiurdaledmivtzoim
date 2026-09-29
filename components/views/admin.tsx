@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { ChevronDown, ClipboardList, Eye, EyeOff, KeyRound, Flame, Pencil, ShieldCheck, Sparkles, Trash2, Users } from "lucide-react";
 import { TefillinIcon } from "../icons";
 import { categoryName } from "@/lib/categories";
-import { activityWeek, currentWeek } from "@/lib/dates";
 import { dayWithParsha } from "@/lib/parsha";
 import type { Activity, PersonalCategory, Profile } from "@/lib/types";
 import { iconForActivity } from "@/lib/category-icons";
@@ -12,7 +11,7 @@ import { useData } from "@/lib/data";
 import { handle, isAdminIdentifier } from "@/lib/admin";
 import type { SiteSettings } from "@/lib/types";
 import { Avatar, Badge, Button, Card, CardTitle, CategoryIcon, Empty, Field, IconButton, Input, PageHeader, Select, Textarea, cx, listClass } from "../ui";
-import { sum } from "./dashboard";
+import { sum, useCounters } from "./dashboard";
 
 export function AdminView() {
   const { isAdmin } = useData();
@@ -320,11 +319,11 @@ function ActivityRow({ a, showPerson }: { a: Activity; showPerson?: boolean }) {
 
 function PersonDetails({ person }: { person: Profile }) {
   const { data } = useData();
+  const counters = useCounters();
   const userId = person.id;
   const rows = data.activity
     .filter((a) => a.user_id === userId)
     .sort((a, b) => (b.activity_date + b.created_at).localeCompare(a.activity_date + a.created_at));
-  const thisWeek = currentWeek();
   const routes = data.routes.filter((r) => r.created_by === userId).length;
   const categories = data.categories.filter((c) => c.user_id === userId && !c.shared).map((c) => c.name);
   const facts: [string, string][] = [
@@ -335,12 +334,8 @@ function PersonDetails({ person }: { person: Profile }) {
     ["Own categories", categories.length ? categories.join(", ") : "None"],
     ["Last active", rows[0] ? dayWithParsha(rows[0]) : "Never"],
   ];
-  const totals: [string, number][] = [
-    ["Tefillin", sum(rows.filter((a) => a.category_type === "tefillin"))],
-    ["Candles", sum(rows.filter((a) => a.category_type === "shabbos_candles"))],
-    ["Other", sum(rows.filter((a) => a.category_type === "personal"))],
-    ["This week", sum(rows.filter((a) => activityWeek(a) === thisWeek))],
-  ];
+  // One box per mivtza on the dashboard (Tefillin, Candles and every one added for everyone).
+  const totals: [string, number][] = counters.map((c) => [c.short, sum(rows.filter(c.matches))]);
   return (
     <div className="mx-4 mb-4 grid gap-4 rounded-[20px] bg-paper p-4">
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
