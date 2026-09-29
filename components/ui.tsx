@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ButtonHTMLAttributes, type ComponentType, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
+import { useEffect, useRef, useState, type ButtonHTMLAttributes, type ComponentType, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { useNav } from "@/lib/nav";
 
@@ -289,6 +289,7 @@ export function Chip({ selected, onClick, children, disabled }: { selected?: boo
  */
 export function Modal({ onClose, blur, children }: { onClose(): void; blur?: boolean; children: ReactNode }) {
   const [view, setView] = useState<{ top: number; height: number } | null>(null);
+  const panel = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -310,6 +311,18 @@ export function Modal({ onClose, blur, children }: { onClose(): void; blur?: boo
     html.style.overflow = "hidden";
     html.style.overscrollBehavior = "none";
 
+    // Swipes do nothing while it's open: the page can't be dragged, bounced or zoomed.
+    // The only thing that scrolls is the pop-up itself, and only if it's taller than the screen.
+    const block = (e: Event) => {
+      const box = panel.current;
+      const inside = box && e.target instanceof Node && box.contains(e.target);
+      const scrolls = box && box.scrollHeight > box.clientHeight + 1;
+      if (e.type === "touchmove" && (e as TouchEvent).touches.length > 1) return e.preventDefault();
+      if (!(inside && scrolls) && e.cancelable) e.preventDefault();
+    };
+    document.addEventListener("touchmove", block, { passive: false });
+    document.addEventListener("wheel", block, { passive: false });
+
     // Follow the visible area (it shrinks when the phone keyboard opens).
     const vv = window.visualViewport;
     const fit = () => vv && setView({ top: vv.offsetTop, height: vv.height });
@@ -317,6 +330,8 @@ export function Modal({ onClose, blur, children }: { onClose(): void; blur?: boo
     vv?.addEventListener("resize", fit);
     vv?.addEventListener("scroll", fit);
     return () => {
+      document.removeEventListener("touchmove", block);
+      document.removeEventListener("wheel", block);
       vv?.removeEventListener("resize", fit);
       vv?.removeEventListener("scroll", fit);
       body.style.position = before.position;
@@ -337,7 +352,7 @@ export function Modal({ onClose, blur, children }: { onClose(): void; blur?: boo
       style={view ? { top: view.top, height: view.height } : undefined}
       onClick={onClose}
     >
-      <div className="grid max-h-full w-full place-items-center overflow-y-auto overscroll-contain">
+      <div ref={panel} className="grid max-h-full w-full place-items-center overflow-y-auto overscroll-contain">
         {children}
       </div>
     </div>
