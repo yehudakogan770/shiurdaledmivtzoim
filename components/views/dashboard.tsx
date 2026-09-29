@@ -215,7 +215,7 @@ function QuickLog({ week }: { week: string }) {
   async function add(c: Counter) {
     try {
       await actions.log({ ...c.log, activity_date: dateForWeek(week) });
-      notify(past ? `Added 1 ${c.title} to the week of ${weekTitle(week)}` : `Added 1 ${c.title}`);
+      notify(past ? `Added ${c.title} to the week of ${weekTitle(week)}` : `Added ${c.title}`);
     } catch (e) {
       notify((e as Error).message);
     }
@@ -226,7 +226,7 @@ function QuickLog({ week }: { week: string }) {
     if (!last) return;
     try {
       await actions.setActivityQuantity(last.id, last.quantity - 1);
-      notify(`Removed 1 ${c.title}${past ? ` from the week of ${weekTitle(week)}` : ""}`);
+      notify(`Removed ${c.title}${past ? ` from the week of ${weekTitle(week)}` : ""}`);
     } catch (e) {
       notify((e as Error).message);
     }
