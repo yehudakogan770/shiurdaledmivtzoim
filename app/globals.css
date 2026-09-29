@@ -183,10 +183,6 @@ h3 {
 .marquee-track {
   animation: marquee linear infinite;
 }
-.marquee:hover .marquee-track,
-.marquee:focus-within .marquee-track {
-  animation-play-state: paused;
-}
 @media (prefers-reduced-motion: reduce) {
   .marquee {
     overflow-x: auto;

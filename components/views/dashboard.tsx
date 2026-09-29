@@ -381,7 +381,7 @@ function EveryoneStrip({ week }: { week: string }) {
       </ul>
       <div
         aria-hidden
-        className="marquee overflow-hidden"
+        className="marquee pointer-events-none select-none overflow-hidden"
         style={{
           maskImage: "linear-gradient(to right, transparent, #000 6%, #000 94%, transparent)",
           WebkitMaskImage: "linear-gradient(to right, transparent, #000 6%, #000 94%, transparent)",
