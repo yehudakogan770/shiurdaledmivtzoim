@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ComponentType } from "react";
+import { useEffect, useRef, useState, type ComponentType } from "react";
 import { ClipboardList, Flame, Megaphone, Minus, Plus, Sparkles, Trash2 } from "lucide-react";
 import { TefillinIcon } from "../icons";
 import { useData, type LogInput } from "@/lib/data";
@@ -234,41 +234,82 @@ function QuickLog({ week }: { week: string }) {
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      {counters.map((c) => {
-        const count = sum(mine.activity.filter((a) => activityWeek(a) === week && c.matches(a)));
-        return (
-          <div
-            key={c.key}
-            className={cx("flex items-center gap-2 rounded-[28px] p-3 pr-4", c.soft)}
-            style={c.custom ? { background: `color-mix(in srgb, ${c.color} 18%, var(--card))` } : undefined}
-          >
-            <button
-              type="button"
-              onClick={() => add(c)}
-              aria-label={`Add 1 ${c.title}`}
-              className="flex min-w-0 flex-1 items-center gap-4 rounded-[22px] p-2 text-left transition hover:bg-ink/5 active:scale-[0.99] disabled:opacity-60"
+      {counters.map((c) => (
+        <QuickButton
+          key={c.key}
+          c={c}
+          count={sum(mine.activity.filter((a) => activityWeek(a) === week && c.matches(a)))}
+          hint={touch ? "Tap here to add" : "Click here to add"}
+          onAdd={() => add(c)}
+          onSubtract={() => subtract(c)}
+        />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * One quick-add button. While you tap, a small "+1, +2, +3…" shows how many you're
+ * adding right now; it clears once the button is scrolled off the screen.
+ */
+function QuickButton({ c, count, hint, onAdd, onSubtract }: { c: Counter; count: number; hint: string; onAdd(): void; onSubtract(): void }) {
+  const [adding, setAdding] = useState(0);
+  const box = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = box.current;
+    if (!el || adding === 0 || typeof IntersectionObserver === "undefined") return;
+    const seen = new IntersectionObserver(([e]) => !e.isIntersecting && setAdding(0));
+    seen.observe(el);
+    return () => seen.disconnect();
+  }, [adding === 0]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <div
+      ref={box}
+      className={cx("flex items-center gap-2 rounded-[28px] p-3 pr-4", c.soft)}
+      style={c.custom ? { background: `color-mix(in srgb, ${c.color} 18%, var(--card))` } : undefined}
+    >
+      <button
+        type="button"
+        onClick={() => {
+          setAdding((n) => n + 1);
+          onAdd();
+        }}
+        aria-label={`Add 1 ${c.title}`}
+        className="flex min-w-0 flex-1 items-center gap-4 rounded-[22px] p-2 text-left transition hover:bg-ink/5 active:scale-[0.99] disabled:opacity-60"
+      >
+        <span className={cx("relative grid h-14 w-14 shrink-0 place-items-center rounded-2xl", c.chip)} style={c.custom ? { background: c.color } : undefined}>
+          <c.icon size={26} />
+          {adding > 0 && (
+            <span
+              key={adding}
+              aria-live="polite"
+              aria-label={`Adding ${adding}`}
+              className="tally-pop tabular absolute -top-2 -right-2 grid h-7 min-w-7 place-items-center rounded-full bg-ink px-1.5 text-sm font-semibold text-paper shadow-card"
             >
-              <span className={cx("grid h-14 w-14 shrink-0 place-items-center rounded-2xl", c.chip)} style={c.custom ? { background: c.color } : undefined}>
-                <c.icon size={26} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-xl font-medium">{c.title}</span>
-                <span className="block truncate text-sm opacity-80">{touch ? "Tap here to add" : "Click here to add"}</span>
-              </span>
-            </button>
-            <button
-              type="button"
-              disabled={count === 0}
-              onClick={() => subtract(c)}
-              aria-label={`Remove 1 ${c.title}`}
-              title={`Remove 1 ${c.title}`}
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-card/70 text-ink transition hover:bg-card disabled:opacity-30"
-            >
-              <Minus size={20} />
-            </button>
-          </div>
-        );
-      })}
+              +{adding}
+            </span>
+          )}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-xl font-medium">{c.title}</span>
+          <span className="block truncate text-sm opacity-80">{hint}</span>
+        </span>
+      </button>
+      <button
+        type="button"
+        disabled={count === 0}
+        onClick={() => {
+          setAdding((n) => Math.max(0, n - 1));
+          onSubtract();
+        }}
+        aria-label={`Remove 1 ${c.title}`}
+        title={`Remove 1 ${c.title}`}
+        className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-danger-soft text-danger transition hover:brightness-95 disabled:opacity-30"
+      >
+        <Minus size={20} strokeWidth={2.5} />
+      </button>
     </div>
   );
 }

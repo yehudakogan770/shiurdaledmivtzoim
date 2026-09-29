@@ -188,3 +188,19 @@ h3 {
     overflow-x: auto;
   }
 }
+
+/* The little "+3" on a quick-add button: pops a bit each time it goes up. */
+@keyframes tally-pop {
+  0% {
+    transform: scale(0.6);
+  }
+  60% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.tally-pop {
+  animation: tally-pop 220ms ease-out;
+}
