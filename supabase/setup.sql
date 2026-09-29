@@ -384,7 +384,7 @@ create table if not exists site_settings (
   id integer primary key default 1 check (id = 1),
   site_name text not null default 'Shiur Daled Mivtzoim',
   tagline text not null default '',
-  welcome text not null default 'Start tracking Tefillin, Shabbos candles and every other Mivtza.',
+  welcome text not null default 'Track your Mivtzoim, your routes and the people you visit, all in one place.',
   announcement text not null default '',
   updated_at timestamptz not null default now(),
   updated_by uuid references profiles(id) on delete set null

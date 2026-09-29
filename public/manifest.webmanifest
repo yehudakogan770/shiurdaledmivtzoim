@@ -1,7 +1,7 @@
 {
   "name": "Shiur Daled Mivtzoim",
   "short_name": "SD Mivtzoim",
-  "description": "Track tefillin, Shabbos candles and every other mivtza.",
+  "description": "Track your Mivtzoim, your routes and the people you visit, all in one place.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

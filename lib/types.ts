@@ -118,6 +118,6 @@ export interface SiteSettings {
 export const DEFAULT_SETTINGS: SiteSettings = {
   site_name: "Shiur Daled Mivtzoim",
   tagline: "",
-  welcome: "Start tracking Tefillin, Shabbos candles and every other Mivtza.",
+  welcome: "Track your Mivtzoim, your routes and the people you visit, all in one place.",
   announcement: "",
 };
