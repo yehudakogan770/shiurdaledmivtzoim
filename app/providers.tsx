@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, type ReactNode } from "react";
+import { Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import NextLink from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
@@ -35,6 +35,24 @@ function NextNav({ children }: { children: ReactNode }) {
 
 export function Providers({ children }: { children: ReactNode }) {
   useEffect(registerServiceWorker, []);
+  // Other websites can't show this site inside theirs: they only get a link to open it here.
+  const [framed, setFramed] = useState(false);
+  useEffect(() => {
+    try {
+      setFramed(window.top !== window.self);
+    } catch {
+      setFramed(true);
+    }
+  }, []);
+  if (framed) {
+    return (
+      <div style={{ display: "grid", placeItems: "center", minHeight: "100vh", fontFamily: "sans-serif" }}>
+        <a href={window.location.href} target="_top" rel="noopener" style={{ color: "#106a7a", fontSize: 18 }}>
+          Open Shiur Daled Mivtzoim
+        </a>
+      </div>
+    );
+  }
   return (
     <Suspense fallback={null}>
       <NextNav>
