@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { Pencil, Plus, X } from "lucide-react";
+import { useEffect, useState, type FormEvent } from "react";
+import { KeyRound, Pencil, Plus, X } from "lucide-react";
 import { handle } from "@/lib/admin";
 import { useData } from "@/lib/data";
 import { SUGGESTED_PERSONAL } from "@/lib/categories";
@@ -128,14 +128,12 @@ export function ProfileView() {
 /** The person's account: route name and Chavrusas, plus how they sign in (username, email, password). */
 function AccountCard() {
   const { me, backend, mine, auth, notify } = useData();
-  const [open, setOpen] = useState<null | "details" | "username" | "email" | "password">(null);
+  const [open, setOpen] = useState<null | "details" | "username" | "email">(null);
+  const [passwordOpen, setPasswordOpen] = useState(false);
   const [name, setName] = useState("");
   const [partners, setPartners] = useState<string[]>([""]);
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
-  const [current, setCurrent] = useState("");
-  const [pw, setPw] = useState("");
-  const [pw2, setPw2] = useState("");
   const [busy, setBusy] = useState(false);
   const editable = backend?.kind !== "claude";
 
@@ -144,9 +142,6 @@ function AccountCard() {
     setPartners(me?.partners?.length ? [...me.partners] : [""]);
     setUsername(me?.username ?? "");
     setEmail(me?.email ?? "");
-    setCurrent("");
-    setPw("");
-    setPw2("");
     setOpen(which);
   }
 
@@ -176,12 +171,6 @@ function AccountCard() {
       return run(async () => {
         const { needsConfirmation } = await auth.changeEmail(email);
         return needsConfirmation ? `We sent a link to ${email.trim()}. Open it to finish changing your email. (Check Spam too.)` : "Email changed.";
-      });
-    if (open === "password")
-      return run(async () => {
-        if (pw !== pw2) throw new Error("The two new passwords don't match.");
-        await auth.changePassword(current, pw);
-        return "Password changed.";
       });
   };
 
@@ -280,22 +269,12 @@ function AccountCard() {
                 ) : (
                   row("Email", me?.email || "—", "email")
                 )}
-                {open === "password" ? (
-                  <form onSubmit={submit} className="grid gap-3 py-3">
-                    <Field label="Current password" htmlFor="profile-current">
-                      <Input id="profile-current" type="password" required autoFocus autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} />
-                    </Field>
-                    <Field label="New password" htmlFor="profile-pw" hint="At least 6 characters.">
-                      <Input id="profile-pw" type="password" required minLength={6} autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} />
-                    </Field>
-                    <Field label="Type the new password again" htmlFor="profile-pw2">
-                      <Input id="profile-pw2" type="password" required minLength={6} autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} />
-                    </Field>
-                    {buttons}
-                  </form>
-                ) : (
-                  row("Password", "••••••••", "password")
-                )}
+                <div className="flex items-center gap-3 py-3">
+                  <p className="min-w-0 flex-1 font-medium">Password</p>
+                  <Button variant="ghost" className="h-9 shrink-0 px-3" onClick={() => setPasswordOpen(true)} aria-label="Change password">
+                    <Pencil size={16} aria-hidden /> Change
+                  </Button>
+                </div>
               </>
             )}
           </div>
@@ -311,6 +290,7 @@ function AccountCard() {
           </div>
         </div>
         <p className="text-sm text-muted">{backend?.storageLabel}</p>
+        {passwordOpen && <ChangePasswordDialog onClose={() => setPasswordOpen(false)} />}
         {backend?.hasAuth && (
           <Button variant="secondary" className="justify-self-start" onClick={() => auth.signOut()}>
             Sign out
@@ -318,5 +298,97 @@ function AccountCard() {
         )}
       </div>
     </Card>
+  );
+}
+
+/**
+ * Changing the password happens in a pop-up, in two steps: first the current
+ * password (checked before going on), then the new password typed twice.
+ */
+function ChangePasswordDialog({ onClose }: { onClose(): void }) {
+  const { auth, notify } = useData();
+  const [step, setStep] = useState<"current" | "new">("current");
+  const [current, setCurrent] = useState("");
+  const [pw, setPw] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setError("");
+    setBusy(true);
+    try {
+      if (step === "current") {
+        await auth.verifyPassword(current);
+        setStep("new");
+      } else {
+        if (pw.length < 6) throw new Error("Use at least 6 characters.");
+        if (pw !== pw2) throw new Error("The two new passwords don't match.");
+        await auth.changePassword(current, pw);
+        notify("Password changed.");
+        onClose();
+      }
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] grid place-items-center bg-black/40 p-4 backdrop-blur-sm" onClick={onClose}>
+      <form
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="pw-title"
+        onSubmit={submit}
+        onClick={(e) => e.stopPropagation()}
+        className="grid w-full max-w-sm gap-4 rounded-[28px] bg-card p-6 shadow-pop"
+      >
+        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-accent-soft text-accent-on-soft">
+          <KeyRound size={22} aria-hidden />
+        </span>
+        <div>
+          <h2 id="pw-title" className="text-xl font-medium">
+            Change password
+          </h2>
+          <p className="text-sm text-muted">{step === "current" ? "Step 1 of 2: enter your current password." : "Step 2 of 2: choose your new password."}</p>
+        </div>
+        {step === "current" ? (
+          <Field label="Current password" htmlFor="pw-current">
+            <Input id="pw-current" type="password" required autoFocus autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} />
+          </Field>
+        ) : (
+          <>
+            <Field label="New password" htmlFor="pw-new" hint="At least 6 characters.">
+              <Input id="pw-new" type="password" required autoFocus minLength={6} autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} />
+            </Field>
+            <Field label="Type the new password again" htmlFor="pw-new2">
+              <Input id="pw-new2" type="password" required minLength={6} autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} />
+            </Field>
+          </>
+        )}
+        {error && (
+          <p role="alert" className="rounded-2xl bg-danger-soft px-4 py-3 text-sm text-danger">
+            {error}
+          </p>
+        )}
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={busy}>
+            {busy ? "Checking…" : step === "current" ? "Continue" : "Save new password"}
+          </Button>
+        </div>
+      </form>
+    </div>
   );
 }
