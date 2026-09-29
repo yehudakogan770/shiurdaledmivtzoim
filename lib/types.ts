@@ -75,6 +75,8 @@ export interface PersonalCategory {
   status: "active" | "archived";
   /** Set by an admin: the category is offered to everyone. */
   shared?: boolean;
+  /** Where an admin placed it on the front page (lower first). */
+  position?: number | null;
   created_at: string;
 }
 

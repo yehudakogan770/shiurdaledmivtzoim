@@ -107,6 +107,8 @@ interface DataContextValue {
     updateCategory(id: string, name: string, description: string): Promise<void>;
     /** Admins: rename, hide or remove Tefillin or Shabbos Candles for everyone. */
     updateBuiltin(type: BuiltinType, patch: { name?: string; hidden?: boolean; removed?: boolean }): Promise<void>;
+    /** Admins: the new front-page order, as mivtza keys (built-in type or category id). */
+    reorderMivtzoim(keys: string[]): Promise<void>;
     saveSettings(settings: SiteSettings): Promise<void>;
     setRole(userId: string, role: "user" | "admin"): Promise<void>;
     adminSetPassword(userId: string, password: string): Promise<void>;
@@ -424,6 +426,34 @@ export function DataProvider({ children }: { children: ReactNode }) {
             if (current.row) await b.update("personal_categories", current.row.id, { name, status, description });
             else await b.insert("personal_categories", { user_id: uid(), name, description, icon: builtinIcon(type), status, shared: true });
           }),
+        reorderMivtzoim: async (keys) => {
+          const list = builtins(data.categories);
+          const rowId = (key: string) => list.find((x) => x.type === key)?.row?.id ?? key;
+          // Once Tefillin and Candles have their settings rows, moves show instantly and save in the background.
+          if (list.every((x) => x.row)) {
+            const changed = keys.map((key, position) => ({ id: rowId(key), position })).filter(({ id, position }) => data.categories.find((c) => c.id === id)?.position !== position);
+            setData((d) => ({ ...d, categories: d.categories.map((c) => ({ ...c, position: changed.find((x) => x.id === c.id)?.position ?? c.position })) }));
+            for (const { id, position } of changed) saveLater(() => b.update("personal_categories", id, { position }));
+            return;
+          }
+          return run(async () => {
+            const list = builtins(data.categories);
+            for (const [position, key] of keys.entries()) {
+              const bi = list.find((x) => x.type === key);
+              if (bi) {
+                if (bi.row) {
+                  if (bi.row.position !== position) await b.update("personal_categories", bi.row.id, { position });
+                } else {
+                  await b.insert("personal_categories", { user_id: uid(), name: bi.name, description: null, icon: builtinIcon(bi.type), status: "active", shared: true, position });
+                }
+              } else if (data.categories.find((c) => c.id === key)?.position !== position) {
+                await b.update("personal_categories", key, { position });
+              }
+            }
+          }).catch((e: Error) => {
+            throw new Error(e.message.includes("position") ? "Run the latest database update (007) in Supabase first." : e.message);
+          });
+        },
         updateCategory: (id, name, description) =>
           run(async () => {
             if (!name.trim()) throw new Error("Give it a name.");

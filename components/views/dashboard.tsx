@@ -10,7 +10,7 @@ import { categoryName } from "@/lib/categories";
 import { activityMoment, activityWeek, addDays, allWeeks, currentWeek, formatDay, formatShort, hebrewDate, longDate, recentWeeks, today, weekLabel } from "@/lib/dates";
 import { InstallBanner } from "../install-app";
 import type { CommunityRow } from "@/lib/backend";
-import type { BuiltinType } from "@/lib/categories";
+import { orderedMivtzoim, type BuiltinType } from "@/lib/categories";
 import { parshaName, parshaOfWeek, weekTitle } from "@/lib/parsha";
 import type { Activity } from "@/lib/types";
 import { Card, CardTitle, CategoryIcon, Empty, IconButton, PageHeader, Select, Stat, cx, listClass } from "../ui";
@@ -73,12 +73,14 @@ export function useCounters(): Counter[] {
       log: { category_type: "shabbos_candles", quantity: 1 },
     },
   };
-  return [
-    // Tefillin and Candles, unless an admin hid or removed them (with their name, if renamed).
-    ...builtins.filter((b) => !b.hidden && !b.removed).map((b) => ({ ...standard[b.type], title: b.name, short: b.short })),
-    ...shared
-      .filter((c) => c.status === "active")
-      .map((c, i) => ({
+  const colorOf = new Map([...shared].sort((x, y) => x.created_at.localeCompare(y.created_at)).map((c, i) => [c.id, EXTRA_COLORS[i % EXTRA_COLORS.length]]));
+  // Same order as the admin set; hidden or removed ones are left off.
+  return orderedMivtzoim(builtins, shared).flatMap((m): Counter[] => {
+    if (m.builtin) return m.builtin.hidden || m.builtin.removed ? [] : [{ ...standard[m.builtin.type], title: m.builtin.name, short: m.builtin.short }];
+    const c = m.category;
+    if (c.status !== "active") return [];
+    return [
+      {
         key: c.id,
         title: c.name,
         short: c.name,
@@ -87,12 +89,13 @@ export function useCounters(): Counter[] {
         tone: "sage" as const,
         soft: "text-ink",
         chip: "text-white",
-        color: EXTRA_COLORS[i % EXTRA_COLORS.length],
+        color: colorOf.get(c.id)!,
         custom: true,
         matches: (a: Activity) => a.category_type === "personal" && a.personal_category_id === c.id,
         log: { category_type: "personal" as const, personal_category_id: c.id, quantity: 1 },
-      })),
-  ];
+      },
+    ];
+  });
 }
 
 export function DashboardView() {

@@ -580,3 +580,9 @@ $$;
 
 revoke all on function public.community_activity(date, date) from public, anon;
 grant execute on function public.community_activity(date, date) to authenticated;
+
+-- ============================================================
+-- supabase/migrations/007_mivtza_order.sql
+-- ============================================================
+-- The order of the mivtzoim on everyone's front page, set by an admin.
+alter table personal_categories add column if not exists position integer;

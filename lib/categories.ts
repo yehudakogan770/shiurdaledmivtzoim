@@ -35,11 +35,12 @@ export interface Builtin {
   short: string;
   hidden: boolean;
   removed: boolean;
+  position: number;
   row: PersonalCategory | null;
 }
 
 export function builtins(categories: PersonalCategory[]): Builtin[] {
-  return BUILTIN_TYPES.map((type) => {
+  return BUILTIN_TYPES.map((type, i) => {
     const row =
       categories
         .filter((c) => c.shared && c.icon === builtinIcon(type))
@@ -52,9 +53,24 @@ export function builtins(categories: PersonalCategory[]): Builtin[] {
       short: name === std.label ? std.short : name,
       hidden: row?.status === "archived",
       removed: row?.description === REMOVED,
+      // Until an admin reorders, Tefillin and Candles come first.
+      position: row?.position ?? i - 100,
       row,
     };
   });
+}
+
+/** One mivtza on the front page: a built-in one or one an admin added. */
+export type Mivtza = { key: string; builtin: Builtin; category?: undefined } | { key: string; builtin?: undefined; category: PersonalCategory };
+
+/** Built-in and added mivtzoim together, in the order an admin set (new ones go last). */
+export function orderedMivtzoim(builtinList: Builtin[], shared: PersonalCategory[]): Mivtza[] {
+  const added = [...shared].sort((x, y) => x.created_at.localeCompare(y.created_at));
+  const all = [
+    ...builtinList.map((b) => ({ item: { key: b.type, builtin: b } as Mivtza, pos: b.position })),
+    ...added.map((c, i) => ({ item: { key: c.id, category: c } as Mivtza, pos: c.position ?? 1000 + i })),
+  ];
+  return all.sort((x, y) => x.pos - y.pos).map((x) => x.item);
 }
 
 /** The row's description marks a built-in as removed (it stays restorable). */

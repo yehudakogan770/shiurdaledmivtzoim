@@ -9,6 +9,7 @@ import { iconForName } from "@/lib/category-icons";
 import { useNav } from "@/lib/nav";
 import { activityWeek, today } from "@/lib/dates";
 import { weekTitle } from "@/lib/parsha";
+import { orderedMivtzoim } from "@/lib/categories";
 import type { CategoryType } from "@/lib/types";
 import { Button, Card, CardTitle, Field, Input, PageHeader, Select, cx } from "../ui";
 
@@ -26,16 +27,17 @@ export function LogView() {
 
   const choices: Choice[] = useMemo(
     () => [
-      ...builtins
-        .filter((b) => !b.hidden && !b.removed)
-        .map((b) => ({
-          key: b.type,
-          type: b.type,
-          personalId: null,
-          label: b.name,
-          hint: b.type === "tefillin" ? "People who put on tefillin" : "Women and girls who received candles",
-        })),
-      ...[...shared, ...mine.categories]
+      // The front-page mivtzoim in the admin's order, then the person's own categories.
+      ...orderedMivtzoim(builtins, shared).flatMap((m): Choice[] => {
+        if (m.builtin) {
+          const b = m.builtin;
+          if (b.hidden || b.removed) return [];
+          return [{ key: b.type, type: b.type, personalId: null, label: b.name, hint: b.type === "tefillin" ? "People who put on tefillin" : "Women and girls who received candles" }];
+        }
+        const c = m.category;
+        return c.status === "active" ? [{ key: c.id, type: "personal", personalId: c.id, label: c.name, hint: "For everyone", icon: iconForName(c.name) }] : [];
+      }),
+      ...mine.categories
         .filter((c) => c.status === "active")
         .map((c) => ({ key: c.id, type: "personal" as const, personalId: c.id, label: c.name, hint: c.description || "Your own category", icon: iconForName(c.name) })),
     ],

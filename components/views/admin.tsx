@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { ChevronDown, ClipboardList, Eye, EyeOff, KeyRound, Flame, Pencil, ShieldCheck, Sparkles, Trash2, Users } from "lucide-react";
+import { ChevronDown, ChevronUp, ClipboardList, Eye, EyeOff, KeyRound, Flame, Pencil, ShieldCheck, Sparkles, Trash2, Users } from "lucide-react";
 import { TefillinIcon } from "../icons";
-import { categoryName, type BuiltinType } from "@/lib/categories";
+import { categoryName, orderedMivtzoim, type BuiltinType } from "@/lib/categories";
 import { dayWithParsha } from "@/lib/parsha";
 import type { Activity, PersonalCategory, Profile } from "@/lib/types";
 import { iconForActivity } from "@/lib/category-icons";
@@ -115,10 +115,22 @@ function SharedCategoriesCard() {
 
   // Tefillin and Candles first, then the ones added here; all work the same way.
   type Item = { key: string; name: string; hidden: boolean; builtin?: BuiltinType };
-  const items: Item[] = [
-    ...builtins.filter((b) => !b.removed).map((b) => ({ key: b.type, name: b.name, hidden: b.hidden, builtin: b.type })),
-    ...shared.map((c) => ({ key: c.id, name: c.name, hidden: c.status === "archived" })),
-  ];
+  const items: Item[] = orderedMivtzoim(builtins, shared).flatMap((m): Item[] =>
+    m.builtin
+      ? m.builtin.removed
+        ? []
+        : [{ key: m.key, name: m.builtin.name, hidden: m.builtin.hidden, builtin: m.builtin.type }]
+      : [{ key: m.key, name: m.category.name, hidden: m.category.status === "archived" }],
+  );
+
+  /** Move one up or down; the front page follows this order. */
+  function move(index: number, by: -1 | 1) {
+    const keys = items.map((x) => x.key);
+    const to = index + by;
+    if (to < 0 || to >= keys.length) return;
+    [keys[index], keys[to]] = [keys[to], keys[index]];
+    attempt(() => actions.reorderMivtzoim(keys));
+  }
   const removedBuiltins = builtins.filter((b) => b.removed);
 
   async function attempt(work: () => Promise<void>, message?: string) {
@@ -154,10 +166,10 @@ function SharedCategoriesCard() {
 
   return (
     <Card>
-      <CardTitle sub="Each one gets its own counter and quick-add button on everyone's front page">Mivtzoim for everyone</CardTitle>
+      <CardTitle sub="Each one gets its own counter and quick-add button on everyone's front page, in this order. Use the arrows to move them.">Mivtzoim for everyone</CardTitle>
       {items.length > 0 && (
         <ul className={listClass}>
-          {items.map((item) => (
+          {items.map((item, index) => (
             <li key={item.key} className="flex flex-wrap items-center gap-2 px-6 py-3">
               {editing?.key === item.key ? (
                 <form onSubmit={(e) => saveEdit(e, item)} className="grid w-full gap-3 py-1">
@@ -175,6 +187,14 @@ function SharedCategoriesCard() {
                 </form>
               ) : (
                 <>
+                  <span className="-ml-3 flex flex-col">
+                    <IconButton aria-label={`Move ${item.name} up`} disabled={index === 0} onClick={() => move(index, -1)} className="h-7 w-9 disabled:opacity-25">
+                      <ChevronUp size={18} />
+                    </IconButton>
+                    <IconButton aria-label={`Move ${item.name} down`} disabled={index === items.length - 1} onClick={() => move(index, 1)} className="h-7 w-9 disabled:opacity-25">
+                      <ChevronDown size={18} />
+                    </IconButton>
+                  </span>
                   <span className="min-w-0 flex-1">
                     <span className={item.hidden ? "block font-medium text-muted line-through" : "block font-medium"}>{item.name}</span>
                   </span>
