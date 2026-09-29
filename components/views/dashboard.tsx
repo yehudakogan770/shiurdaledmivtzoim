@@ -366,7 +366,7 @@ function EveryoneStrip({ week }: { week: string }) {
   const rows = useEveryoneRows(week);
   const items = counters.map((c) => ({ c, total: sum(rows.filter(c.matches)) }));
   // Repeat the list so one copy is wider than the screen, then show it twice for a seamless loop.
-  const copy = Array.from({ length: Math.max(2, Math.ceil(8 / items.length)) }, () => items).flat();
+  const copy = Array.from({ length: Math.max(2, Math.ceil(16 / items.length)) }, () => items).flat();
   const title = week === currentWeek() ? "Everyone this week" : `Everyone · ${parshaOfWeek(week).english}`;
 
   return (

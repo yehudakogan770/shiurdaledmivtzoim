@@ -249,7 +249,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </span>
         </div>
         <main className="px-4 pt-2 pb-16 sm:px-6 lg:px-8 lg:pt-4 lg:pb-12">
-          <div className="mx-auto max-w-6xl">{body}</div>
+          <div className="w-full">{body}</div>
         </main>
       </div>
       <Snackbar message={toast} />
