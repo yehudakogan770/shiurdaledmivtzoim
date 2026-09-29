@@ -1,18 +1,4 @@
--- Shiur Daled Mivtzoim database setup: PART 7 of 11. Run the parts in order.
-create or replace function public.handle_new_user()
-returns trigger language plpgsql security definer set search_path = public as $$
-begin
-  insert into profiles (id, name, username, role)
-  values (
-    new.id,
-    coalesce(new.raw_user_meta_data->>'name', new.raw_user_meta_data->>'username', split_part(new.email, '@', 1)),
-    coalesce(new.raw_user_meta_data->>'username', new.email),
-    case when lower(new.email) in ('sdmivtzoim87@gmail.com') then 'admin' else 'user' end
-  )
-  on conflict (id) do nothing;
-  return new;
-end $$;
-
+-- Shiur Daled Mivtzoim database setup: PART 8 of 12. Run the parts in order.
 -- If the admin account already exists, promote it now.
 update profiles p set role = 'admin'
 from auth.users u
@@ -32,14 +18,20 @@ drop trigger if exists protect_profile_role on profiles;
 create trigger protect_profile_role before update on profiles
 for each row execute function public.protect_role();
 
+drop policy if exists "Admins view all profiles" on profiles;
 create policy "Admins view all profiles" on profiles for select using (public.is_admin());
+drop policy if exists "Admins update profiles" on profiles;
 create policy "Admins update profiles" on profiles for update using (public.is_admin());
 
 -- Admins see and manage everything --------------------------------------------
 
+drop policy if exists "Admins view all groups" on groups;
 create policy "Admins view all groups" on groups for select using (public.is_admin());
+drop policy if exists "Admins delete groups" on groups;
 create policy "Admins delete groups" on groups for delete using (public.is_admin());
+drop policy if exists "Admins view all memberships" on group_members;
 create policy "Admins view all memberships" on group_members for select using (public.is_admin());
+drop policy if exists "Admins view all activity" on mivtzoim_activity;
 create policy "Admins view all activity" on mivtzoim_activity for select using (public.is_admin());
 
 -- Website settings -------------------------------------------------------------

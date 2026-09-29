@@ -1,4 +1,4 @@
--- Shiur Daled Mivtzoim database setup: PART 10 of 11. Run the parts in order.
+-- Shiur Daled Mivtzoim database setup: PART 11 of 12. Run the parts in order.
 create or replace function public.admin_set_password(p_user uuid, p_password text)
 returns void language plpgsql security definer set search_path = public, extensions as $$
 begin

@@ -106,23 +106,30 @@ alter table profiles enable row level security;
 alter table personal_categories enable row level security;
 alter table mivtzoim_activity enable row level security;
 
+drop policy if exists "Users can view own profile" on profiles;
 create policy "Users can view own profile"
 on profiles for select using (auth.uid() = id);
 
+drop policy if exists "Users can update own profile" on profiles;
 create policy "Users can update own profile"
 on profiles for update using (auth.uid() = id);
 
+drop policy if exists "Users manage own personal categories" on personal_categories;
 create policy "Users manage own personal categories"
 on personal_categories for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+drop policy if exists "Users view own activity" on mivtzoim_activity;
 create policy "Users view own activity"
 on mivtzoim_activity for select using (auth.uid() = user_id);
 
+drop policy if exists "Users create own activity" on mivtzoim_activity;
 create policy "Users create own activity"
 on mivtzoim_activity for insert with check (auth.uid() = user_id);
 
+drop policy if exists "Users update own activity" on mivtzoim_activity;
 create policy "Users update own activity"
 on mivtzoim_activity for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
+drop policy if exists "Users delete own activity" on mivtzoim_activity;
 create policy "Users delete own activity"
 on mivtzoim_activity for delete using (auth.uid() = user_id);

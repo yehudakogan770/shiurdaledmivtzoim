@@ -1,4 +1,4 @@
--- Shiur Daled Mivtzoim database setup: PART 9 of 11. Run the parts in order.
+-- Shiur Daled Mivtzoim database setup: PART 10 of 12. Run the parts in order.
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin

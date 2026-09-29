@@ -1,14 +1,17 @@
--- Shiur Daled Mivtzoim database setup: PART 8 of 11. Run the parts in order.
+-- Shiur Daled Mivtzoim database setup: PART 9 of 12. Run the parts in order.
 insert into site_settings (id) values (1) on conflict (id) do nothing;
 
 alter table site_settings enable row level security;
+drop policy if exists "Everyone reads site settings" on site_settings;
 create policy "Everyone reads site settings" on site_settings for select using (true);
+drop policy if exists "Admins edit site settings" on site_settings;
 create policy "Admins edit site settings" on site_settings for update using (public.is_admin()) with check (public.is_admin());
 
 -- Categories an admin shares with everyone ---------------------------------------
 
 alter table personal_categories add column if not exists shared boolean not null default false;
 
+drop policy if exists "Everyone signed in sees shared categories" on personal_categories;
 create policy "Everyone signed in sees shared categories" on personal_categories for select
 using (shared and auth.uid() is not null);
 
@@ -27,9 +30,13 @@ for each row execute function public.protect_shared_category();
 
 -- Admins see everything people do ------------------------------------------------
 
+drop policy if exists "Admins view all routes" on routes;
 create policy "Admins view all routes" on routes for select using (public.is_admin());
+drop policy if exists "Admins view all locations" on locations;
 create policy "Admins view all locations" on locations for select using (public.is_admin());
+drop policy if exists "Admins view all route stops" on route_locations;
 create policy "Admins view all route stops" on route_locations for select using (public.is_admin());
+drop policy if exists "Admins view all categories" on personal_categories;
 create policy "Admins view all categories" on personal_categories for select using (public.is_admin());
 
 -- ============================================================

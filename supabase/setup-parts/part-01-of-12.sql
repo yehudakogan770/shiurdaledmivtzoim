@@ -1,4 +1,4 @@
--- Shiur Daled Mivtzoim database setup: PART 1 of 11. Run the parts in order.
+-- Shiur Daled Mivtzoim database setup: PART 1 of 12. Run the parts in order.
 -- Shiur Daled Mivtzoim: complete database setup.
 -- Paste this whole file into Supabase → SQL Editor → New query, then click Run.
 -- It is the files in supabase/migrations/ joined in order.

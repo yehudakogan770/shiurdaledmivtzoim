@@ -42,14 +42,20 @@ drop trigger if exists protect_profile_role on profiles;
 create trigger protect_profile_role before update on profiles
 for each row execute function public.protect_role();
 
+drop policy if exists "Admins view all profiles" on profiles;
 create policy "Admins view all profiles" on profiles for select using (public.is_admin());
+drop policy if exists "Admins update profiles" on profiles;
 create policy "Admins update profiles" on profiles for update using (public.is_admin());
 
 -- Admins see and manage everything --------------------------------------------
 
+drop policy if exists "Admins view all groups" on groups;
 create policy "Admins view all groups" on groups for select using (public.is_admin());
+drop policy if exists "Admins delete groups" on groups;
 create policy "Admins delete groups" on groups for delete using (public.is_admin());
+drop policy if exists "Admins view all memberships" on group_members;
 create policy "Admins view all memberships" on group_members for select using (public.is_admin());
+drop policy if exists "Admins view all activity" on mivtzoim_activity;
 create policy "Admins view all activity" on mivtzoim_activity for select using (public.is_admin());
 
 -- Website settings -------------------------------------------------------------
@@ -66,13 +72,16 @@ create table if not exists site_settings (
 insert into site_settings (id) values (1) on conflict (id) do nothing;
 
 alter table site_settings enable row level security;
+drop policy if exists "Everyone reads site settings" on site_settings;
 create policy "Everyone reads site settings" on site_settings for select using (true);
+drop policy if exists "Admins edit site settings" on site_settings;
 create policy "Admins edit site settings" on site_settings for update using (public.is_admin()) with check (public.is_admin());
 
 -- Categories an admin shares with everyone ---------------------------------------
 
 alter table personal_categories add column if not exists shared boolean not null default false;
 
+drop policy if exists "Everyone signed in sees shared categories" on personal_categories;
 create policy "Everyone signed in sees shared categories" on personal_categories for select
 using (shared and auth.uid() is not null);
 
@@ -91,7 +100,11 @@ for each row execute function public.protect_shared_category();
 
 -- Admins see everything people do ------------------------------------------------
 
+drop policy if exists "Admins view all routes" on routes;
 create policy "Admins view all routes" on routes for select using (public.is_admin());
+drop policy if exists "Admins view all locations" on locations;
 create policy "Admins view all locations" on locations for select using (public.is_admin());
+drop policy if exists "Admins view all route stops" on route_locations;
 create policy "Admins view all route stops" on route_locations for select using (public.is_admin());
+drop policy if exists "Admins view all categories" on personal_categories;
 create policy "Admins view all categories" on personal_categories for select using (public.is_admin());

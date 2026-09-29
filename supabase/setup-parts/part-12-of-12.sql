@@ -1,4 +1,4 @@
--- Shiur Daled Mivtzoim database setup: PART 11 of 11. Run the parts in order.
+-- Shiur Daled Mivtzoim database setup: PART 12 of 12. Run the parts in order.
 revoke all on function public.admin_update_person(uuid, text, text, text, text[]) from public, anon;
 grant execute on function public.admin_update_person(uuid, text, text, text, text[]) to authenticated;
 

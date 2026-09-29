@@ -1,4 +1,6 @@
--- Shiur Daled Mivtzoim database setup: PART 4 of 11. Run the parts in order.
+-- Shiur Daled Mivtzoim database setup: PART 4 of 12. Run the parts in order.
+update groups set join_code = upper(substr(md5(random()::text), 1, 6)) where join_code is null;
+alter table groups alter column join_code set not null;
 alter table groups alter column join_code set default upper(substr(md5(random()::text), 1, 6));
 create unique index if not exists idx_groups_join_code on groups(join_code);
 
@@ -43,15 +45,3 @@ returns boolean language sql stable security definer set search_path = public as
     where r.id = rid and (r.created_by = auth.uid() or (r.group_id is not null and public.is_group_member(r.group_id)))
   );
 $$;
-
--- Join a group by its code. Returns the group id.
-create or replace function public.join_group(code text)
-returns uuid language plpgsql security definer set search_path = public as $$
-declare gid uuid;
-begin
-  select id into gid from groups where join_code = upper(trim(code));
-  if gid is null then raise exception 'No group has that code'; end if;
-  insert into group_members (group_id, user_id, member_role)
-  values (gid, auth.uid(), 'member') on conflict (group_id, user_id) do nothing;
-  return gid;
-end $$;

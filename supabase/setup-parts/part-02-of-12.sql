@@ -1,4 +1,4 @@
--- Shiur Daled Mivtzoim database setup: PART 2 of 11. Run the parts in order.
+-- Shiur Daled Mivtzoim database setup: PART 2 of 12. Run the parts in order.
 create table if not exists locations (
   id uuid primary key default uuid_generate_v4(),
   name text not null,
