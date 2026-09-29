@@ -354,22 +354,9 @@ function SharedCategoriesCard() {
 }
 
 function PeopleCard() {
-  const { me, people, data, actions, notify } = useData();
-  const [pending, setPending] = useState<string | null>(null);
+  const { me, people, data } = useData();
   const [open, setOpen] = useState<string | null>(null);
   const rows = [...people].sort((a, b) => (a.role === b.role ? a.name.localeCompare(b.name) : a.role === "admin" ? -1 : 1));
-
-  async function change(userId: string, role: "user" | "admin") {
-    setPending(userId);
-    try {
-      await actions.setRole(userId, role);
-      notify(role === "admin" ? "They're now an admin." : "Admin access removed.");
-    } catch (err) {
-      notify((err as Error).message);
-    } finally {
-      setPending(null);
-    }
-  }
 
   return (
     <Card>
@@ -377,7 +364,6 @@ function PeopleCard() {
       <ul className={listClass}>
         {rows.map((p) => {
           const total = sum(data.activity.filter((a) => a.user_id === p.id));
-          const locked = p.id === me?.id || isAdminIdentifier(p.username);
           const expanded = open === p.id;
           return (
             <li key={p.id}>
@@ -404,16 +390,6 @@ function PeopleCard() {
               </span>
               <ChevronDown size={18} aria-hidden className={cx("shrink-0 text-muted transition-transform", expanded && "rotate-180")} />
               </button>
-              {!locked &&
-                (p.role === "admin" ? (
-                  <Button variant="secondary" className="h-9 px-4" disabled={pending !== null} onClick={() => change(p.id, "user")}>
-                    Remove admin
-                  </Button>
-                ) : (
-                  <Button variant="tonal" className="h-9 px-4" disabled={pending !== null} onClick={() => change(p.id, "admin")}>
-                    Make admin
-                  </Button>
-                ))}
             </div>
             {expanded && <PersonDetails person={p} />}
             </li>
@@ -493,6 +469,7 @@ function PersonDetails({ person }: { person: Profile }) {
       <div className="flex flex-wrap gap-2">
         <EditPerson person={person} />
         <SetPassword person={person} />
+        <AdminRole person={person} />
         <DeletePerson person={person} />
       </div>
       <div className="overflow-hidden rounded-2xl bg-card">
@@ -743,6 +720,91 @@ function EditPerson({ person }: { person: Profile }) {
         </Button>
       </div>
     </form>
+  );
+}
+
+/**
+ * Make someone an admin (or take it away). Only from inside their account, and only
+ * after the admin types their own password to confirm.
+ */
+function AdminRole({ person }: { person: Profile }) {
+  const { me } = useData();
+  const [asking, setAsking] = useState(false);
+  // You can't change your own role, and the built-in admin account always stays admin.
+  if (person.id === me?.id || isAdminIdentifier(person.username)) return null;
+  const making = person.role !== "admin";
+  return (
+    <>
+      <Button variant={making ? "tonal" : "secondary"} className="h-9 px-4" onClick={() => setAsking(true)}>
+        <ShieldCheck size={16} aria-hidden /> {making ? "Make admin" : "Remove admin"}
+      </Button>
+      {asking && <AdminRoleDialog person={person} making={making} onClose={() => setAsking(false)} />}
+    </>
+  );
+}
+
+function AdminRoleDialog({ person, making, onClose }: { person: Profile; making: boolean; onClose(): void }) {
+  const { auth, actions, notify } = useData();
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function confirm(e: FormEvent) {
+    e.preventDefault();
+    setError("");
+    setBusy(true);
+    try {
+      await auth.verifyPassword(password);
+      await actions.setRole(person.id, making ? "admin" : "user");
+      notify(making ? `${person.name} is now an admin.` : `${person.name} is no longer an admin.`);
+      onClose();
+    } catch (err) {
+      setError((err as Error).message);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal onClose={onClose} blur>
+      <form
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="role-title"
+        onSubmit={confirm}
+        onClick={(e) => e.stopPropagation()}
+        className="grid w-full max-w-sm gap-4 rounded-[28px] bg-card p-6 shadow-pop"
+      >
+        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-accent-soft text-accent-on-soft">
+          <ShieldCheck size={22} aria-hidden />
+        </span>
+        <div className="grid gap-1">
+          <h2 id="role-title" className="text-xl font-medium">
+            {making ? `Make ${person.name} an admin?` : `Remove ${person.name} as admin?`}
+          </h2>
+          <p className="text-sm text-muted">
+            {making
+              ? "Admins can see everyone's accounts and entries, change passwords, delete accounts and change the site's settings."
+              : "They'll go back to a regular account and lose access to the Admin page."}
+          </p>
+        </div>
+        <Field label="Your password" htmlFor="role-password" hint="Type the password of the admin account you're signed in with to confirm.">
+          <Input id="role-password" type="password" required autoFocus autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+        </Field>
+        {error && (
+          <p role="alert" className="rounded-2xl bg-danger-soft px-4 py-3 text-sm text-danger">
+            {error}
+          </p>
+        )}
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" variant={making ? "primary" : "danger"} disabled={busy}>
+            {busy ? "Checking…" : making ? "Make admin" : "Remove admin"}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 
