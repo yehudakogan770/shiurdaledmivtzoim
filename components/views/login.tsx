@@ -7,7 +7,7 @@ import { currentWeek, hebrewDate } from "@/lib/dates";
 import { parshaOfWeek } from "@/lib/parsha";
 import { ADMIN_EMAILS } from "@/lib/admin";
 import { LogoMark } from "../brand";
-import { Button, Field, IconButton, Input } from "../ui";
+import { Button, Field, IconButton, Input, cx } from "../ui";
 
 type Mode = "signin" | "signup" | "forgot" | "reset";
 
@@ -56,7 +56,7 @@ export function LoginView({ initialMode = "signin" }: { initialMode?: Mode }) {
         });
         if (needsConfirmation) {
           go("signin");
-          setMessage({ kind: "info", text: `Almost done. We sent a confirmation link to ${email.trim()}. Open it, then sign in with your username and password.` });
+          setMessage({ kind: "info", text: `Almost done. We sent a confirmation link to ${email.trim()}. Open it, then sign in with your username and password.\n\nDon't see the email? Check your Spam or Promotions folder.` });
         }
       } else if (mode === "signin") {
         await auth.signIn(username, password);
@@ -206,7 +206,7 @@ export function LoginView({ initialMode = "signin" }: { initialMode?: Mode }) {
           )}
 
           {message && (
-            <p className={message.kind === "error" ? "rounded-2xl bg-danger-soft px-4 py-3 text-sm text-danger" : "rounded-2xl bg-sage-soft px-4 py-3 text-sm text-sage-on-soft"}>
+            <p className={cx("whitespace-pre-line", message.kind === "error" ? "rounded-2xl bg-danger-soft px-4 py-3 text-sm text-danger" : "rounded-2xl bg-sage-soft px-4 py-3 text-sm text-sage-on-soft")}>
               {message.text}
             </p>
           )}

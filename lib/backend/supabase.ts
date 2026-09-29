@@ -50,7 +50,7 @@ export function createSupabaseBackend(url: string, key: string): Backend {
       if (!email) throw new Error("That username and password don't match.");
       const { error } = await sb.auth.signInWithPassword({ email, password });
       if (!error) return;
-      if (error.message.includes("not confirmed")) throw new Error("Confirm your email first: open the link we sent you, then sign in.");
+      if (error.message.includes("not confirmed")) throw new Error("Confirm your email first: open the link we sent you, then sign in. Don't see it? Check your Spam or Promotions folder.");
       throw new Error(error.message.includes("Invalid login") ? "That username and password don't match." : error.message);
     },
     async signUp({ name, partners, username: rawUsername, email: rawEmail, password }) {
