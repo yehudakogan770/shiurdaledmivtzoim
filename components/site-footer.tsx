@@ -34,8 +34,8 @@ export function SiteFooter({ className }: { className?: string }) {
             <HandHeart size={22} aria-hidden />
           </span>
           <div>
-            <h2 className="text-lg font-medium">Partner in the mivtzoim</h2>
-            <p className="text-sm text-muted">Your participation helps make the mivtzoim possible: tefillin, Shabbos candles and more.</p>
+            <h2 className="text-lg font-medium">Partner in the Mivtzoim</h2>
+            <p className="text-sm text-muted">Your participation helps make the Mivtzoim possible.</p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">

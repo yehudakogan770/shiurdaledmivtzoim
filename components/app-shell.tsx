@@ -230,7 +230,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     body = (
       <div className="mx-auto max-w-md py-20 text-center">
         <p className="text-2xl">Sign in to Claude to continue</p>
-        <p className="mt-2 text-muted">This page needs to know who you are so it can save your mivtzoim.</p>
+        <p className="mt-2 text-muted">This page needs to know who you are so it can save your Mivtzoim.</p>
       </div>
     );
   } else {

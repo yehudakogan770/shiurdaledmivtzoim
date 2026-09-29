@@ -104,7 +104,7 @@ export function LoginView({ initialMode = "signin" }: { initialMode?: Mode }) {
                 <Input id="login-name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Mendel Cohen" autoComplete="name" />
               </Field>
               <div className="grid gap-1.5">
-                <p className="px-1 text-sm font-medium text-muted">Mivtzoim chavrusas (partners)</p>
+                <p className="px-1 text-sm font-medium text-muted">Mivtzoim Chavrusas (partners)</p>
                 {partners.map((p, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <Input
@@ -112,10 +112,10 @@ export function LoginView({ initialMode = "signin" }: { initialMode?: Mode }) {
                       aria-label={`Chavrusa ${i + 1}`}
                       value={p}
                       onChange={(e) => setPartners(partners.map((x, j) => (j === i ? e.target.value : x)))}
-                      placeholder={i === 0 ? "Yossi Levi" : "Another chavrusa"}
+                      placeholder={i === 0 ? "Yossi Levi" : "Another Chavrusa"}
                     />
                     {partners.length > 1 && (
-                      <IconButton aria-label={`Remove chavrusa ${i + 1}`} onClick={() => setPartners(partners.filter((_, j) => j !== i))}>
+                      <IconButton aria-label={`Remove Chavrusa ${i + 1}`} onClick={() => setPartners(partners.filter((_, j) => j !== i))}>
                         <X size={18} />
                       </IconButton>
                     )}

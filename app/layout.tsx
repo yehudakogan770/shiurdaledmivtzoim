@@ -6,7 +6,7 @@ const base = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
 export const metadata: Metadata = {
   title: "Shiur Daled Mivtzoim",
-  description: "Track tefillin, Shabbos candles and every other mivtza.",
+  description: "Track Tefillin, Shabbos candles and every other Mivtza.",
   manifest: `${base}/manifest.webmanifest`,
   icons: { apple: `${base}/apple-touch-icon.png` },
   // Opens full screen, like an app, when added to an iPhone home screen.

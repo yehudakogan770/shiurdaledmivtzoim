@@ -1,7 +1,7 @@
 import type { Activity, PersonalCategory } from "./types";
 
 export const STANDARD = {
-  tefillin: { label: "Tefillin", unit: "people put on tefillin", short: "Tefillin" },
+  tefillin: { label: "Tefillin", unit: "people put on Tefillin", short: "Tefillin" },
   shabbos_candles: { label: "Shabbos Candles", unit: "women and girls lit candles", short: "Candles" },
 } as const;
 

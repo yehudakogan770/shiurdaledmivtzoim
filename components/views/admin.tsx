@@ -307,7 +307,7 @@ function PeopleCard() {
               </span>
               <span className="tabular text-right">
                 <span className="block text-xl">{total}</span>
-                <span className="block text-xs text-muted">mivtzoim</span>
+                <span className="block text-xs text-muted">Mivtzoim</span>
               </span>
               <ChevronDown size={18} aria-hidden className={cx("shrink-0 text-muted transition-transform", expanded && "rotate-180")} />
               </button>
@@ -436,7 +436,7 @@ function ActivityCard() {
 
   return (
     <Card>
-      <CardTitle sub={`${rows.length} ${rows.length === 1 ? "entry" : "entries"} · ${sum(rows)} mivtzoim`}>All activity</CardTitle>
+      <CardTitle sub={`${rows.length} ${rows.length === 1 ? "entry" : "entries"} · ${sum(rows)} Mivtzoim`}>All activity</CardTitle>
       <div className="grid gap-3 px-6 pb-3 sm:grid-cols-2">
         <Field label="Person" htmlFor="admin-person">
           <Select id="admin-person" value={person} onChange={(e) => { setPerson(e.target.value); setLimit(30); }}>
@@ -450,7 +450,7 @@ function ActivityCard() {
         </Field>
         <Field label="Mivtza" htmlFor="admin-kind">
           <Select id="admin-kind" value={kind} onChange={(e) => { setKind(e.target.value); setLimit(30); }}>
-            <option value="all">All mivtzoim</option>
+            <option value="all">All Mivtzoim</option>
             {builtins.map((b) => (
               <option key={b.type} value={b.type}>
                 {b.name}
@@ -576,7 +576,7 @@ function DeletePerson({ person }: { person: Profile }) {
   return (
     <div role="alert" className="grid w-full gap-3 rounded-2xl bg-card p-4">
       <p className="text-sm">
-        Delete {person.name}&apos;s account? Their entries, routes and own mivtzoim are deleted too, and they can&apos;t sign in anymore. This can&apos;t be undone.
+        Delete {person.name}&apos;s account? Their entries, routes and own Mivtzoim are deleted too, and they can&apos;t sign in anymore. This can&apos;t be undone.
       </p>
       <div className="flex gap-2">
         <Button variant="danger" disabled={busy} className="h-9 px-4" onClick={remove}>

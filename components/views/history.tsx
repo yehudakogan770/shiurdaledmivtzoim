@@ -38,14 +38,14 @@ export function HistoryView() {
     <div className="grid grid-cols-1 gap-6">
       <PageHeader
         title="History"
-        subtitle={`${sum(rows)} mivtzoim across ${rows.length} entries`}
+        subtitle={`${sum(rows)} Mivtzoim across ${rows.length} entries`}
         action={
           <div className="w-52">
             <label htmlFor="history-filter" className="sr-only">
               Show
             </label>
             <Select id="history-filter" value={filter} onChange={(e) => setFilter(e.target.value)}>
-              <option value="all">All mivtzoim</option>
+              <option value="all">All Mivtzoim</option>
               {builtins.map((b) => (
                 <option key={b.type} value={b.type}>
                   {b.name}
@@ -82,7 +82,7 @@ export function HistoryView() {
               </span>
               <span className="text-right">
                 <span className="tabular block text-2xl">{sum(list)}</span>
-                <span className="block text-xs text-muted">mivtzoim</span>
+                <span className="block text-xs text-muted">Mivtzoim</span>
               </span>
               <ChevronDown size={20} aria-hidden className="shrink-0 text-muted transition-transform group-open:rotate-180" />
             </summary>

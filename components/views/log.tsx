@@ -32,7 +32,7 @@ export function LogView() {
         if (m.builtin) {
           const b = m.builtin;
           if (b.hidden || b.removed) return [];
-          return [{ key: b.type, type: b.type, personalId: null, label: b.name, hint: b.type === "tefillin" ? "People who put on tefillin" : "Women and girls who received candles" }];
+          return [{ key: b.type, type: b.type, personalId: null, label: b.name, hint: b.type === "tefillin" ? "People who put on Tefillin" : "Women and girls who received candles" }];
         }
         const c = m.category;
         return c.status === "active" ? [{ key: c.id, type: "personal", personalId: c.id, label: c.name, hint: "For everyone", icon: iconForName(c.name) }] : [];
@@ -77,7 +77,7 @@ export function LogView() {
   async function submit(e: FormEvent) {
     e.preventDefault();
     const toLog = selected.filter((c) => (items[c.key]?.quantity || 0) > 0);
-    if (toLog.length === 0) return notify("Tap at least one mivtza and enter how many.");
+    if (toLog.length === 0) return notify("Tap at least one Mivtza and enter how many.");
     setBusy(true);
     try {
       for (const c of toLog) {
@@ -103,7 +103,7 @@ export function LogView() {
 
   return (
     <div className="grid grid-cols-1 gap-6">
-      <PageHeader title="Log mivtzoim" subtitle="Tap each mivtza you did, fill in how many, then log them all at once." />
+      <PageHeader title="Log Mivtzoim" subtitle="Tap each Mivtza you did, fill in how many, then log them all at once." />
 
       <form onSubmit={submit} className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_22rem]">
         <div className="grid min-w-0 content-start gap-3">
@@ -224,7 +224,7 @@ export function LogView() {
             {busy
               ? "Saving…"
               : selected.length === 0
-                ? "Tap a mivtza to start"
+                ? "Tap a Mivtza to start"
                 : `Log ${selected.length === 1 ? `${totalCount} ${selected[0].label}` : `all ${selected.length} (${totalCount} total)`}`}
           </Button>
         </div>

@@ -58,7 +58,7 @@ export function ProfileView() {
 
   return (
     <div className="grid grid-cols-1 gap-6">
-      <PageHeader title="Profile" subtitle="Your account and the mivtzoim you track." />
+      <PageHeader title="Profile" subtitle="Your account and the Mivtzoim you track." />
 
       <div className="grid gap-3 lg:grid-cols-2">
         <Card>
@@ -72,7 +72,7 @@ export function ProfileView() {
                   <Input id="profile-name" required value={name} onChange={(e) => setName(e.target.value)} />
                 </Field>
                 <div className="grid gap-1.5">
-                  <p className="px-1 text-sm font-medium text-muted">Mivtzoim chavrusas (partners)</p>
+                  <p className="px-1 text-sm font-medium text-muted">Mivtzoim Chavrusas (partners)</p>
                   {partners.map((p, i) => (
                     <div key={i} className="flex items-center gap-2">
                       <Input
@@ -83,7 +83,7 @@ export function ProfileView() {
                         placeholder="Chavrusa's name"
                       />
                       {partners.length > 1 && (
-                        <IconButton aria-label={`Remove chavrusa ${i + 1}`} onClick={() => setPartners(partners.filter((_, j) => j !== i))}>
+                        <IconButton aria-label={`Remove Chavrusa ${i + 1}`} onClick={() => setPartners(partners.filter((_, j) => j !== i))}>
                           <X size={18} />
                         </IconButton>
                       )}
@@ -91,7 +91,7 @@ export function ProfileView() {
                   ))}
                   {partners.length < 5 && (
                     <Button variant="ghost" className="h-9 justify-self-start px-3" onClick={() => setPartners([...partners, ""])}>
-                      <Plus size={16} aria-hidden /> Add another chavrusa
+                      <Plus size={16} aria-hidden /> Add another Chavrusa
                     </Button>
                   )}
                 </div>
@@ -119,7 +119,7 @@ export function ProfileView() {
             <div className="grid grid-cols-2 gap-3 rounded-2xl bg-paper p-4 text-center">
               <div>
                 <p className="tabular text-2xl font-medium">{sum(mine.activity)}</p>
-                <p className="text-xs text-muted">mivtzoim</p>
+                <p className="text-xs text-muted">Mivtzoim</p>
               </div>
               <div>
                 <p className="tabular text-2xl font-medium">{mine.routes.length}</p>
@@ -139,7 +139,7 @@ export function ProfileView() {
           <CardTitle>My categories</CardTitle>
           <div className="grid gap-5 px-6 pb-6">
             <p className="text-sm text-muted">
-              The mivtzoim on the front page are always there. Add any other mivtza you do and it appears on the Log page.
+              The Mivtzoim on the front page are always there. Add any other Mivtza you do and it appears on the Log page.
             </p>
             {active.length > 0 && (
               <ul className="divide-y divide-line/60 overflow-hidden rounded-2xl bg-paper">
@@ -158,7 +158,7 @@ export function ProfileView() {
             )}
             {suggestions.length > 0 && (
               <div>
-                <p className="mb-2 text-sm font-medium text-muted">From the ten mivtzoim</p>
+                <p className="mb-2 text-sm font-medium text-muted">From the ten Mivtzoim</p>
                 <div className="flex flex-wrap gap-2">
                   {suggestions.map((s) => (
                     <button

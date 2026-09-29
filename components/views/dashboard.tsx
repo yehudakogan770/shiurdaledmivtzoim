@@ -52,7 +52,7 @@ export function useCounters(): Counter[] {
   const standard: Record<BuiltinType, Omit<Counter, "title" | "short">> = {
     tefillin: {
       key: "tefillin",
-      text: "Someone just put on tefillin",
+      text: "Someone just put on Tefillin",
       icon: TefillinIcon,
       tone: "accent",
       soft: "bg-accent-soft text-accent-on-soft",
@@ -297,7 +297,7 @@ function WeekEntries({ week, rows, counters }: { week: string; rows: Activity[];
       </CardTitle>
       {rows.length === 0 ? (
         <Empty title="Nothing logged this week" icon={ClipboardList}>
-          Tap a mivtza above to add one.
+          Tap a Mivtza above to add one.
         </Empty>
       ) : (
         <ul className={listClass}>

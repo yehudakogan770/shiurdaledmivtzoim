@@ -20,7 +20,7 @@ export function RoutesView() {
     <div className="grid grid-cols-1 gap-6">
       <PageHeader
         title="Routes"
-        subtitle="Your regular mivtzoim stops, in order. Check them off as you go."
+        subtitle="Your regular Mivtzoim stops, in order. Check them off as you go."
         action={
           <ButtonLink href="/routes/new">
             <Plus size={16} aria-hidden /> New route

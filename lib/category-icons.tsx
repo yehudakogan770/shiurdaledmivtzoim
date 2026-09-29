@@ -5,11 +5,12 @@ import type { Activity, PersonalCategory } from "./types";
 
 type Icon = ComponentType<{ size?: number; className?: string }>;
 
-/** Icons for mivtzoim added by name: challah gets a braided challah, scrolls and l'chaims get a scroll. */
+/** Icons for mivtzoim added by name: challah gets a challah roll; scrolls, l'chaims and pamphlets get a scroll. */
 export function iconForName(name: string | null | undefined): Icon {
   const n = (name ?? "").toLowerCase().replace(/[^a-z]/g, "");
   if (n.includes("challa")) return ChallahIcon;
-  if (n.includes("scroll") || n.includes("lchaim") || n.includes("lechaim") || n.includes("lchayim") || n.includes("lechayim")) return ScrollText;
+  const scroll = ["scroll", "lchaim", "lechaim", "lchayim", "lechayim", "pamphlet", "brochure", "booklet"];
+  if (scroll.some((w) => n.includes(w))) return ScrollText;
   return Sparkles;
 }
 
