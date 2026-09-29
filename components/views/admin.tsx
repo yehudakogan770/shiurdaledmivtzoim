@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { ChevronDown, ChevronUp, Download, ClipboardList, Eye, EyeOff, KeyRound, Flame, Pencil, ShieldCheck, Sparkles, Trash2, Users } from "lucide-react";
 import { TefillinIcon } from "../icons";
 import { categoryName, orderedMivtzoim, reportColumns, type BuiltinType } from "@/lib/categories";
@@ -10,7 +10,6 @@ import type { Activity, PersonalCategory, Profile } from "@/lib/types";
 import { ICON_CHOICES, iconForActivity, iconForCategory, iconForName } from "@/lib/category-icons";
 import { useData } from "@/lib/data";
 import { handle, isAdminIdentifier } from "@/lib/admin";
-import type { SiteSettings } from "@/lib/types";
 import { Avatar, Badge, Button, Card, CardTitle, CategoryIcon, Empty, Field, IconButton, Input, Modal, PageHeader, Select, Textarea, cx, listClass } from "../ui";
 import { sum } from "./dashboard";
 
@@ -40,24 +39,64 @@ export function AdminView() {
 }
 
 function SiteSettingsCard() {
+  return (
+    <Card>
+      <CardTitle sub="Shown to everyone who opens the site">Website</CardTitle>
+      <div className="grid gap-5 px-6 pb-6">
+        <SettingField field="site_name" label="Site name" maxLength={40} required />
+        <SettingField field="welcome" label="Welcome text" hint="Shown on the sign-up screen." rows={2} maxLength={200} />
+        <SettingField
+          field="announcement"
+          label="Announcement"
+          hint="Shown at the top of everyone's dashboard. Leave empty to hide it."
+          rows={3}
+          maxLength={500}
+          placeholder="Mivtzoim this Friday at 2:00. Meet outside the shul."
+          empty="No announcement right now."
+        />
+      </div>
+    </Card>
+  );
+}
+
+/**
+ * One website setting, shown as plain text. It can only be typed in after tapping
+ * its pencil, so a stray tap never changes anything.
+ */
+function SettingField({
+  field,
+  label,
+  hint,
+  rows,
+  maxLength,
+  placeholder,
+  empty = "Empty",
+  required,
+}: {
+  field: "site_name" | "welcome" | "announcement";
+  label: string;
+  hint?: string;
+  rows?: number;
+  maxLength: number;
+  placeholder?: string;
+  empty?: string;
+  required?: boolean;
+}) {
   const { settings, actions, notify } = useData();
-  const [draft, setDraft] = useState<SiteSettings>(settings);
+  const [draft, setDraft] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  useEffect(() => setDraft(settings), [settings]);
-  const set = (k: keyof SiteSettings) => (e: { target: { value: string } }) => setDraft({ ...draft, [k]: e.target.value });
+  const id = `admin-${field}`;
+  const value = settings[field];
 
   async function save(e: FormEvent) {
     e.preventDefault();
-    if (!draft.site_name.trim()) return notify("The site needs a name.");
+    if (draft === null) return;
+    if (required && !draft.trim()) return notify(`The ${label.toLowerCase()} can't be empty.`);
     setBusy(true);
     try {
-      await actions.saveSettings({
-        site_name: draft.site_name.trim(),
-        tagline: "",
-        welcome: draft.welcome.trim(),
-        announcement: draft.announcement.trim(),
-      });
-      notify("Website updated.");
+      await actions.saveSettings({ ...settings, tagline: "", [field]: draft.trim() });
+      notify(`${label} saved.`);
+      setDraft(null);
     } catch (err) {
       notify((err as Error).message);
     } finally {
@@ -65,31 +104,36 @@ function SiteSettingsCard() {
     }
   }
 
-  return (
-    <Card>
-      <CardTitle sub="Shown to everyone who opens the site">Website</CardTitle>
-      <form onSubmit={save} className="grid gap-4 px-6 pb-6">
-        <Field label="Site name" htmlFor="admin-name">
-          <Input id="admin-name" value={draft.site_name} onChange={set("site_name")} maxLength={40} />
-        </Field>
-        <Field label="Welcome text" htmlFor="admin-welcome" hint="Shown on the sign-up screen.">
-          <Textarea id="admin-welcome" rows={2} value={draft.welcome} onChange={set("welcome")} maxLength={200} />
-        </Field>
-        <Field label="Announcement" htmlFor="admin-announcement" hint="Shown at the top of everyone's dashboard. Leave empty to hide it.">
-          <Textarea
-            id="admin-announcement"
-            rows={3}
-            value={draft.announcement}
-            onChange={set("announcement")}
-            maxLength={500}
-            placeholder="Mivtzoim this Friday at 2:00. Meet outside the shul."
-          />
-        </Field>
-        <Button type="submit" disabled={busy} className="justify-self-start">
-          {busy ? "Saving…" : "Save changes"}
+  if (draft === null) {
+    return (
+      <div className="grid gap-1.5">
+        <p className="text-sm font-medium text-muted">{label}</p>
+        <p className={cx("whitespace-pre-wrap break-words rounded-2xl bg-paper px-4 py-3", !value && "text-muted italic")}>{value || empty}</p>
+        {hint && <p className="px-1 text-xs text-muted">{hint}</p>}
+        <Button variant="tonal" className="h-9 justify-self-start px-4" onClick={() => setDraft(value)} aria-label={`Edit ${label.toLowerCase()}`}>
+          <Pencil size={16} aria-hidden /> Edit
         </Button>
-      </form>
-    </Card>
+      </div>
+    );
+  }
+  return (
+    <form onSubmit={save} className="grid gap-2">
+      <Field label={label} htmlFor={id} hint={hint}>
+        {rows ? (
+          <Textarea id={id} rows={rows} autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={maxLength} placeholder={placeholder} />
+        ) : (
+          <Input id={id} autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={maxLength} placeholder={placeholder} />
+        )}
+      </Field>
+      <div className="flex gap-2">
+        <Button type="submit" disabled={busy} className="h-9 px-4">
+          {busy ? "Saving…" : "Save"}
+        </Button>
+        <Button type="button" variant="ghost" className="h-9 px-3" onClick={() => setDraft(null)}>
+          Cancel
+        </Button>
+      </div>
+    </form>
   );
 }
 
