@@ -4,7 +4,7 @@ import { useEffect, useState, type ComponentType } from "react";
 import { ClipboardList, Flame, Megaphone, Minus, Plus, Sparkles, Trash2 } from "lucide-react";
 import { TefillinIcon } from "../icons";
 import { useData, type LogInput } from "@/lib/data";
-import { iconForActivity, iconForName } from "@/lib/category-icons";
+import { iconForActivity, iconForCategory } from "@/lib/category-icons";
 import { useNav } from "@/lib/nav";
 import { categoryName } from "@/lib/categories";
 import { activityMoment, activityWeek, addDays, allWeeks, currentWeek, formatDay, formatShort, hebrewDate, longDate, recentWeeks, today, weekLabel } from "@/lib/dates";
@@ -85,7 +85,7 @@ export function useCounters(): Counter[] {
         title: c.name,
         short: c.name,
         text: c.description || `Add one ${c.name}`,
-        icon: iconForName(c.name),
+        icon: iconForCategory(c),
         tone: "sage" as const,
         soft: "text-ink",
         chip: "text-white",

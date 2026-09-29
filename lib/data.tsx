@@ -101,10 +101,10 @@ interface DataContextValue {
     removeStop(stopId: string): Promise<void>;
     toggleStop(stop: RouteLocation): Promise<void>;
     resetRoute(routeId: string): Promise<void>;
-    addCategory(name: string, description?: string, shared?: boolean): Promise<void>;
+    addCategory(name: string, description?: string, shared?: boolean, icon?: string): Promise<void>;
     archiveCategory(id: string, archived: boolean): Promise<void>;
     deleteCategory(id: string): Promise<void>;
-    updateCategory(id: string, name: string, description: string): Promise<void>;
+    updateCategory(id: string, name: string, description: string, icon?: string): Promise<void>;
     /** Admins: rename, hide or remove Tefillin or Shabbos Candles for everyone. */
     updateBuiltin(type: BuiltinType, patch: { name?: string; hidden?: boolean; removed?: boolean }): Promise<void>;
     /** Admins: the new front-page order, as mivtza keys (built-in type or category id). */
@@ -398,13 +398,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
               await b.update("route_locations", s.id, { completed: false });
             }
           }),
-        addCategory: (name, description, shared) =>
+        addCategory: (name, description, shared, icon) =>
           run(async () => {
             await b.insert("personal_categories", {
               user_id: uid(),
               name: name.trim(),
               description: description?.trim() || null,
-              icon: "circle",
+              icon: icon || "auto",
               status: "active",
               ...(shared ? { shared: true } : {}),
             });
@@ -454,10 +454,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
             throw new Error(e.message.includes("position") ? "Run the latest database update (007) in Supabase first." : e.message);
           });
         },
-        updateCategory: (id, name, description) =>
+        updateCategory: (id, name, description, icon) =>
           run(async () => {
             if (!name.trim()) throw new Error("Give it a name.");
-            await b.update("personal_categories", id, { name: name.trim(), description: description.trim() || null });
+            await b.update("personal_categories", id, { name: name.trim(), description: description.trim() || null, ...(icon ? { icon } : {}) });
           }),
       },
     };

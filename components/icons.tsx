@@ -53,3 +53,30 @@ export function ChallahIcon({ size = 24, className, strokeWidth = 2 }: { size?: 
     </svg>
   );
 }
+
+/** Lulav (with hadassim and aravos) and esrog. */
+export function LulavIcon({ size = 24, className, strokeWidth = 2 }: { size?: number; className?: string; strokeWidth?: number }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className={className}
+    >
+      <path d="M8 22V7.5" />
+      <path d="M8 2.5c-1.6 2.4-1.9 5-1.1 8" />
+      <path d="M8 2.5c1.6 2.4 1.9 5 1.1 8" />
+      <path d="M8 17.5c-2.3-.3-4-1.9-4.6-4.3" />
+      <path d="M8 14c-1.9-.4-3.2-1.8-3.6-3.8" />
+      <ellipse cx="16" cy="16.4" rx="4" ry="4.9" transform="rotate(-12 16 16.4)" />
+      <path d="M15 11.6c-.1-.9.1-1.6.6-2.1" />
+    </svg>
+  );
+}

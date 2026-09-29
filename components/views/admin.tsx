@@ -6,7 +6,7 @@ import { TefillinIcon } from "../icons";
 import { categoryName, orderedMivtzoim, type BuiltinType } from "@/lib/categories";
 import { dayWithParsha } from "@/lib/parsha";
 import type { Activity, PersonalCategory, Profile } from "@/lib/types";
-import { iconForActivity } from "@/lib/category-icons";
+import { ICON_CHOICES, iconForActivity, iconForCategory, iconForName } from "@/lib/category-icons";
 import { useData } from "@/lib/data";
 import { handle, isAdminIdentifier } from "@/lib/admin";
 import type { SiteSettings } from "@/lib/types";
@@ -91,18 +91,58 @@ function SiteSettingsCard() {
   );
 }
 
+/** The picture shown for a mivtza in the admin list. */
+function ItemIcon({ item }: { item: { name: string; icon?: string; builtin?: BuiltinType } }) {
+  const Icon = item.builtin === "tefillin" ? TefillinIcon : item.builtin === "shabbos_candles" ? Flame : iconForCategory(item);
+  return <Icon size={18} />;
+}
+
+/** Choose the picture for a mivtza. "Auto" guesses from the name (for example Challah, Lulav, Pamphlet). */
+function IconPicker({ name, value, onChange }: { name: string; value: string; onChange(value: string): void }) {
+  const chosen = ICON_CHOICES.some((c) => c.id === value) ? value : "auto";
+  const Guess = iconForName(name);
+  const options = [{ id: "auto", label: "Auto (from the name)", Icon: Guess }, ...ICON_CHOICES];
+  return (
+    <fieldset className="grid gap-2">
+      <legend className="px-1 pb-2 text-sm font-medium text-muted">Icon</legend>
+      <div className="flex flex-wrap gap-2">
+        {options.map(({ id, label, Icon }) => (
+          <button
+            key={id}
+            type="button"
+            title={label}
+            aria-label={label}
+            aria-pressed={chosen === id}
+            onClick={() => onChange(id)}
+            className={cx(
+              "grid h-11 w-11 place-items-center rounded-xl border transition",
+              chosen === id ? "border-accent bg-accent text-accent-ink" : "border-line bg-card text-ink hover:bg-ink/5",
+              id === "auto" && "border-dashed",
+            )}
+          >
+            <Icon size={20} />
+          </button>
+        ))}
+      </div>
+      <p className="px-1 text-xs text-muted">{options.find((o) => o.id === chosen)?.label}</p>
+    </fieldset>
+  );
+}
+
 function SharedCategoriesCard() {
   const { shared, builtins, actions, notify } = useData();
   const [name, setName] = useState("");
+  const [icon, setIcon] = useState("auto");
   const [busy, setBusy] = useState(false);
 
   async function add(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
     try {
-      await actions.addCategory(name, "", true);
+      await actions.addCategory(name, "", true, icon);
       notify(`${name.trim()} is now on everyone's front page.`);
       setName("");
+      setIcon("auto");
     } catch (err) {
       notify((err as Error).message);
     } finally {
@@ -111,16 +151,16 @@ function SharedCategoriesCard() {
   }
 
   const [removing, setRemoving] = useState<string | null>(null);
-  const [editing, setEditing] = useState<{ key: string; name: string } | null>(null);
+  const [editing, setEditing] = useState<{ key: string; name: string; icon: string } | null>(null);
 
   // Tefillin and Candles first, then the ones added here; all work the same way.
-  type Item = { key: string; name: string; hidden: boolean; builtin?: BuiltinType };
+  type Item = { key: string; name: string; hidden: boolean; builtin?: BuiltinType; icon?: string };
   const items: Item[] = orderedMivtzoim(builtins, shared).flatMap((m): Item[] =>
     m.builtin
       ? m.builtin.removed
         ? []
         : [{ key: m.key, name: m.builtin.name, hidden: m.builtin.hidden, builtin: m.builtin.type }]
-      : [{ key: m.key, name: m.category.name, hidden: m.category.status === "archived" }],
+      : [{ key: m.key, name: m.category.name, hidden: m.category.status === "archived", icon: m.category.icon }],
   );
 
   /** Move one up or down; the front page follows this order. */
@@ -145,9 +185,9 @@ function SharedCategoriesCard() {
   async function saveEdit(e: FormEvent, item: Item) {
     e.preventDefault();
     if (!editing) return;
-    const name = editing.name;
+    const { name, icon } = editing;
     await attempt(
-      () => (item.builtin ? actions.updateBuiltin(item.builtin, { name }) : actions.updateCategory(item.key, name, "")),
+      () => (item.builtin ? actions.updateBuiltin(item.builtin, { name }) : actions.updateCategory(item.key, name, "", icon)),
       `${name.trim()} was updated for everyone.`,
     );
     setEditing(null);
@@ -176,6 +216,7 @@ function SharedCategoriesCard() {
                   <Field label="Name" htmlFor={`edit-name-${item.key}`}>
                     <Input id={`edit-name-${item.key}`} required autoFocus value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
                   </Field>
+                  {!item.builtin && <IconPicker name={editing.name} value={editing.icon} onChange={(v) => setEditing({ ...editing, icon: v })} />}
                   <span className="flex gap-2">
                     <Button type="submit" variant="tonal" className="h-9 px-4">
                       Save
@@ -195,7 +236,10 @@ function SharedCategoriesCard() {
                       <ChevronDown size={18} />
                     </IconButton>
                   </span>
-                  <span className="min-w-0 flex-1">
+                  <span className="min-w-0 flex flex-1 items-center gap-3">
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent-on-soft">
+                      <ItemIcon item={item} />
+                    </span>
                     <span className={item.hidden ? "block font-medium text-muted line-through" : "block font-medium"}>{item.name}</span>
                   </span>
                   {removing === item.key ? (
@@ -219,7 +263,7 @@ function SharedCategoriesCard() {
                           <EyeOff size={16} aria-hidden /> Hide
                         </Button>
                       )}
-                      <IconButton aria-label={`Edit ${item.name}`} onClick={() => setEditing({ key: item.key, name: item.name })}>
+                      <IconButton aria-label={`Edit ${item.name}`} onClick={() => setEditing({ key: item.key, name: item.name, icon: item.icon ?? "auto" })}>
                         <Pencil size={18} />
                       </IconButton>
                       <IconButton aria-label={`Remove ${item.name}`} onClick={() => setRemoving(item.key)}>
@@ -252,6 +296,7 @@ function SharedCategoriesCard() {
         <Field label="Name" htmlFor="shared-name">
           <Input id="shared-name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Mezuzah" />
         </Field>
+        <IconPicker name={name} value={icon} onChange={setIcon} />
         <Button type="submit" variant="tonal" disabled={busy} className="justify-self-start">
           Add for everyone
         </Button>

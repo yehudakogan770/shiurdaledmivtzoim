@@ -5,7 +5,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import { Check, Flame, Minus, Plus, Sparkles } from "lucide-react";
 import { TefillinIcon } from "../icons";
 import { useData } from "@/lib/data";
-import { iconForName } from "@/lib/category-icons";
+import { iconForCategory } from "@/lib/category-icons";
 import { useNav } from "@/lib/nav";
 import { activityWeek, today } from "@/lib/dates";
 import { weekTitle } from "@/lib/parsha";
@@ -35,11 +35,11 @@ export function LogView() {
           return [{ key: b.type, type: b.type, personalId: null, label: b.name, hint: b.type === "tefillin" ? "People who put on Tefillin" : "Women and girls who received candles" }];
         }
         const c = m.category;
-        return c.status === "active" ? [{ key: c.id, type: "personal", personalId: c.id, label: c.name, hint: "For everyone", icon: iconForName(c.name) }] : [];
+        return c.status === "active" ? [{ key: c.id, type: "personal", personalId: c.id, label: c.name, hint: "For everyone", icon: iconForCategory(c) }] : [];
       }),
       ...mine.categories
         .filter((c) => c.status === "active")
-        .map((c) => ({ key: c.id, type: "personal" as const, personalId: c.id, label: c.name, hint: c.description || "Your own category", icon: iconForName(c.name) })),
+        .map((c) => ({ key: c.id, type: "personal" as const, personalId: c.id, label: c.name, hint: c.description || "Your own category", icon: iconForCategory(c) })),
     ],
     [mine.categories, shared, builtins],
   );
