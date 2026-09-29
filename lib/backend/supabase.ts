@@ -68,7 +68,8 @@ export function createSupabaseBackend(url: string, key: string): Backend {
       return { needsConfirmation: !data.session };
     },
     async signOut() {
-      await sb.auth.signOut();
+      // Only this device. Supabase's default ("global") would sign the account out on every phone and computer.
+      await sb.auth.signOut({ scope: "local" });
     },
     async updateProfile({ name, partners }) {
       const { error } = await sb.from("profiles").update({ name, partners }).eq("id", await uid());
