@@ -8,6 +8,7 @@ import { parshaOfWeek } from "@/lib/parsha";
 import { ADMIN_EMAILS } from "@/lib/admin";
 import { LogoMark } from "../brand";
 import { Button, Field, IconButton, Input, cx } from "../ui";
+import { SiteFooter } from "../site-footer";
 
 type Mode = "signin" | "signup" | "forgot" | "reset";
 
@@ -237,6 +238,7 @@ export function LoginView({ initialMode = "signin" }: { initialMode?: Mode }) {
           {hebrewDate()} · {parshaOfWeek(currentWeek()).english}
         </span>
       </div>
+      <SiteFooter className="w-full max-w-[64rem] px-0" />
     </div>
   );
 }

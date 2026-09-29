@@ -12,6 +12,7 @@ import { useShkiah } from "@/lib/shkiah";
 import { Avatar, IconButton, cx } from "./ui";
 import { LogoMark } from "./brand";
 import { LoginView } from "./views/login";
+import { SiteFooter } from "./site-footer";
 
 const links = [
   { href: "/", label: "Dashboard", short: "Home", icon: LayoutDashboard, match: ["/", "/dashboard"] },
@@ -250,6 +251,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         <main className="px-4 pt-2 pb-16 sm:px-6 lg:px-8 lg:pt-4 lg:pb-12">
           <div className="w-full">{body}</div>
+          <SiteFooter />
         </main>
       </div>
       <Snackbar message={toast} />
