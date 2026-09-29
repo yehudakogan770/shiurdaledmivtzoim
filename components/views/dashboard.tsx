@@ -250,19 +250,26 @@ function QuickLog({ week }: { week: string }) {
 
 /**
  * One quick-add button. While you tap, a small "+1, +2, +3…" shows how many you're
- * adding right now; it clears once the button is scrolled off the screen.
+ * adding right now, and "−1, −2…" on the minus shows how many you're taking off.
+ * Both clear once the button is scrolled off the screen.
  */
 function QuickButton({ c, count, hint, onAdd, onSubtract }: { c: Counter; count: number; hint: string; onAdd(): void; onSubtract(): void }) {
   const [adding, setAdding] = useState(0);
+  const [removing, setRemoving] = useState(0);
   const box = useRef<HTMLDivElement>(null);
+  const counting = adding > 0 || removing > 0;
 
   useEffect(() => {
     const el = box.current;
-    if (!el || adding === 0 || typeof IntersectionObserver === "undefined") return;
-    const seen = new IntersectionObserver(([e]) => !e.isIntersecting && setAdding(0));
+    if (!el || !counting || typeof IntersectionObserver === "undefined") return;
+    const seen = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) return;
+      setAdding(0);
+      setRemoving(0);
+    });
     seen.observe(el);
     return () => seen.disconnect();
-  }, [adding === 0]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [counting]);
 
   return (
     <div
@@ -286,7 +293,7 @@ function QuickButton({ c, count, hint, onAdd, onSubtract }: { c: Counter; count:
               key={adding}
               aria-live="polite"
               aria-label={`Adding ${adding}`}
-              className="tally-pop tabular absolute -top-2 -right-2 grid h-7 min-w-7 place-items-center rounded-full bg-ink px-1.5 text-sm font-semibold text-paper shadow-card"
+              className="tally-pop tabular absolute -top-2 -right-2 grid h-7 min-w-7 place-items-center rounded-full bg-card px-1.5 text-sm font-bold text-sage shadow-card ring-1 ring-line"
             >
               +{adding}
             </span>
@@ -297,19 +304,31 @@ function QuickButton({ c, count, hint, onAdd, onSubtract }: { c: Counter; count:
           <span className="block truncate text-sm opacity-80">{hint}</span>
         </span>
       </button>
-      <button
-        type="button"
-        disabled={count === 0}
-        onClick={() => {
-          setAdding((n) => Math.max(0, n - 1));
-          onSubtract();
-        }}
-        aria-label={`Remove 1 ${c.title}`}
-        title={`Remove 1 ${c.title}`}
-        className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-minus text-minus-ink transition hover:brightness-95 disabled:opacity-30"
-      >
-        <Minus size={20} strokeWidth={2.5} />
-      </button>
+      <span className="relative shrink-0">
+        <button
+          type="button"
+          disabled={count === 0}
+          onClick={() => {
+            setRemoving((n) => n + 1);
+            onSubtract();
+          }}
+          aria-label={`Remove 1 ${c.title}`}
+          title={`Remove 1 ${c.title}`}
+          className="grid h-11 w-11 place-items-center rounded-full bg-minus text-minus-ink transition hover:brightness-95 disabled:opacity-30"
+        >
+          <Minus size={20} strokeWidth={2.5} />
+        </button>
+        {removing > 0 && (
+          <span
+            key={removing}
+            aria-live="polite"
+            aria-label={`Removing ${removing}`}
+            className="tally-pop tabular pointer-events-none absolute -top-3 -right-2 grid h-7 min-w-7 place-items-center rounded-full bg-card px-1.5 text-sm font-bold text-danger shadow-card ring-1 ring-line"
+          >
+            −{removing}
+          </span>
+        )}
+      </span>
     </div>
   );
 }
