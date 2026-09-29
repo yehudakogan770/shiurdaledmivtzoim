@@ -564,3 +564,19 @@ end $$;
 
 revoke all on function public.admin_delete_person(uuid) from public, anon;
 grant execute on function public.admin_delete_person(uuid) to authenticated;
+
+-- Everyone's totals for the "this week" strip on the home page. Only the date,
+-- mivtza and amount are shared (no names, notes or places).
+create or replace function public.community_activity(p_from date, p_to date)
+returns table (activity_date date, created_at timestamptz, category_type text, personal_category_id uuid, quantity integer, mine boolean)
+language sql stable security definer set search_path = public as $$
+  select a.activity_date, a.created_at, a.category_type, a.personal_category_id, a.quantity, a.user_id = auth.uid()
+  from mivtzoim_activity a
+  where auth.uid() is not null
+    and a.activity_date between p_from and p_to
+    and (a.category_type <> 'personal'
+         or exists (select 1 from personal_categories c where c.id = a.personal_category_id and c.shared))
+$$;
+
+revoke all on function public.community_activity(date, date) from public, anon;
+grant execute on function public.community_activity(date, date) to authenticated;

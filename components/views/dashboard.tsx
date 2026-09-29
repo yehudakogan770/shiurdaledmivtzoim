@@ -9,6 +9,7 @@ import { useNav } from "@/lib/nav";
 import { categoryName } from "@/lib/categories";
 import { activityMoment, activityWeek, addDays, allWeeks, currentWeek, formatDay, formatShort, hebrewDate, longDate, recentWeeks, today, weekLabel } from "@/lib/dates";
 import { InstallBanner } from "../install-app";
+import type { CommunityRow } from "@/lib/backend";
 import { parshaName, parshaOfWeek, weekTitle } from "@/lib/parsha";
 import type { Activity } from "@/lib/types";
 import { Card, CardTitle, CategoryIcon, Empty, IconButton, PageHeader, Select, Stat, cx, listClass } from "../ui";
@@ -110,6 +111,8 @@ export function DashboardView() {
       <PageHeader eyebrow={`${longDate()}${hd ? ` · ${hd}` : ""} · ${parshaOfWeek(currentWeek()).english}`} title={me?.name || "Dashboard"} />
 
       <WeekPicker week={week} onChange={setWeek} />
+
+      <EveryoneStrip week={week} />
 
       <InstallBanner />
 
@@ -321,6 +324,90 @@ function WeekEntries({ week, rows, counters }: { week: string; rows: Activity[];
         </ul>
       )}
     </Card>
+  );
+}
+
+/**
+ * Everyone's entries for a week, from every account. Admins (and the test
+ * modes) already have them all; everyone else asks the database for the
+ * anonymous totals and adds their own entries from this screen, so their own
+ * taps show up instantly.
+ */
+function useEveryoneRows(week: string): Activity[] {
+  const { backend, data, mine, isAdmin, me } = useData();
+  const [server, setServer] = useState<CommunityRow[] | null>(null);
+  const ask = backend?.kind === "supabase" && !isAdmin && !!me && !!backend.communityActivity;
+
+  useEffect(() => {
+    if (!ask || !backend?.communityActivity) return;
+    let stale = false;
+    const get = () =>
+      backend.communityActivity!(addDays(week, -1), addDays(week, 7)).then((rows) => {
+        if (!stale) setServer(rows);
+      });
+    get();
+    const onVisible = () => document.visibilityState === "visible" && get();
+    document.addEventListener("visibilitychange", onVisible);
+    const timer = setInterval(get, 60_000);
+    return () => {
+      stale = true;
+      document.removeEventListener("visibilitychange", onVisible);
+      clearInterval(timer);
+    };
+  }, [ask, backend, week]);
+
+  const rows = ask && server ? [...(server.filter((r) => !r.mine) as unknown as Activity[]), ...mine.activity] : data.activity;
+  return rows.filter((a) => activityWeek(a) === week);
+}
+
+/** Everyone's total for each mivtza this week, sliding past from right to left. */
+function EveryoneStrip({ week }: { week: string }) {
+  const counters = useCounters();
+  const rows = useEveryoneRows(week);
+  const items = counters.map((c) => ({ c, total: sum(rows.filter(c.matches)) }));
+  // Repeat the list so one copy is wider than the screen, then show it twice for a seamless loop.
+  const copy = Array.from({ length: Math.max(2, Math.ceil(8 / items.length)) }, () => items).flat();
+  const title = week === currentWeek() ? "Everyone this week" : `Everyone · ${parshaOfWeek(week).english}`;
+
+  return (
+    <section aria-label={title} className="overflow-hidden rounded-[28px] bg-card py-4">
+      <p className="px-6 pb-3 text-sm font-medium text-muted">{title}</p>
+      <ul className="sr-only">
+        {items.map(({ c, total }) => (
+          <li key={c.key}>
+            {c.title}: {total}
+          </li>
+        ))}
+      </ul>
+      <div
+        aria-hidden
+        className="marquee overflow-hidden"
+        style={{
+          maskImage: "linear-gradient(to right, transparent, #000 6%, #000 94%, transparent)",
+          WebkitMaskImage: "linear-gradient(to right, transparent, #000 6%, #000 94%, transparent)",
+        }}
+      >
+        <div className="marquee-track flex w-max" style={{ animationDuration: `${copy.length * 3}s` }}>
+          {[0, 1].map((n) => (
+            <div key={n} className="flex shrink-0 gap-3 pr-3">
+              {copy.map(({ c, total }, i) => (
+                <div
+                  key={`${c.key}-${i}`}
+                  className={cx("flex items-center gap-3 rounded-2xl py-2 pr-5 pl-2", c.soft)}
+                  style={c.custom ? { background: `color-mix(in srgb, ${c.color} 18%, var(--card))` } : undefined}
+                >
+                  <span className={cx("grid h-10 w-10 shrink-0 place-items-center rounded-xl", c.chip)} style={c.custom ? { background: c.color } : undefined}>
+                    <c.icon size={20} />
+                  </span>
+                  <span className="whitespace-nowrap font-medium">{c.title}</span>
+                  <span className="tabular text-2xl">{total}</span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 

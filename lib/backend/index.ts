@@ -48,6 +48,21 @@ export interface Backend {
   adminUpdatePerson(userId: string, patch: PersonPatch): Promise<void>;
   /** Admins only: delete an account and everything in it. */
   adminDeletePerson(userId: string): Promise<void>;
+  /**
+   * Everyone's entries between two dates, without names (for the totals strip).
+   * Only where the backend can't already see everyone's entries; null if unavailable.
+   */
+  communityActivity?(from: string, to: string): Promise<CommunityRow[] | null>;
+}
+
+export interface CommunityRow {
+  activity_date: string;
+  created_at: string;
+  category_type: "tefillin" | "shabbos_candles" | "personal";
+  personal_category_id: string | null;
+  quantity: number;
+  /** true for the signed-in person's own entries */
+  mine: boolean;
 }
 
 export interface PersonPatch {

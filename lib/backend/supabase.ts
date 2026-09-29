@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { displayName, type Profile, type TableName, type Tables } from "../types";
-import { checkEmail, checkPassword, loginKey, normalizeUsername, type Backend } from "./index";
+import { checkEmail, checkPassword, loginKey, normalizeUsername, type Backend, type CommunityRow } from "./index";
 
 /** Where email links (confirmation, password reset) send people back to. */
 function siteUrl() {
@@ -156,6 +156,10 @@ export function createSupabaseBackend(url: string, key: string): Backend {
       const { error } = await sb.rpc("admin_delete_person", { p_user: userId });
       if (error?.message.includes("admin_delete_person")) throw new Error("Run the latest setup file in Supabase first.");
       fail(error);
+    },
+    async communityActivity(from, to) {
+      const { data, error } = await sb.rpc("community_activity", { p_from: from, p_to: to });
+      return error ? null : (data as CommunityRow[]);
     },
     async listPeople() {
       const withEmail = await sb.rpc("admin_people");
