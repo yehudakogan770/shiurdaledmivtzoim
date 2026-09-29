@@ -26,7 +26,8 @@ jobs:
         run: npx next build
         env:
           STATIC_EXPORT: "1"
-          NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
+          # The site lives at the root of its own domain (sdmivtzoim.com), so no sub-path.
+          NEXT_PUBLIC_BASE_PATH: ""
           # The Supabase project that stores accounts and data. The anon key is
           # public by design; row level security in the database protects the data.
           NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL || 'https://rtmpafeqpqbmblssnyoz.supabase.co' }}
@@ -37,3 +38,5 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./out
+          # Serves the site at this address (GitHub Pages custom domain).
+          cname: sdmivtzoim.com

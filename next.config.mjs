@@ -1,6 +1,6 @@
 /**
  * STATIC_EXPORT=1 builds a plain static site into out/ (used for GitHub Pages).
- * NEXT_PUBLIC_BASE_PATH is the sub-path the site is served from, e.g. /ShiurDaledMivtoim.
+ * NEXT_PUBLIC_BASE_PATH is the sub-path the site is served from (empty on sdmivtzoim.com).
  */
 import { writeFileSync } from "node:fs";
 
