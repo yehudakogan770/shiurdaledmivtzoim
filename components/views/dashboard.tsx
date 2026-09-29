@@ -251,25 +251,61 @@ function QuickLog({ week }: { week: string }) {
 /**
  * One quick-add button. While you tap, a small "+1, +2, +3…" shows how many you're
  * adding right now, and "−1, −2…" on the minus shows how many you're taking off.
- * Both clear once the button is scrolled off the screen.
+ * Each fades away 2 seconds after the last tap, or when the button is scrolled away.
  */
+/**
+ * A tap counter that fades out 2 seconds after the last tap (each tap restarts the
+ * 2 seconds) and starts over from 1 next time.
+ */
+function useTally() {
+  const [n, setN] = useState(0);
+  const [fading, setFading] = useState(false);
+  const timers = useRef<number[]>([]);
+  const clear = () => {
+    timers.current.forEach((t) => window.clearTimeout(t));
+    timers.current = [];
+  };
+  useEffect(() => clear, []);
+  return {
+    n,
+    fading,
+    tap() {
+      clear();
+      setFading(false);
+      setN((x) => x + 1);
+      timers.current.push(
+        window.setTimeout(() => setFading(true), 2000),
+        window.setTimeout(() => {
+          setN(0);
+          setFading(false);
+        }, 2400),
+      );
+    },
+    reset() {
+      clear();
+      setN(0);
+      setFading(false);
+    },
+  };
+}
+
 function QuickButton({ c, count, hint, onAdd, onSubtract }: { c: Counter; count: number; hint: string; onAdd(): void; onSubtract(): void }) {
-  const [adding, setAdding] = useState(0);
-  const [removing, setRemoving] = useState(0);
+  const plus = useTally();
+  const minus = useTally();
   const box = useRef<HTMLDivElement>(null);
-  const counting = adding > 0 || removing > 0;
+  const counting = plus.n > 0 || minus.n > 0;
 
   useEffect(() => {
     const el = box.current;
     if (!el || !counting || typeof IntersectionObserver === "undefined") return;
     const seen = new IntersectionObserver(([e]) => {
       if (e.isIntersecting) return;
-      setAdding(0);
-      setRemoving(0);
+      plus.reset();
+      minus.reset();
     });
     seen.observe(el);
     return () => seen.disconnect();
-  }, [counting]);
+  }, [counting]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div
@@ -280,7 +316,7 @@ function QuickButton({ c, count, hint, onAdd, onSubtract }: { c: Counter; count:
       <button
         type="button"
         onClick={() => {
-          setAdding((n) => n + 1);
+          plus.tap();
           onAdd();
         }}
         aria-label={`Add 1 ${c.title}`}
@@ -288,14 +324,11 @@ function QuickButton({ c, count, hint, onAdd, onSubtract }: { c: Counter; count:
       >
         <span className={cx("relative grid h-14 w-14 shrink-0 place-items-center rounded-2xl", c.chip)} style={c.custom ? { background: c.color } : undefined}>
           <c.icon size={26} />
-          {adding > 0 && (
-            <span
-              key={adding}
-              aria-live="polite"
-              aria-label={`Adding ${adding}`}
-              className="tally-pop tabular absolute -top-2 -right-2 grid h-7 min-w-7 place-items-center rounded-full bg-card px-1.5 text-sm font-bold text-sage shadow-card ring-1 ring-line"
-            >
-              +{adding}
+          {plus.n > 0 && (
+            <span aria-live="polite" aria-label={`Adding ${plus.n}`} className={cx("absolute -top-4 -right-6 transition-opacity duration-300", plus.fading && "opacity-0")}>
+              <span key={plus.n} className="tally-pop block text-sage tabular pointer-events-none text-lg font-bold leading-none [text-shadow:0_0_4px_var(--card),0_0_2px_var(--card)]">
+                +{plus.n}
+              </span>
             </span>
           )}
         </span>
@@ -309,7 +342,7 @@ function QuickButton({ c, count, hint, onAdd, onSubtract }: { c: Counter; count:
           type="button"
           disabled={count === 0}
           onClick={() => {
-            setRemoving((n) => n + 1);
+            minus.tap();
             onSubtract();
           }}
           aria-label={`Remove 1 ${c.title}`}
@@ -318,14 +351,11 @@ function QuickButton({ c, count, hint, onAdd, onSubtract }: { c: Counter; count:
         >
           <Minus size={20} strokeWidth={2.5} />
         </button>
-        {removing > 0 && (
-          <span
-            key={removing}
-            aria-live="polite"
-            aria-label={`Removing ${removing}`}
-            className="tally-pop tabular pointer-events-none absolute -top-3 -right-2 grid h-7 min-w-7 place-items-center rounded-full bg-card px-1.5 text-sm font-bold text-danger shadow-card ring-1 ring-line"
-          >
-            −{removing}
+        {minus.n > 0 && (
+          <span aria-live="polite" aria-label={`Removing ${minus.n}`} className={cx("absolute -top-4 -right-2 transition-opacity duration-300", minus.fading && "opacity-0")}>
+            <span key={minus.n} className="tally-pop block text-danger tabular pointer-events-none text-lg font-bold leading-none [text-shadow:0_0_4px_var(--card),0_0_2px_var(--card)]">
+              −{minus.n}
+            </span>
           </span>
         )}
       </span>
