@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { ChevronDown, ChevronUp, ClipboardList, Eye, EyeOff, KeyRound, Flame, Pencil, ShieldCheck, Sparkles, Trash2, Users } from "lucide-react";
+import { ChevronDown, ChevronUp, Download, ClipboardList, Eye, EyeOff, KeyRound, Flame, Pencil, ShieldCheck, Sparkles, Trash2, Users } from "lucide-react";
 import { TefillinIcon } from "../icons";
 import { categoryName, orderedMivtzoim, type BuiltinType } from "@/lib/categories";
-import { dayWithParsha } from "@/lib/parsha";
+import { dayWithParsha, weekTitle } from "@/lib/parsha";
+import { allWeeks, currentWeek } from "@/lib/dates";
 import type { Activity, PersonalCategory, Profile } from "@/lib/types";
 import { ICON_CHOICES, iconForActivity, iconForCategory, iconForName } from "@/lib/category-icons";
 import { useData } from "@/lib/data";
@@ -32,6 +33,7 @@ export function AdminView() {
         <SharedCategoriesCard />
       </div>
       <PeopleCard />
+      <ExportCard />
       <ActivityCard />
     </div>
   );
@@ -470,6 +472,105 @@ function matchesMivtza(a: Activity, kind: string, shared: PersonalCategory[]) {
   if (kind === "all") return true;
   if (kind === "own") return a.category_type === "personal" && !shared.some((c) => c.id === a.personal_category_id);
   return a.category_type === kind || a.personal_category_id === kind;
+}
+
+/** Download everyone's Mivtzoim as an Excel file, organized by week. */
+function ExportCard() {
+  const { data, people, builtins, shared, settings, notify } = useData();
+  const weeks = allWeeks(); // newest first
+  const [mode, setMode] = useState<"this" | "all" | "choose">("this");
+  const [picked, setPicked] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
+  const selected = mode === "this" ? [currentWeek()] : mode === "all" ? weeks : weeks.filter((w) => picked.includes(w));
+
+  async function download() {
+    if (selected.length === 0) return notify("Pick at least one week.");
+    setBusy(true);
+    try {
+      const { buildWorkbook } = await import("@/lib/export");
+      const blob = await buildWorkbook({
+        weeks: selected,
+        activity: data.activity,
+        categories: data.categories,
+        builtins,
+        shared,
+        people,
+        names: data.names,
+        routes: data.routes,
+        locations: data.locations,
+        siteName: settings.site_name,
+      });
+      const range = mode === "this" ? `Week of ${currentWeek()}` : mode === "all" ? "All weeks" : selected.length === 1 ? weekTitle(selected[0]).replace(/[^\w '-]/g, "").trim() : `${selected.length} weeks`;
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `${settings.site_name} - ${range}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(link.href), 10_000);
+      notify("Excel file downloaded.");
+    } catch (err) {
+      notify(`Couldn't make the file: ${(err as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const choice = (value: typeof mode, label: string) => (
+    <label className={cx("flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2 text-sm", mode === value ? "border-accent bg-accent-soft text-accent-on-soft" : "border-line")}>
+      <input type="radio" name="export-mode" className="sr-only" checked={mode === value} onChange={() => setMode(value)} />
+      {label}
+    </label>
+  );
+
+  return (
+    <Card>
+      <CardTitle sub="A spreadsheet of everyone's Mivtzoim, organized by week. Opens in Excel, Google Sheets or Numbers.">Export to Excel</CardTitle>
+      <div className="grid gap-4 px-6 pb-6">
+        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Which weeks">
+          {choice("this", "This week")}
+          {choice("all", "All weeks")}
+          {choice("choose", "Choose weeks")}
+        </div>
+        {mode === "choose" && (
+          <div className="grid gap-2">
+            <div className="flex gap-3 text-sm">
+              <button type="button" className="font-medium text-accent hover:underline" onClick={() => setPicked(weeks)}>
+                Select all
+              </button>
+              <button type="button" className="font-medium text-accent hover:underline" onClick={() => setPicked([])}>
+                Clear
+              </button>
+            </div>
+            <ul className="grid max-h-64 gap-1 overflow-y-auto rounded-2xl border border-line p-2">
+              {weeks.map((w) => (
+                <li key={w}>
+                  <label className="flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2 hover:bg-ink/5">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-[var(--accent)]"
+                      checked={picked.includes(w)}
+                      onChange={(e) => setPicked(e.target.checked ? [...picked, w] : picked.filter((x) => x !== w))}
+                    />
+                    <span className="text-sm">
+                      {weekTitle(w)}
+                      {w === currentWeek() && <span className="ml-2 text-accent">This week</span>}
+                    </span>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <Button onClick={download} disabled={busy || selected.length === 0} className="justify-self-start">
+          <Download size={16} aria-hidden /> {busy ? "Making the file…" : `Download Excel${selected.length > 1 ? ` (${selected.length} weeks)` : ""}`}
+        </Button>
+        <p className="text-xs text-muted">
+          Inside: a Summary tab (each week&apos;s totals), a By person tab, one tab per week (who did what, plus every entry), and an All entries tab.
+        </p>
+      </div>
+    </Card>
+  );
 }
 
 function ActivityCard() {

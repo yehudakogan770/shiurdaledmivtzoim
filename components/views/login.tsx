@@ -100,8 +100,8 @@ export function LoginView({ initialMode = "signin" }: { initialMode?: Mode }) {
         <div className="grid content-start gap-5">
           {mode === "signup" && (
             <>
-              <Field label="Your name" htmlFor="login-name">
-                <Input id="login-name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Mendel Cohen" autoComplete="name" />
+              <Field label="Route name" htmlFor="login-name">
+                <Input id="login-name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="(general location)" autoComplete="off" />
               </Field>
               <div className="grid gap-1.5">
                 <p className="px-1 text-sm font-medium text-muted">Mivtzoim Chavrusas (partners)</p>
