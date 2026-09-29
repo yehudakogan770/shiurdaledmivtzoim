@@ -364,23 +364,46 @@ function useEveryoneRows(week: string): Activity[] {
   return rows.filter((a) => activityWeek(a) === week);
 }
 
-/** Everyone's total for each mivtza this week, sliding past from right to left. */
+/**
+ * Everyone's total for each mivtza this week. Two or more slide past from right
+ * to left; a single one just sits there; with nothing logged the section is hidden.
+ */
 function EveryoneStrip({ week }: { week: string }) {
   const counters = useCounters();
   const rows = useEveryoneRows(week);
   // Only mivtzoim someone actually did this week.
   const items = counters.map((c) => ({ c, total: sum(rows.filter(c.matches)) })).filter((x) => x.total > 0);
-  // Repeat the list so one copy is wider than the screen, then show it twice for a seamless loop.
-  const copy = items.length ? Array.from({ length: Math.max(2, Math.ceil(16 / items.length)) }, () => items).flat() : [];
+  if (items.length === 0) return null;
   const title = week === currentWeek() ? "Everyone this week" : `Everyone · ${parshaOfWeek(week).english}`;
 
+  const chip = ({ c, total }: (typeof items)[number], key: string) => (
+    <div
+      key={key}
+      className={cx("flex items-center gap-3 rounded-2xl py-2 pr-5 pl-2", c.soft)}
+      style={c.custom ? { background: `color-mix(in srgb, ${c.color} 18%, var(--card))` } : undefined}
+    >
+      <span className={cx("grid h-10 w-10 shrink-0 place-items-center rounded-xl", c.chip)} style={c.custom ? { background: c.color } : undefined}>
+        <c.icon size={20} />
+      </span>
+      <span className="whitespace-nowrap font-medium">{c.title}</span>
+      <span className="tabular text-2xl">{total}</span>
+    </div>
+  );
+
+  if (items.length === 1) {
+    return (
+      <section aria-label={title} className="rounded-[28px] bg-card py-4">
+        <p className="px-6 pb-3 text-sm font-medium text-muted">{title}</p>
+        <div className="flex px-6">{chip(items[0], items[0].c.key)}</div>
+      </section>
+    );
+  }
+
+  // Repeat the list so one copy is wider than the screen, then show it twice for a seamless loop.
+  const copy = Array.from({ length: Math.max(2, Math.ceil(16 / items.length)) }, () => items).flat();
   return (
     <section aria-label={title} className="overflow-hidden rounded-[28px] bg-card py-4">
       <p className="px-6 pb-3 text-sm font-medium text-muted">{title}</p>
-      {items.length === 0 ? (
-        <p className="px-6 pb-1 text-sm text-muted">Nothing logged yet. Totals show up here as soon as anyone adds Mivtzoim.</p>
-      ) : (
-      <>
       <ul className="sr-only">
         {items.map(({ c, total }) => (
           <li key={c.key}>
@@ -399,25 +422,11 @@ function EveryoneStrip({ week }: { week: string }) {
         <div className="marquee-track flex w-max" style={{ animationDuration: `${copy.length * 3}s` }}>
           {[0, 1].map((n) => (
             <div key={n} className="flex shrink-0 gap-3 pr-3">
-              {copy.map(({ c, total }, i) => (
-                <div
-                  key={`${c.key}-${i}`}
-                  className={cx("flex items-center gap-3 rounded-2xl py-2 pr-5 pl-2", c.soft)}
-                  style={c.custom ? { background: `color-mix(in srgb, ${c.color} 18%, var(--card))` } : undefined}
-                >
-                  <span className={cx("grid h-10 w-10 shrink-0 place-items-center rounded-xl", c.chip)} style={c.custom ? { background: c.color } : undefined}>
-                    <c.icon size={20} />
-                  </span>
-                  <span className="whitespace-nowrap font-medium">{c.title}</span>
-                  <span className="tabular text-2xl">{total}</span>
-                </div>
-              ))}
+              {copy.map((item, i) => chip(item, `${item.c.key}-${i}`))}
             </div>
           ))}
         </div>
       </div>
-      </>
-      )}
     </section>
   );
 }
