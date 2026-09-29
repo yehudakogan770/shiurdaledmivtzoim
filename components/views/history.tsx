@@ -5,14 +5,14 @@ import { ChevronDown, ClipboardList, Flame, Sparkles, Trash2 } from "lucide-reac
 import { TefillinIcon } from "../icons";
 import { useData } from "@/lib/data";
 import { iconForActivity } from "@/lib/category-icons";
-import { categoryName } from "@/lib/categories";
+import { categoryName, orderedMivtzoim } from "@/lib/categories";
 import { activityMoment, activityWeek, currentWeek, formatDay, weekLabel } from "@/lib/dates";
 import { parshaOfWeek } from "@/lib/parsha";
 import { Button, ButtonLink, Card, CategoryIcon, Empty, IconButton, PageHeader, Select } from "../ui";
 import { sum } from "./dashboard";
 
 export function HistoryView() {
-  const { mine, data, builtins, actions, notify } = useData();
+  const { mine, data, builtins, shared, actions, notify } = useData();
   const [filter, setFilter] = useState("all");
 
   const rows = mine.activity
@@ -46,9 +46,9 @@ export function HistoryView() {
             </label>
             <Select id="history-filter" value={filter} onChange={(e) => setFilter(e.target.value)}>
               <option value="all">All Mivtzoim</option>
-              {builtins.map((b) => (
-                <option key={b.type} value={b.type}>
-                  {b.name}
+              {orderedMivtzoim(builtins, shared).map((m) => (
+                <option key={m.key} value={m.key}>
+                  {m.builtin ? m.builtin.name : m.category.name}
                 </option>
               ))}
               {mine.categories.map((c) => (

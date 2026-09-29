@@ -420,17 +420,24 @@ function PersonDetails({ person }: { person: Profile }) {
   );
 }
 
+/** For the Mivtza filter: "all", a built-in type, a mivtza's id, or "own" (people's own categories). */
+function matchesMivtza(a: Activity, kind: string, shared: PersonalCategory[]) {
+  if (kind === "all") return true;
+  if (kind === "own") return a.category_type === "personal" && !shared.some((c) => c.id === a.personal_category_id);
+  return a.category_type === kind || a.personal_category_id === kind;
+}
+
 function ActivityCard() {
-  const { data, people, builtins } = useData();
+  const { data, people, builtins, shared } = useData();
   const [person, setPerson] = useState("all");
   const [kind, setKind] = useState("all");
   const [limit, setLimit] = useState(30);
   const rows = useMemo(
     () =>
       data.activity
-        .filter((a) => (person === "all" || a.user_id === person) && (kind === "all" || a.category_type === kind))
+        .filter((a) => (person === "all" || a.user_id === person) && matchesMivtza(a, kind, shared))
         .sort((a, b) => (b.activity_date + b.created_at).localeCompare(a.activity_date + a.created_at)),
-    [data.activity, person, kind],
+    [data.activity, person, kind, shared],
   );
   const everyone = people.length ? people : [...new Set(data.activity.map((a) => a.user_id))].map((id) => ({ id, name: data.names[id] || "Someone" }));
 
@@ -451,12 +458,12 @@ function ActivityCard() {
         <Field label="Mivtza" htmlFor="admin-kind">
           <Select id="admin-kind" value={kind} onChange={(e) => { setKind(e.target.value); setLimit(30); }}>
             <option value="all">All Mivtzoim</option>
-            {builtins.map((b) => (
-              <option key={b.type} value={b.type}>
-                {b.name}
+{orderedMivtzoim(builtins, shared).map((m) => (
+              <option key={m.key} value={m.key}>
+                {m.builtin ? m.builtin.name : m.category.name}
               </option>
             ))}
-            <option value="personal">Other</option>
+            <option value="own">People&apos;s own categories</option>
           </Select>
         </Field>
       </div>
