@@ -212,3 +212,17 @@ h3 {
 .tally-pop {
   animation: tally-pop 220ms ease-out;
 }
+
+/* The logo on the loading screen gently fades in and out. */
+@keyframes logo-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.15;
+  }
+}
+.logo-breathe {
+  animation: logo-breathe 1.6s ease-in-out infinite;
+}

@@ -199,10 +199,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   let body: ReactNode;
   if (status === "loading") {
     return (
-      <div className="grid min-h-screen place-items-center bg-paper">
-        <div className="flex flex-col items-center gap-4 text-muted">
-          <LogoMark className="h-14 w-14 animate-pulse" />
-        </div>
+      // Pinned to the visible screen so the logo sits dead center, also on phones.
+      <div className="fixed inset-0 grid place-items-center bg-paper" role="status" aria-label="Loading">
+        <LogoMark className="logo-breathe h-14 w-14" />
       </div>
     );
   } else if (status === "error") {
