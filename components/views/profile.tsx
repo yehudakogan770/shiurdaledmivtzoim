@@ -68,11 +68,11 @@ export function ProfileView() {
           <div className="grid gap-4 px-6 pb-6">
             {editing ? (
               <form onSubmit={saveName} className="grid gap-3">
-                <Field label="Your name" htmlFor="profile-name">
+                <Field label="Route name" htmlFor="profile-name">
                   <Input id="profile-name" required value={name} onChange={(e) => setName(e.target.value)} />
                 </Field>
                 <div className="grid gap-1.5">
-                  <p className="px-1 text-sm font-medium text-muted">Mivtzoim Chavrusas (partners)</p>
+                  <p className="px-1 text-sm font-medium text-muted">Chavrusas on this route</p>
                   {partners.map((p, i) => (
                     <div key={i} className="flex items-center gap-2">
                       <Input
@@ -104,7 +104,7 @@ export function ProfileView() {
               </form>
             ) : (
               <div>
-                <p className="text-sm font-medium text-muted">Name</p>
+                <p className="text-sm font-medium text-muted">Route name</p>
                 <p className="text-2xl font-medium">{me?.name}</p>
                 {me?.partners && me.partners.length > 0 && (
                   <p className="mt-1">

@@ -104,7 +104,7 @@ export function LoginView({ initialMode = "signin" }: { initialMode?: Mode }) {
                 <Input id="login-name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="(general location)" autoComplete="off" />
               </Field>
               <div className="grid gap-1.5">
-                <p className="px-1 text-sm font-medium text-muted">Mivtzoim Chavrusas (partners)</p>
+                <p className="px-1 text-sm font-medium text-muted">Chavrusas on this route</p>
                 {partners.map((p, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <Input
@@ -112,7 +112,7 @@ export function LoginView({ initialMode = "signin" }: { initialMode?: Mode }) {
                       aria-label={`Chavrusa ${i + 1}`}
                       value={p}
                       onChange={(e) => setPartners(partners.map((x, j) => (j === i ? e.target.value : x)))}
-                      placeholder={i === 0 ? "Yossi Levi" : "Another Chavrusa"}
+                      placeholder="Chavrusa's name"
                     />
                     {partners.length > 1 && (
                       <IconButton aria-label={`Remove Chavrusa ${i + 1}`} onClick={() => setPartners(partners.filter((_, j) => j !== i))}>
@@ -122,7 +122,7 @@ export function LoginView({ initialMode = "signin" }: { initialMode?: Mode }) {
                   </div>
                 ))}
                 <div className="flex items-center justify-between gap-2">
-                  <p className="px-1 text-xs text-muted">Optional. Your account will show all your names together.</p>
+                  <p className="px-1 text-xs text-muted">The name of each person who does this route.</p>
                   {partners.length < 5 && (
                     <Button variant="ghost" className="h-9 shrink-0 px-3" onClick={() => setPartners([...partners, ""])}>
                       <Plus size={16} aria-hidden /> Add another

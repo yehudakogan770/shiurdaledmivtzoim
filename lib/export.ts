@@ -39,6 +39,7 @@ export async function buildWorkbook(input: ExportInput): Promise<Blob> {
 
   const person = (id: string) => input.people.find((p) => p.id === id);
   const nameOf = (id: string) => person(id)?.name || input.names[id] || "Someone";
+  const chavrusasOf = (id: string) => (person(id)?.partners ?? []).filter(Boolean).join(", ");
   const usernameOf = (id: string) => (person(id)?.username ? `@${person(id)!.username}` : "");
   const sum = (list: Activity[]) => list.reduce((n, a) => n + a.quantity, 0);
   const counts = (list: Activity[]) => columns.map((c) => sum(list.filter(c.matches)));
@@ -80,16 +81,16 @@ export async function buildWorkbook(input: ExportInput): Promise<Blob> {
   widths(summary, [34]);
 
   // 2) By person, for all the chosen weeks together.
-  const byPerson = wb.addWorksheet("By person", { views: [{ state: "frozen", ySplit: 3 }] });
-  title(byPerson, `Totals per person · ${rangeText}`);
-  header(byPerson, ["Person", "Username", ...columns.map((c) => c.label), "Total"]);
+  const byPerson = wb.addWorksheet("By route", { views: [{ state: "frozen", ySplit: 3 }] });
+  title(byPerson, `Totals per route · ${rangeText}`);
+  header(byPerson, ["Route name", "Chavrusas", "Username", ...columns.map((c) => c.label), "Total"]);
   const ids = [...new Set(rows.map((a) => a.user_id))].sort((a, b) => nameOf(a).localeCompare(nameOf(b)));
   for (const id of ids) {
     const list = rows.filter((a) => a.user_id === id);
-    byPerson.addRow([nameOf(id), usernameOf(id), ...counts(list), sum(list)]);
+    byPerson.addRow([nameOf(id), chavrusasOf(id), usernameOf(id), ...counts(list), sum(list)]);
   }
-  bold(byPerson.addRow(["Total", "", ...counts(rows), sum(rows)]));
-  widths(byPerson, [24, 18]);
+  bold(byPerson.addRow(["Total", "", "", ...counts(rows), sum(rows)]));
+  widths(byPerson, [24, 28, 16]);
 
   // 3) One sheet per week: people's totals, then that week's entries.
   const used = new Set<string>();
@@ -100,27 +101,27 @@ export async function buildWorkbook(input: ExportInput): Promise<Blob> {
     const ws = wb.addWorksheet(name);
     const list = rows.filter((a) => activityWeek(a) === w);
     title(ws, weekTitle(w));
-    header(ws, ["Person", "Username", ...columns.map((c) => c.label), "Total"]);
+    header(ws, ["Route name", "Chavrusas", "Username", ...columns.map((c) => c.label), "Total"]);
     const weekIds = [...new Set(list.map((a) => a.user_id))].sort((a, b) => nameOf(a).localeCompare(nameOf(b)));
     for (const id of weekIds) {
       const mine = list.filter((a) => a.user_id === id);
-      ws.addRow([nameOf(id), usernameOf(id), ...counts(mine), sum(mine)]);
+      ws.addRow([nameOf(id), chavrusasOf(id), usernameOf(id), ...counts(mine), sum(mine)]);
     }
-    bold(ws.addRow(["Total", "", ...counts(list), sum(list)]));
+    bold(ws.addRow(["Total", "", "", ...counts(list), sum(list)]));
     ws.addRow([]);
     ws.addRow(["Entries"]).font = { bold: true, size: 12 };
-    header(ws, ["Date", "Person", "Mivtza", "Amount", "Route", "Place", "Notes"]);
+    header(ws, ["Date", "Route name", "Mivtza", "Amount", "Route (stops)", "Place", "Notes"]);
     for (const a of list) ws.addRow(entry(a).slice(1));
     if (list.length === 0) ws.addRow(["Nothing logged this week"]);
-    widths(ws, [24, 18]);
+    widths(ws, [24, 28, 16]);
   }
 
   // 4) Every entry in one list, easy to sort and filter in Excel.
   const all = wb.addWorksheet("All entries", { views: [{ state: "frozen", ySplit: 1 }] });
-  header(all, ["Week", "Date", "Person", "Mivtza", "Amount", "Route", "Place", "Notes", "Username"]);
-  for (const a of rows) all.addRow([...entry(a), usernameOf(a.user_id)]);
-  all.autoFilter = { from: "A1", to: "I1" };
-  widths(all, [30, 14, 22, 20, 9, 20, 22, 36, 16]);
+  header(all, ["Week", "Date", "Route name", "Mivtza", "Amount", "Route (stops)", "Place", "Notes", "Username", "Chavrusas"]);
+  for (const a of rows) all.addRow([...entry(a), usernameOf(a.user_id), chavrusasOf(a.user_id)]);
+  all.autoFilter = { from: "A1", to: "J1" };
+  widths(all, [30, 14, 22, 20, 9, 20, 22, 36, 16, 28]);
 
   function entry(a: Activity): (string | number)[] {
     return [

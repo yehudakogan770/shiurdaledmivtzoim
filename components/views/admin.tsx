@@ -616,7 +616,7 @@ function ExportCard() {
           <Download size={16} aria-hidden /> {busy ? "Making the file…" : `Download Excel${selected.length > 1 ? ` (${selected.length} weeks)` : ""}`}
         </Button>
         <p className="text-xs text-muted">
-          Inside: a Summary tab (each week&apos;s totals), a By person tab, one tab per week (who did what, plus every entry), and an All entries tab.
+          Inside: a Summary tab (each week&apos;s totals), a By route tab, one tab per week (each route's totals, plus every entry), and an All entries tab.
         </p>
       </div>
     </Card>
@@ -641,7 +641,7 @@ function ActivityCard() {
     <Card>
       <CardTitle sub={`${rows.length} ${rows.length === 1 ? "entry" : "entries"} · ${sum(rows)} Mivtzoim`}>All activity</CardTitle>
       <div className="grid gap-3 px-6 pb-3 sm:grid-cols-2">
-        <Field label="Person" htmlFor="admin-person">
+        <Field label="Route" htmlFor="admin-person">
           <Select id="admin-person" value={person} onChange={(e) => { setPerson(e.target.value); setLimit(30); }}>
             <option value="all">Everyone</option>
             {everyone.map((p) => (
@@ -726,7 +726,7 @@ function EditPerson({ person }: { person: Profile }) {
   return (
     <form onSubmit={save} className="grid w-full gap-3 rounded-2xl bg-card p-4">
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Name" htmlFor={id("name")}>
+        <Field label="Route name" htmlFor={id("name")}>
           <Input id={id("name")} required value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
         </Field>
         <Field label="Username" htmlFor={id("username")} hint="What they sign in with.">

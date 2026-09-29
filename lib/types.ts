@@ -11,8 +11,9 @@ export interface Profile {
 }
 
 /** "Mendel Cohen & Yossi Levi" */
+/** An account is named after its route; the Chavrusas' names are kept separately (never mixed in). */
 export function displayName(p: Pick<Profile, "name" | "partners">) {
-  return [p.name, ...(p.partners ?? [])].filter((n) => n && n.trim()).join(" & ");
+  return p.name?.trim() || "Route";
 }
 
 export interface SignUpInput {
