@@ -368,14 +368,19 @@ function useEveryoneRows(week: string): Activity[] {
 function EveryoneStrip({ week }: { week: string }) {
   const counters = useCounters();
   const rows = useEveryoneRows(week);
-  const items = counters.map((c) => ({ c, total: sum(rows.filter(c.matches)) }));
+  // Only mivtzoim someone actually did this week.
+  const items = counters.map((c) => ({ c, total: sum(rows.filter(c.matches)) })).filter((x) => x.total > 0);
   // Repeat the list so one copy is wider than the screen, then show it twice for a seamless loop.
-  const copy = Array.from({ length: Math.max(2, Math.ceil(16 / items.length)) }, () => items).flat();
+  const copy = items.length ? Array.from({ length: Math.max(2, Math.ceil(16 / items.length)) }, () => items).flat() : [];
   const title = week === currentWeek() ? "Everyone this week" : `Everyone · ${parshaOfWeek(week).english}`;
 
   return (
     <section aria-label={title} className="overflow-hidden rounded-[28px] bg-card py-4">
       <p className="px-6 pb-3 text-sm font-medium text-muted">{title}</p>
+      {items.length === 0 ? (
+        <p className="px-6 pb-1 text-sm text-muted">Nothing logged yet. Totals show up here as soon as anyone adds Mivtzoim.</p>
+      ) : (
+      <>
       <ul className="sr-only">
         {items.map(({ c, total }) => (
           <li key={c.key}>
@@ -411,6 +416,8 @@ function EveryoneStrip({ week }: { week: string }) {
           ))}
         </div>
       </div>
+      </>
+      )}
     </section>
   );
 }
