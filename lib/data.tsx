@@ -85,6 +85,10 @@ interface DataContextValue {
     finishRecovery(): void;
     signOut(): Promise<void>;
     updateProfile(name: string, partners: string[]): Promise<void>;
+    changeUsername(username: string): Promise<void>;
+    changeEmail(email: string): Promise<{ needsConfirmation: boolean }>;
+    /** Checks the current password, then sets the new one. */
+    changePassword(current: string, next: string): Promise<void>;
   };
   actions: {
     log(input: LogInput): Promise<void>;
@@ -286,6 +290,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
         finishRecovery: () => setRecovering(false),
         signOut: () => run(() => b.signOut()),
         updateProfile: (name, partners) => run(() => b.updateProfile({ name, partners })),
+        changeUsername: (username) => run(() => b.changeUsername(username)),
+        changeEmail: (email) => run(() => b.changeEmail(email)),
+        changePassword: async (current, next) => {
+          await b.verifyPassword(current);
+          await b.updatePassword(next);
+        },
       },
       actions: {
         log: async (input) => {

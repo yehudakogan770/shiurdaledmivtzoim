@@ -125,6 +125,28 @@ export function createLocalBackend(): Backend {
       save(s);
     },
     onPasswordRecovery() {},
+    async verifyPassword(password) {
+      const s = load();
+      const p = s.profiles.find((x) => x.id === s.session);
+      if (!p || p.password_hash !== (await hashPassword(password, p.id))) throw new Error("Your current password isn't right.");
+    },
+    async changeUsername(raw) {
+      const username = normalizeUsername(raw);
+      const s = load();
+      if (s.profiles.some((x) => x.id !== s.session && x.username === username)) throw new Error("That username is taken. Try another.");
+      const p = s.profiles.find((x) => x.id === s.session);
+      if (p) p.username = username;
+      save(s);
+    },
+    async changeEmail(raw) {
+      const email = checkEmail(raw);
+      const s = load();
+      if (s.profiles.some((x) => x.id !== s.session && x.email === email)) throw new Error("That email already has an account.");
+      const p = s.profiles.find((x) => x.id === s.session);
+      if (p) p.email = email;
+      save(s);
+      return { needsConfirmation: false };
+    },
 
     async list(table) {
       if (table === "profiles") return load().profiles.map(publicProfile) as Tables[typeof table][];

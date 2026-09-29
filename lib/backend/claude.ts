@@ -58,6 +58,13 @@ export async function createClaudeBackend(): Promise<Backend | null> {
     async requestPasswordReset() {},
     async updatePassword() {},
     onPasswordRecovery() {},
+    async verifyPassword() {},
+    async changeUsername() {
+      throw new Error("People here sign in with their Claude account.");
+    },
+    async changeEmail() {
+      throw new Error("People here sign in with their Claude account.");
+    },
 
     async list(table) {
       if (table === "profiles") return [];

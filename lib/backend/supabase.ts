@@ -84,6 +84,29 @@ export function createSupabaseBackend(url: string, key: string): Backend {
       const { error } = await sb.auth.updateUser({ password });
       fail(error);
     },
+    async verifyPassword(password) {
+      const { data } = await sb.auth.getUser();
+      if (!data.user?.email) throw new Error("Please sign in again.");
+      const { error } = await sb.auth.signInWithPassword({ email: data.user.email, password });
+      if (error) throw new Error("Your current password isn't right.");
+    },
+    async changeUsername(raw) {
+      const username = normalizeUsername(raw);
+      const id = await uid();
+      const { data: mine } = await sb.from("profiles").select("username").eq("id", id).maybeSingle();
+      if (mine?.username?.toLowerCase() === username) return;
+      const { data: free } = await sb.rpc("username_available", { p_username: username });
+      if (free === false) throw new Error("That username is taken. Try another.");
+      const { error } = await sb.from("profiles").update({ username }).eq("id", id);
+      if (error?.message.includes("duplicate")) throw new Error("That username is taken. Try another.");
+      fail(error);
+    },
+    async changeEmail(raw) {
+      const email = checkEmail(raw);
+      const { data, error } = await sb.auth.updateUser({ email }, { emailRedirectTo: siteUrl() });
+      if (error) throw new Error(error.message.includes("already") ? "That email already has an account." : error.message);
+      return { needsConfirmation: data.user?.email?.toLowerCase() !== email };
+    },
     onPasswordRecovery(cb) {
       sb.auth.onAuthStateChange((event) => {
         if (event === "PASSWORD_RECOVERY") cb();

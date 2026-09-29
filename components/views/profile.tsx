@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { Plus, X } from "lucide-react";
+import { Pencil, Plus, X } from "lucide-react";
 import { handle } from "@/lib/admin";
 import { useData } from "@/lib/data";
 import { SUGGESTED_PERSONAL } from "@/lib/categories";
@@ -11,28 +11,13 @@ import { InstallCard } from "../install-app";
 
 export function ProfileView() {
   const { me, backend, mine, auth, actions, notify } = useData();
-  const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(me?.name ?? "");
-  const [partners, setPartners] = useState<string[]>(me?.partners?.length ? me.partners : [""]);
   const [catName, setCatName] = useState("");
   const [catDesc, setCatDesc] = useState("");
   const [busy, setBusy] = useState(false);
-  const canRename = backend?.kind !== "claude";
 
   const active = mine.categories.filter((c) => c.status === "active");
   const archived = mine.categories.filter((c) => c.status === "archived");
   const suggestions = SUGGESTED_PERSONAL.filter((s) => !mine.categories.some((c) => c.name.toLowerCase() === s.name.toLowerCase()));
-
-  async function saveName(e: FormEvent) {
-    e.preventDefault();
-    try {
-      await auth.updateProfile(name.trim(), partners.map((p) => p.trim()).filter(Boolean));
-      setEditing(false);
-      notify("Name saved.");
-    } catch (err) {
-      notify((err as Error).message);
-    }
-  }
 
   async function addCategory(n: string, d?: string) {
     setBusy(true);
@@ -61,79 +46,7 @@ export function ProfileView() {
       <PageHeader title="Profile" subtitle="Your account and the Mivtzoim you track." />
 
       <div className="grid gap-3 lg:grid-cols-2">
-        <Card>
-          <CardTitle action={canRename && !editing ? <Button variant="ghost" className="h-9 px-3" onClick={() => { setName(me?.name ?? ""); setPartners(me?.partners?.length ? me.partners : [""]); setEditing(true); }}>Edit</Button> : undefined}>
-            Account
-          </CardTitle>
-          <div className="grid gap-4 px-6 pb-6">
-            {editing ? (
-              <form onSubmit={saveName} className="grid gap-3">
-                <Field label="Route name" htmlFor="profile-name">
-                  <Input id="profile-name" required value={name} onChange={(e) => setName(e.target.value)} />
-                </Field>
-                <div className="grid gap-1.5">
-                  <p className="px-1 text-sm font-medium text-muted">Chavrusas on this route</p>
-                  {partners.map((p, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <Input
-                        id={`profile-partner-${i}`}
-                        aria-label={`Chavrusa ${i + 1}`}
-                        value={p}
-                        onChange={(e) => setPartners(partners.map((x, j) => (j === i ? e.target.value : x)))}
-                        placeholder="Chavrusa's name"
-                      />
-                      {partners.length > 1 && (
-                        <IconButton aria-label={`Remove Chavrusa ${i + 1}`} onClick={() => setPartners(partners.filter((_, j) => j !== i))}>
-                          <X size={18} />
-                        </IconButton>
-                      )}
-                    </div>
-                  ))}
-                  {partners.length < 5 && (
-                    <Button variant="ghost" className="h-9 justify-self-start px-3" onClick={() => setPartners([...partners, ""])}>
-                      <Plus size={16} aria-hidden /> Add another Chavrusa
-                    </Button>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <Button type="submit">Save</Button>
-                  <Button variant="ghost" onClick={() => setEditing(false)}>
-                    Cancel
-                  </Button>
-                </div>
-              </form>
-            ) : (
-              <div>
-                <p className="text-sm font-medium text-muted">Route name</p>
-                <p className="text-2xl font-medium">{me?.name}</p>
-                {me?.partners && me.partners.length > 0 && (
-                  <p className="mt-1">
-                    <span className="text-muted">Chavrusas: </span>
-                    {me.partners.join(", ")}
-                  </p>
-                )}
-                {me?.username && <p className="mt-1 text-muted">{handle(me.username)}</p>}
-                {me?.email && <p className="text-muted">{me.email}</p>}
-              </div>
-            )}
-            <div className="grid grid-cols-2 gap-3 rounded-2xl bg-paper p-4 text-center">
-              <div>
-                <p className="tabular text-2xl font-medium">{sum(mine.activity)}</p>
-                <p className="text-xs text-muted">Mivtzoim</p>
-              </div>
-              <div>
-                <p className="tabular text-2xl font-medium">{mine.routes.length}</p>
-                <p className="text-xs text-muted">routes</p>
-              </div>
-            </div>
-            <p className="text-sm text-muted">{backend?.storageLabel}</p>
-            {backend?.hasAuth && (
-              <Button variant="secondary" className="justify-self-start" onClick={() => auth.signOut()}>
-                Sign out
-              </Button>
-            )}
-          </div>
-        </Card>
+        <AccountCard />
 
         <Card>
           <CardTitle>My categories</CardTitle>
@@ -209,5 +122,201 @@ export function ProfileView() {
 
       <InstallCard />
     </div>
+  );
+}
+
+/** The person's account: route name and Chavrusas, plus how they sign in (username, email, password). */
+function AccountCard() {
+  const { me, backend, mine, auth, notify } = useData();
+  const [open, setOpen] = useState<null | "details" | "username" | "email" | "password">(null);
+  const [name, setName] = useState("");
+  const [partners, setPartners] = useState<string[]>([""]);
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [current, setCurrent] = useState("");
+  const [pw, setPw] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [busy, setBusy] = useState(false);
+  const editable = backend?.kind !== "claude";
+
+  function start(which: NonNullable<typeof open>) {
+    setName(me?.name ?? "");
+    setPartners(me?.partners?.length ? [...me.partners] : [""]);
+    setUsername(me?.username ?? "");
+    setEmail(me?.email ?? "");
+    setCurrent("");
+    setPw("");
+    setPw2("");
+    setOpen(which);
+  }
+
+  async function run(work: () => Promise<string>) {
+    setBusy(true);
+    try {
+      notify(await work());
+      setOpen(null);
+    } catch (err) {
+      notify((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    if (open === "details") {
+      return run(async () => {
+        if (!name.trim()) throw new Error("Enter the route name.");
+        await auth.updateProfile(name.trim(), partners.map((p) => p.trim()).filter(Boolean));
+        return "Saved.";
+      });
+    }
+    if (open === "username") return run(async () => (await auth.changeUsername(username), "Username changed. Use it next time you sign in."));
+    if (open === "email")
+      return run(async () => {
+        const { needsConfirmation } = await auth.changeEmail(email);
+        return needsConfirmation ? `We sent a link to ${email.trim()}. Open it to finish changing your email. (Check Spam too.)` : "Email changed.";
+      });
+    if (open === "password")
+      return run(async () => {
+        if (pw !== pw2) throw new Error("The two new passwords don't match.");
+        await auth.changePassword(current, pw);
+        return "Password changed.";
+      });
+  };
+
+  const buttons = (
+    <div className="flex gap-2">
+      <Button type="submit" disabled={busy}>
+        {busy ? "Saving…" : "Save"}
+      </Button>
+      <Button variant="ghost" onClick={() => setOpen(null)}>
+        Cancel
+      </Button>
+    </div>
+  );
+
+  const row = (label: string, value: React.ReactNode, which: NonNullable<typeof open>) => (
+    <div className="flex items-center gap-3 py-3">
+      <div className="min-w-0 flex-1">
+        <p className="text-sm text-muted">{label}</p>
+        <div className="break-words font-medium">{value}</div>
+      </div>
+      {editable && (
+        <Button variant="ghost" className="h-9 shrink-0 px-3" onClick={() => start(which)} aria-label={`Change ${label.toLowerCase()}`}>
+          <Pencil size={16} aria-hidden /> Change
+        </Button>
+      )}
+    </div>
+  );
+
+  return (
+    <Card>
+      <CardTitle sub="Change your route name, Chavrusas and how you sign in">Account settings</CardTitle>
+      <div className="grid gap-4 px-6 pb-6">
+        {open === "details" ? (
+          <form onSubmit={submit} className="grid gap-3">
+            <Field label="Route name" htmlFor="profile-name">
+              <Input id="profile-name" required autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="(general location)" />
+            </Field>
+            <div className="grid gap-1.5">
+              <p className="px-1 text-sm font-medium text-muted">Chavrusas on this route</p>
+              {partners.map((p, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <Input
+                    id={`profile-partner-${i}`}
+                    aria-label={`Chavrusa ${i + 1}`}
+                    value={p}
+                    onChange={(e) => setPartners(partners.map((x, j) => (j === i ? e.target.value : x)))}
+                    placeholder="Chavrusa's name"
+                  />
+                  <IconButton aria-label={`Remove Chavrusa ${i + 1}`} onClick={() => setPartners(partners.length > 1 ? partners.filter((_, j) => j !== i) : [""])}>
+                    <X size={18} />
+                  </IconButton>
+                </div>
+              ))}
+              <Button variant="ghost" className="h-9 justify-self-start px-3" onClick={() => setPartners([...partners, ""])}>
+                <Plus size={16} aria-hidden /> Add a Chavrusa
+              </Button>
+            </div>
+            {buttons}
+          </form>
+        ) : (
+          <div className="divide-y divide-line/60">
+            <div className="flex items-start gap-3 pb-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-muted">Route name</p>
+                <p className="break-words text-2xl font-medium">{me?.name}</p>
+                <p className="mt-1 text-sm">
+                  <span className="text-muted">Chavrusas: </span>
+                  {me?.partners?.length ? me.partners.join(", ") : <span className="text-muted">none yet</span>}
+                </p>
+              </div>
+              {editable && (
+                <Button variant="tonal" className="h-9 shrink-0 px-4" onClick={() => start("details")}>
+                  <Pencil size={16} aria-hidden /> Edit
+                </Button>
+              )}
+            </div>
+            {backend?.hasAuth && (
+              <>
+                {open === "username" ? (
+                  <form onSubmit={submit} className="grid gap-3 py-3">
+                    <Field label="New username" htmlFor="profile-username" hint="3 to 20 letters, numbers, dots or dashes. You'll sign in with it.">
+                      <Input id="profile-username" required autoFocus autoCapitalize="none" value={username} onChange={(e) => setUsername(e.target.value)} />
+                    </Field>
+                    {buttons}
+                  </form>
+                ) : (
+                  row("Username", me?.username ? handle(me.username) : "—", "username")
+                )}
+                {open === "email" ? (
+                  <form onSubmit={submit} className="grid gap-3 py-3">
+                    <Field label="New email" htmlFor="profile-email" hint="We'll send a link to the new address to confirm it.">
+                      <Input id="profile-email" type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} />
+                    </Field>
+                    {buttons}
+                  </form>
+                ) : (
+                  row("Email", me?.email || "—", "email")
+                )}
+                {open === "password" ? (
+                  <form onSubmit={submit} className="grid gap-3 py-3">
+                    <Field label="Current password" htmlFor="profile-current">
+                      <Input id="profile-current" type="password" required autoFocus autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} />
+                    </Field>
+                    <Field label="New password" htmlFor="profile-pw" hint="At least 6 characters.">
+                      <Input id="profile-pw" type="password" required minLength={6} autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} />
+                    </Field>
+                    <Field label="Type the new password again" htmlFor="profile-pw2">
+                      <Input id="profile-pw2" type="password" required minLength={6} autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} />
+                    </Field>
+                    {buttons}
+                  </form>
+                ) : (
+                  row("Password", "••••••••", "password")
+                )}
+              </>
+            )}
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-3 rounded-2xl bg-paper p-4 text-center">
+          <div>
+            <p className="tabular text-2xl font-medium">{sum(mine.activity)}</p>
+            <p className="text-xs text-muted">Mivtzoim</p>
+          </div>
+          <div>
+            <p className="tabular text-2xl font-medium">{mine.routes.length}</p>
+            <p className="text-xs text-muted">routes</p>
+          </div>
+        </div>
+        <p className="text-sm text-muted">{backend?.storageLabel}</p>
+        {backend?.hasAuth && (
+          <Button variant="secondary" className="justify-self-start" onClick={() => auth.signOut()}>
+            Sign out
+          </Button>
+        )}
+      </div>
+    </Card>
   );
 }

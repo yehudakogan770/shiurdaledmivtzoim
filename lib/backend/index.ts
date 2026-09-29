@@ -20,8 +20,14 @@ export interface Backend {
   updateProfile(patch: { name: string; partners: string[] }): Promise<void>;
   /** Emails a link to set a new password; the email also reminds them of their username. */
   requestPasswordReset(email: string): Promise<void>;
-  /** Sets a new password after arriving from the reset link. */
+  /** Sets a new password after arriving from the reset link (or from Profile, after checkPassword). */
   updatePassword(password: string): Promise<void>;
+  /** Throws unless this is the signed-in person's current password. */
+  verifyPassword(password: string): Promise<void>;
+  /** Change the username people sign in with. */
+  changeUsername(username: string): Promise<void>;
+  /** Change the email address; needsConfirmation when a link was sent to the new address first. */
+  changeEmail(email: string): Promise<{ needsConfirmation: boolean }>;
   /** Called when the page was opened from a password-reset link. */
   onPasswordRecovery(cb: () => void): void;
 
