@@ -29,12 +29,12 @@ export function SiteFooter({ className }: { className?: string }) {
   }
 
   const pill =
-    "inline-flex h-11 items-center gap-2.5 rounded-full pl-1.5 pr-5 text-sm font-medium transition hover:brightness-[0.97] hover:shadow-card";
+    "inline-flex w-full min-w-0 items-center gap-3 rounded-full py-1.5 pl-1.5 pr-4 text-left text-sm transition hover:brightness-[0.97] hover:shadow-card sm:w-auto";
 
   return (
     <footer className={cx("mt-10 grid gap-6", className)}>
       {showPartner && (
-        <section className="grid gap-4 rounded-[28px] bg-card p-6 sm:grid-cols-[1fr_auto] sm:items-center">
+        <section className="grid min-w-0 grid-cols-1 gap-4 rounded-[28px] bg-card p-6 lg:grid-cols-[1fr_auto] lg:items-center">
           <div className="flex items-start gap-3">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-accent-soft text-accent-on-soft">
               <HandHeart size={22} aria-hidden />
@@ -46,17 +46,20 @@ export function SiteFooter({ className }: { className?: string }) {
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex min-w-0 flex-wrap gap-2">
             <a
               href={`https://cash.app/${CASHTAG}`}
               target="_blank"
               rel="noopener noreferrer"
               className={cx(pill, "bg-[#00d64f]/15 text-ink")}
             >
-              <span className="grid h-8 w-8 place-items-center rounded-full bg-[#00d64f] text-base font-bold text-white">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#00d64f] text-base font-bold text-white">
                 $
               </span>
-              Cash App <span className="text-muted">{CASHTAG}</span>
+              <span className="min-w-0 leading-tight">
+                <span className="block font-medium">Cash App</span>
+                <span className="block text-[13px] text-muted sm:text-sm">{CASHTAG}</span>
+              </span>
             </a>
             <button
               type="button"
@@ -64,10 +67,16 @@ export function SiteFooter({ className }: { className?: string }) {
               className={cx(pill, "bg-[#6d1ed4]/12 text-ink")}
               aria-label={`Zelle ${ZELLE}, copy address`}
             >
-              <span className="grid h-8 w-8 place-items-center rounded-full bg-[#6d1ed4] text-base font-bold text-white">
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#6d1ed4] text-base font-bold text-white">
                 Z
               </span>
-              Zelle <span className="text-muted">{ZELLE}</span>
+              <span className="min-w-0 flex-1 leading-tight">
+                <span className="block font-medium">Zelle</span>
+                <span className="block text-[13px] text-muted sm:text-sm">
+                  {ZELLE.split("@")[0]}
+                  <wbr />@{ZELLE.split("@")[1]}
+                </span>
+              </span>
               {copied ? (
                 <Check size={16} aria-hidden className="text-sage" />
               ) : (
@@ -76,7 +85,7 @@ export function SiteFooter({ className }: { className?: string }) {
             </button>
           </div>
           {copied && (
-            <p role="status" className="text-sm text-muted sm:col-span-2">
+            <p role="status" className="text-sm text-muted lg:col-span-2">
               Zelle address copied. Send it from your bank&apos;s app with
               Zelle.
             </p>
