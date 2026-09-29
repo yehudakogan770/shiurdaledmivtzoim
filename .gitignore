@@ -8,3 +8,4 @@ dist
 *.tsbuildinfo
 out
 screenshots/
+public/version.json

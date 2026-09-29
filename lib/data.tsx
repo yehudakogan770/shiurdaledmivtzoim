@@ -15,6 +15,7 @@ import type {
 } from "./types";
 import { DEFAULT_SETTINGS, type SignUpInput } from "./types";
 import { today } from "./dates";
+import { newVersionOnline } from "./install";
 
 export interface AppData {
   groups: Group[];
@@ -196,8 +197,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // Pick up other people's changes when the tab comes back into view.
   useEffect(() => {
     if (!backend) return;
-    const onVisible = () => {
-      if (document.visibilityState === "visible" && unsaved.current === 0) load(backend).catch(() => {});
+    const onVisible = async () => {
+      if (document.visibilityState !== "visible" || unsaved.current > 0) return;
+      // A newer version of the site went live while this was in the background: load it.
+      if (await newVersionOnline()) return window.location.reload();
+      load(backend).catch(() => {});
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);

@@ -72,3 +72,19 @@ export function useInstall() {
 
   return { ...state, prompt };
 }
+
+const BUILD_ID = process.env.NEXT_PUBLIC_BUILD_ID || "";
+
+/** True when the website has a newer version than the one running on this screen. */
+export async function newVersionOnline() {
+  if (!BUILD_ID || typeof location === "undefined") return false;
+  const base = process.env.NEXT_PUBLIC_BASE_PATH || "";
+  try {
+    const res = await fetch(`${base}/version.json?t=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) return false;
+    const { build } = (await res.json()) as { build?: string };
+    return !!build && build !== BUILD_ID;
+  } catch {
+    return false;
+  }
+}
