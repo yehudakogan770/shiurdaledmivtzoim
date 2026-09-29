@@ -12,7 +12,7 @@ import { Button, ButtonLink, Card, CategoryIcon, Empty, IconButton, PageHeader, 
 import { sum } from "./dashboard";
 
 export function HistoryView() {
-  const { mine, data, actions, notify } = useData();
+  const { mine, data, builtins, actions, notify } = useData();
   const [filter, setFilter] = useState("all");
 
   const rows = mine.activity
@@ -46,8 +46,11 @@ export function HistoryView() {
             </label>
             <Select id="history-filter" value={filter} onChange={(e) => setFilter(e.target.value)}>
               <option value="all">All mivtzoim</option>
-              <option value="tefillin">Tefillin</option>
-              <option value="shabbos_candles">Shabbos Candles</option>
+              {builtins.map((b) => (
+                <option key={b.type} value={b.type}>
+                  {b.name}
+                </option>
+              ))}
               {mine.categories.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}

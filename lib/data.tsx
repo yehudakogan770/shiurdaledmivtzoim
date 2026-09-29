@@ -16,6 +16,7 @@ import type {
 import { DEFAULT_SETTINGS, type SignUpInput } from "./types";
 import { today } from "./dates";
 import { newVersionOnline } from "./install";
+import { builtinDescription, builtinIcon, builtins, isBuiltinRow, type Builtin, type BuiltinType } from "./categories";
 
 export interface AppData {
   groups: Group[];
@@ -65,6 +66,8 @@ interface DataContextValue {
   };
   /** Categories an admin offers to everyone. */
   shared: PersonalCategory[];
+  /** Tefillin and Shabbos Candles, with any admin renames, hiding or removal. */
+  builtins: Builtin[];
   settings: SiteSettings;
   isAdmin: boolean;
   /** Every account; filled in for admins only. */
@@ -102,6 +105,8 @@ interface DataContextValue {
     archiveCategory(id: string, archived: boolean): Promise<void>;
     deleteCategory(id: string): Promise<void>;
     updateCategory(id: string, name: string, description: string): Promise<void>;
+    /** Admins: rename, hide or remove Tefillin or Shabbos Candles for everyone. */
+    updateBuiltin(type: BuiltinType, patch: { name?: string; hidden?: boolean; removed?: boolean }): Promise<void>;
     saveSettings(settings: SiteSettings): Promise<void>;
     setRole(userId: string, role: "user" | "admin"): Promise<void>;
     adminSetPassword(userId: string, password: string): Promise<void>;
@@ -260,7 +265,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       me,
       data,
       mine,
-      shared: data.categories.filter((c) => c.shared),
+      shared: data.categories.filter((c) => c.shared && !isBuiltinRow(c)),
+      builtins: builtins(data.categories),
       settings,
       isAdmin: me?.role === "admin",
       people,
@@ -408,6 +414,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
         adminDeletePerson: (userId) => run(() => b.adminDeletePerson(userId)),
         archiveCategory: (id, archived) => run(() => b.update("personal_categories", id, { status: archived ? "archived" : "active" })),
         deleteCategory: (id) => run(() => b.remove("personal_categories", id)),
+        updateBuiltin: (type, patch) =>
+          run(async () => {
+            const current = builtins(data.categories).find((x) => x.type === type)!;
+            if (patch.name !== undefined && !patch.name.trim()) throw new Error("Give it a name.");
+            const name = patch.name?.trim() ?? current.name;
+            const status = (patch.hidden ?? current.hidden) ? "archived" : "active";
+            const description = builtinDescription(patch.removed ?? current.removed);
+            if (current.row) await b.update("personal_categories", current.row.id, { name, status, description });
+            else await b.insert("personal_categories", { user_id: uid(), name, description, icon: builtinIcon(type), status, shared: true });
+          }),
         updateCategory: (id, name, description) =>
           run(async () => {
             if (!name.trim()) throw new Error("Give it a name.");

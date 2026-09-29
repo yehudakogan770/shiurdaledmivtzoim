@@ -7,7 +7,6 @@ import { TefillinIcon } from "../icons";
 import { useData } from "@/lib/data";
 import { iconForName } from "@/lib/category-icons";
 import { useNav } from "@/lib/nav";
-import { STANDARD } from "@/lib/categories";
 import { activityWeek, today } from "@/lib/dates";
 import { weekTitle } from "@/lib/parsha";
 import type { CategoryType } from "@/lib/types";
@@ -22,18 +21,25 @@ const TONE: Record<CategoryType, { on: string; chip: string; icon: ComponentType
 };
 
 export function LogView() {
-  const { mine, shared, data, actions, notify } = useData();
+  const { mine, shared, builtins, data, actions, notify } = useData();
   const { query, Link, go } = useNav();
 
   const choices: Choice[] = useMemo(
     () => [
-      { key: "tefillin", type: "tefillin", personalId: null, label: STANDARD.tefillin.label, hint: "People who put on tefillin" },
-      { key: "shabbos_candles", type: "shabbos_candles", personalId: null, label: STANDARD.shabbos_candles.label, hint: "Women and girls who received candles" },
+      ...builtins
+        .filter((b) => !b.hidden && !b.removed)
+        .map((b) => ({
+          key: b.type,
+          type: b.type,
+          personalId: null,
+          label: b.name,
+          hint: b.type === "tefillin" ? "People who put on tefillin" : "Women and girls who received candles",
+        })),
       ...[...shared, ...mine.categories]
         .filter((c) => c.status === "active")
         .map((c) => ({ key: c.id, type: "personal" as const, personalId: c.id, label: c.name, hint: c.description || "Your own category", icon: iconForName(c.name) })),
     ],
-    [mine.categories, shared],
+    [mine.categories, shared, builtins],
   );
 
   // Several mivtzoim can be filled in at once; each has its own amount and notes.

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { ChevronDown, ClipboardList, Eye, EyeOff, KeyRound, Flame, Pencil, ShieldCheck, Sparkles, Trash2, Users } from "lucide-react";
 import { TefillinIcon } from "../icons";
-import { categoryName } from "@/lib/categories";
+import { categoryName, type BuiltinType } from "@/lib/categories";
 import { dayWithParsha } from "@/lib/parsha";
 import type { Activity, PersonalCategory, Profile } from "@/lib/types";
 import { iconForActivity } from "@/lib/category-icons";
@@ -92,7 +92,7 @@ function SiteSettingsCard() {
 }
 
 function SharedCategoriesCard() {
-  const { shared, actions, notify } = useData();
+  const { shared, builtins, actions, notify } = useData();
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -111,49 +111,58 @@ function SharedCategoriesCard() {
   }
 
   const [removing, setRemoving] = useState<string | null>(null);
-  const [editing, setEditing] = useState<{ id: string; name: string } | null>(null);
+  const [editing, setEditing] = useState<{ key: string; name: string } | null>(null);
 
-  async function saveEdit(e: FormEvent) {
-    e.preventDefault();
-    if (!editing) return;
+  // Tefillin and Candles first, then the ones added here; all work the same way.
+  type Item = { key: string; name: string; hidden: boolean; builtin?: BuiltinType };
+  const items: Item[] = [
+    ...builtins.filter((b) => !b.removed).map((b) => ({ key: b.type, name: b.name, hidden: b.hidden, builtin: b.type })),
+    ...shared.map((c) => ({ key: c.id, name: c.name, hidden: c.status === "archived" })),
+  ];
+  const removedBuiltins = builtins.filter((b) => b.removed);
+
+  async function attempt(work: () => Promise<void>, message?: string) {
     try {
-      await actions.updateCategory(editing.id, editing.name, "");
-      notify(`${editing.name.trim()} was updated for everyone.`);
-      setEditing(null);
+      await work();
+      if (message) notify(message);
     } catch (err) {
       notify((err as Error).message);
     }
   }
 
-  async function remove(id: string, label: string) {
-    try {
-      await actions.deleteCategory(id);
-      notify(`${label} was removed from everyone's front page.`);
-    } catch (err) {
-      notify((err as Error).message);
-    }
+  async function saveEdit(e: FormEvent, item: Item) {
+    e.preventDefault();
+    if (!editing) return;
+    const name = editing.name;
+    await attempt(
+      () => (item.builtin ? actions.updateBuiltin(item.builtin, { name }) : actions.updateCategory(item.key, name, "")),
+      `${name.trim()} was updated for everyone.`,
+    );
+    setEditing(null);
+  }
+
+  async function remove(item: Item) {
+    await attempt(
+      () => (item.builtin ? actions.updateBuiltin(item.builtin, { removed: true }) : actions.deleteCategory(item.key)),
+      `${item.name} was removed from everyone's front page.`,
+    );
     setRemoving(null);
   }
 
-  async function toggle(id: string, archive: boolean) {
-    try {
-      await actions.archiveCategory(id, archive);
-    } catch (err) {
-      notify((err as Error).message);
-    }
-  }
+  const toggle = (item: Item, hide: boolean) =>
+    attempt(() => (item.builtin ? actions.updateBuiltin(item.builtin, { hidden: hide }) : actions.archiveCategory(item.key, hide)));
 
   return (
     <Card>
-      <CardTitle sub="Each one gets its own counter and quick-add button on everyone's front page, next to Tefillin and Shabbos Candles">Mivtzoim for everyone</CardTitle>
-      {shared.length > 0 && (
+      <CardTitle sub="Each one gets its own counter and quick-add button on everyone's front page">Mivtzoim for everyone</CardTitle>
+      {items.length > 0 && (
         <ul className={listClass}>
-          {shared.map((c) => (
-            <li key={c.id} className="flex flex-wrap items-center gap-2 px-6 py-3">
-              {editing?.id === c.id ? (
-                <form onSubmit={saveEdit} className="grid w-full gap-3 py-1">
-                  <Field label="Name" htmlFor={`edit-name-${c.id}`}>
-                    <Input id={`edit-name-${c.id}`} required autoFocus value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
+          {items.map((item) => (
+            <li key={item.key} className="flex flex-wrap items-center gap-2 px-6 py-3">
+              {editing?.key === item.key ? (
+                <form onSubmit={(e) => saveEdit(e, item)} className="grid w-full gap-3 py-1">
+                  <Field label="Name" htmlFor={`edit-name-${item.key}`}>
+                    <Input id={`edit-name-${item.key}`} required autoFocus value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
                   </Field>
                   <span className="flex gap-2">
                     <Button type="submit" variant="tonal" className="h-9 px-4">
@@ -167,12 +176,12 @@ function SharedCategoriesCard() {
               ) : (
                 <>
                   <span className="min-w-0 flex-1">
-                    <span className={c.status === "archived" ? "block font-medium text-muted line-through" : "block font-medium"}>{c.name}</span>
+                    <span className={item.hidden ? "block font-medium text-muted line-through" : "block font-medium"}>{item.name}</span>
                   </span>
-                  {removing === c.id ? (
+                  {removing === item.key ? (
                     <span className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
-                      <span className="text-sm">Remove {c.name} for everyone?</span>
-                      <Button variant="danger" className="h-9 px-4" onClick={() => remove(c.id, c.name)}>
+                      <span className="text-sm">Remove {item.name} for everyone?</span>
+                      <Button variant="danger" className="h-9 px-4" onClick={() => remove(item)}>
                         Remove
                       </Button>
                       <Button variant="ghost" className="h-9 px-3" onClick={() => setRemoving(null)}>
@@ -181,19 +190,19 @@ function SharedCategoriesCard() {
                     </span>
                   ) : (
                     <>
-                      {c.status === "archived" ? (
-                        <Button variant="ghost" className="h-9 px-3" onClick={() => toggle(c.id, false)}>
+                      {item.hidden ? (
+                        <Button variant="ghost" className="h-9 px-3" onClick={() => toggle(item, false)}>
                           <Eye size={16} aria-hidden /> Show
                         </Button>
                       ) : (
-                        <Button variant="ghost" className="h-9 px-3" onClick={() => toggle(c.id, true)}>
+                        <Button variant="ghost" className="h-9 px-3" onClick={() => toggle(item, true)}>
                           <EyeOff size={16} aria-hidden /> Hide
                         </Button>
                       )}
-                      <IconButton aria-label={`Edit ${c.name}`} onClick={() => setEditing({ id: c.id, name: c.name })}>
+                      <IconButton aria-label={`Edit ${item.name}`} onClick={() => setEditing({ key: item.key, name: item.name })}>
                         <Pencil size={18} />
                       </IconButton>
-                      <IconButton aria-label={`Remove ${c.name}`} onClick={() => setRemoving(c.id)}>
+                      <IconButton aria-label={`Remove ${item.name}`} onClick={() => setRemoving(item.key)}>
                         <Trash2 size={18} />
                       </IconButton>
                     </>
@@ -203,6 +212,21 @@ function SharedCategoriesCard() {
             </li>
           ))}
         </ul>
+      )}
+      {removedBuiltins.length > 0 && (
+        <p className="flex flex-wrap items-center gap-2 px-6 pt-3 text-sm text-muted">
+          Removed:
+          {removedBuiltins.map((b) => (
+            <button
+              key={b.type}
+              type="button"
+              onClick={() => attempt(() => actions.updateBuiltin(b.type, { removed: false, hidden: false }), `${b.name} is back on everyone's front page.`)}
+              className="h-8 rounded-lg border border-dashed border-outline px-3 text-sm hover:bg-ink/8"
+            >
+              Bring back {b.name}
+            </button>
+          ))}
+        </p>
       )}
       <form onSubmit={add} className="grid gap-3 px-6 pt-3 pb-6">
         <Field label="Name" htmlFor="shared-name">
@@ -377,7 +401,7 @@ function PersonDetails({ person }: { person: Profile }) {
 }
 
 function ActivityCard() {
-  const { data, people } = useData();
+  const { data, people, builtins } = useData();
   const [person, setPerson] = useState("all");
   const [kind, setKind] = useState("all");
   const [limit, setLimit] = useState(30);
@@ -407,8 +431,11 @@ function ActivityCard() {
         <Field label="Mivtza" htmlFor="admin-kind">
           <Select id="admin-kind" value={kind} onChange={(e) => { setKind(e.target.value); setLimit(30); }}>
             <option value="all">All mivtzoim</option>
-            <option value="tefillin">Tefillin</option>
-            <option value="shabbos_candles">Shabbos Candles</option>
+            {builtins.map((b) => (
+              <option key={b.type} value={b.type}>
+                {b.name}
+              </option>
+            ))}
             <option value="personal">Other</option>
           </Select>
         </Field>

@@ -10,6 +10,7 @@ import { categoryName } from "@/lib/categories";
 import { activityMoment, activityWeek, addDays, allWeeks, currentWeek, formatDay, formatShort, hebrewDate, longDate, recentWeeks, today, weekLabel } from "@/lib/dates";
 import { InstallBanner } from "../install-app";
 import type { CommunityRow } from "@/lib/backend";
+import type { BuiltinType } from "@/lib/categories";
 import { parshaName, parshaOfWeek, weekTitle } from "@/lib/parsha";
 import type { Activity } from "@/lib/types";
 import { Card, CardTitle, CategoryIcon, Empty, IconButton, PageHeader, Select, Stat, cx, listClass } from "../ui";
@@ -47,12 +48,10 @@ type Counter = {
 const EXTRA_COLORS = ["#2e8b57", "#6a5acd", "#c0563a", "#1f7fa3", "#a07a12", "#b03a78", "#4b7f2a", "#8a4fb8"];
 
 export function useCounters(): Counter[] {
-  const { shared } = useData();
-  return [
-    {
+  const { shared, builtins } = useData();
+  const standard: Record<BuiltinType, Omit<Counter, "title" | "short">> = {
+    tefillin: {
       key: "tefillin",
-      title: "Tefillin",
-      short: "Tefillin",
       text: "Someone just put on tefillin",
       icon: TefillinIcon,
       tone: "accent",
@@ -62,10 +61,8 @@ export function useCounters(): Counter[] {
       matches: (a) => a.category_type === "tefillin",
       log: { category_type: "tefillin", quantity: 1 },
     },
-    {
+    shabbos_candles: {
       key: "shabbos_candles",
-      title: "Shabbos Candles",
-      short: "Candles",
       text: "Gave out candles or a kit",
       icon: Flame,
       tone: "candle",
@@ -75,6 +72,10 @@ export function useCounters(): Counter[] {
       matches: (a) => a.category_type === "shabbos_candles",
       log: { category_type: "shabbos_candles", quantity: 1 },
     },
+  };
+  return [
+    // Tefillin and Candles, unless an admin hid or removed them (with their name, if renamed).
+    ...builtins.filter((b) => !b.hidden && !b.removed).map((b) => ({ ...standard[b.type], title: b.name, short: b.short })),
     ...shared
       .filter((c) => c.status === "active")
       .map((c, i) => ({

@@ -139,7 +139,7 @@ export function ProfileView() {
           <CardTitle>My categories</CardTitle>
           <div className="grid gap-5 px-6 pb-6">
             <p className="text-sm text-muted">
-              Tefillin and Shabbos Candles are always there. Add any other mivtza you do and it appears on the Log page.
+              The mivtzoim on the front page are always there. Add any other mivtza you do and it appears on the Log page.
             </p>
             {active.length > 0 && (
               <ul className="divide-y divide-line/60 overflow-hidden rounded-2xl bg-paper">
