@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { Plus, X } from "lucide-react";
+import { ArrowLeft, Plus, X } from "lucide-react";
 import { useData } from "@/lib/data";
 import { currentWeek, hebrewDate } from "@/lib/dates";
 import { parshaOfWeek } from "@/lib/parsha";
@@ -19,7 +19,7 @@ const TITLES: Record<Mode, string> = {
   reset: "Choose a new password",
 };
 
-export function LoginView({ initialMode = "signin" }: { initialMode?: Mode }) {
+export function LoginView({ initialMode = "signin", onBack }: { initialMode?: Mode; onBack?: () => void }) {
   const { auth, backend, settings } = useData();
   const [mode, setMode] = useState<Mode>(initialMode);
   const [name, setName] = useState("");
@@ -86,6 +86,13 @@ export function LoginView({ initialMode = "signin" }: { initialMode?: Mode }) {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-paper px-4 py-10">
+      {onBack && (
+        <div className="mb-3 w-full max-w-[64rem]">
+          <button type="button" onClick={onBack} className="inline-flex h-10 items-center gap-2 rounded-full px-3 text-sm font-medium text-accent hover:bg-accent/8">
+            <ArrowLeft size={18} aria-hidden /> Back to the sample
+          </button>
+        </div>
+      )}
       <form
         onSubmit={submit}
         className="grid w-full max-w-[64rem] gap-10 rounded-[28px] bg-card px-6 py-10 sm:px-10 md:grid-cols-2 md:gap-12 md:px-12 md:py-12"

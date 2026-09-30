@@ -208,7 +208,7 @@ function useTouch() {
 
 function QuickLog({ week }: { week: string }) {
   const touch = useTouch();
-  const { actions, notify, mine } = useData();
+  const { actions, notify, mine, guest } = useData();
   const counters = useCounters();
   const past = week !== currentWeek();
 
@@ -240,6 +240,7 @@ function QuickLog({ week }: { week: string }) {
           c={c}
           count={sum(mine.activity.filter((a) => activityWeek(a) === week && c.matches(a)))}
           hint={touch ? "Tap here to add" : "Click here to add"}
+          sample={guest}
           onAdd={() => add(c)}
           onSubtract={() => subtract(c)}
         />
@@ -289,7 +290,7 @@ function useTally() {
   };
 }
 
-function QuickButton({ c, count, hint, onAdd, onSubtract }: { c: Counter; count: number; hint: string; onAdd(): void; onSubtract(): void }) {
+function QuickButton({ c, count, hint, sample, onAdd, onSubtract }: { c: Counter; count: number; hint: string; sample?: boolean; onAdd(): void; onSubtract(): void }) {
   const plus = useTally();
   const minus = useTally();
   const box = useRef<HTMLDivElement>(null);
@@ -316,7 +317,8 @@ function QuickButton({ c, count, hint, onAdd, onSubtract }: { c: Counter; count:
       <button
         type="button"
         onClick={() => {
-          plus.tap();
+          // In the sample nothing is added, so there's nothing to count.
+          if (!sample) plus.tap();
           onAdd();
         }}
         aria-label={`Add 1 ${c.title}`}

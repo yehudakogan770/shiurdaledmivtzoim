@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { History, LayoutDashboard, LogOut, Map, Menu, ShieldCheck, Sunset, UserRound } from "lucide-react";
+import { Eye, History, LayoutDashboard, LogIn, LogOut, Map, Menu, ShieldCheck, Sunset, UserRound, UserRoundPlus } from "lucide-react";
 import { handle } from "@/lib/admin";
 import { useData } from "@/lib/data";
 import { displayName } from "@/lib/types";
@@ -9,7 +9,7 @@ import { useNav } from "@/lib/nav";
 import { currentWeek, hebrewDate } from "@/lib/dates";
 import { parshaOfWeek } from "@/lib/parsha";
 import { useShkiah } from "@/lib/shkiah";
-import { Avatar, IconButton, cx } from "./ui";
+import { Avatar, ButtonLink, Empty, IconButton, cx } from "./ui";
 import { LogoMark } from "./brand";
 import { LoginView } from "./views/login";
 import { SiteFooter } from "./site-footer";
@@ -30,8 +30,8 @@ function isActive(path: string, match: string[]) {
 /** The side panel's contents. `expanded` shows labels; collapsed shows icons only. */
 function PanelContent({ expanded, onNavigate }: { expanded: boolean; onNavigate?: () => void }) {
   const { path, Link } = useNav();
-  const { me, backend, auth, settings, isAdmin } = useData();
-  const items = isAdmin ? [...links, ADMIN_LINK] : links;
+  const { me, guest, backend, auth, settings, isAdmin } = useData();
+  const items = isAdmin ? [...links, ADMIN_LINK] : guest ? links.filter((l) => l.href !== "/profile") : links;
   const label = cx("whitespace-nowrap transition-opacity duration-200", expanded ? "opacity-100" : "opacity-0");
   return (
     <div className="flex h-full flex-col px-3 py-4" onClick={(e) => (e.target as HTMLElement).closest("a") && onNavigate?.()}>
@@ -66,6 +66,18 @@ function PanelContent({ expanded, onNavigate }: { expanded: boolean; onNavigate?
       </nav>
       <div className="mt-auto grid gap-3">
         <p className={cx("px-4 text-sm text-muted", label)}>{hebrewDate()} · {parshaOfWeek(currentWeek()).english}</p>
+        {guest && (
+          <div className={cx("grid gap-2 overflow-hidden rounded-[28px] p-2", expanded ? "bg-card" : "bg-transparent")}>
+            <Link href="/login?mode=signup" className="flex h-12 items-center gap-3 rounded-full bg-accent px-3.5 text-sm font-medium text-accent-ink">
+              <UserRoundPlus size={20} aria-hidden className="shrink-0" />
+              <span className={label}>Create account</span>
+            </Link>
+            <Link href="/login" className="flex h-12 items-center gap-3 rounded-full px-3.5 text-sm font-medium text-accent hover:bg-accent/8">
+              <LogIn size={20} aria-hidden className="shrink-0" />
+              <span className={label}>Sign in</span>
+            </Link>
+          </div>
+        )}
         {me && (
           <div className={cx("flex items-center gap-2 overflow-hidden rounded-[28px] p-2 transition-colors", expanded ? "bg-card" : "bg-transparent")}>
             <Link href="/profile" className="flex min-w-0 flex-1 items-center gap-3 rounded-full p-1 pr-3 hover:bg-ink/5">
@@ -160,7 +172,7 @@ function ModalDrawer({ open, onClose }: { open: boolean; onClose: () => void }) 
 /** Top app bar (phones and tablets). */
 function TopAppBar({ onMenu }: { onMenu: () => void }) {
   const { Link } = useNav();
-  const { me, settings } = useData();
+  const { me, guest, settings } = useData();
   return (
     <header className="sticky top-[env(safe-area-inset-top,0px)] z-30 flex h-16 items-center gap-1 px-2 lg:hidden">
       {/* The bar's background runs a little past its bottom edge and fades out there, so content scrolls under it softly. */}
@@ -187,14 +199,29 @@ function TopAppBar({ onMenu }: { onMenu: () => void }) {
           <Avatar name={me.name} id={me.id} size={36} />
         </Link>
       )}
+      {guest && (
+        <Link href="/login" aria-label="Sign in or create an account" className="ml-auto mr-2 grid h-10 w-10 place-items-center rounded-full bg-accent-soft text-accent-on-soft">
+          <UserRound size={22} />
+        </Link>
+      )}
     </header>
   );
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { status, error, me, backend, toast, auth } = useData();
+  const { status, error, me, guest, backend, toast, auth } = useData();
+  const { path: rawPath, query, go } = useNav();
+  const path = rawPath.length > 1 ? rawPath.replace(/\/+$/, "") : rawPath;
   const [menuOpen, setMenuOpen] = useState(false);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
+
+  // Signing in from the sign-in page goes to the home page; signing out goes back to the sample's home page.
+  const wasSignedIn = useRef(false);
+  useEffect(() => {
+    if (me && path === "/login") go("/");
+    if (!me && wasSignedIn.current && status === "ready") go("/");
+    wasSignedIn.current = !!me;
+  }, [me, status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   let body: ReactNode;
   if (status === "loading") {
@@ -218,11 +245,26 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Snackbar message={toast} />
       </>
     );
-  } else if (!me && backend?.hasAuth) {
+  } else if (guest && path === "/login") {
     return (
       <>
-        <LoginView />
+        <LoginView key={query.mode ?? "signin"} initialMode={query.mode === "signup" ? "signup" : "signin"} onBack={() => go("/")} />
         <Snackbar message={toast} />
+      </>
+    );
+  } else if (guest) {
+    body = (
+      <>
+        <SampleBanner />
+        {path === "/profile" || path === "/admin" ? (
+          <div className="mt-6">
+            <Empty title="Sign in to see this page" icon={UserRound}>
+              Your profile and settings are here once you have an account.
+            </Empty>
+          </div>
+        ) : (
+          children
+        )}
       </>
     );
   } else if (!me) {
@@ -254,6 +296,29 @@ export function AppShell({ children }: { children: ReactNode }) {
         </main>
       </div>
       <Snackbar message={toast} />
+    </div>
+  );
+}
+
+/** Shown to everyone who isn't signed in: they're looking at a blank sample. */
+function SampleBanner() {
+  return (
+    <div className="mb-4 flex flex-col gap-3 rounded-[28px] bg-accent-soft px-5 py-4 text-accent-on-soft sm:flex-row sm:items-center sm:gap-4">
+      <span className="flex min-w-0 flex-1 items-start gap-3">
+        <Eye size={20} aria-hidden className="mt-0.5 shrink-0" />
+        <span className="min-w-0">
+          <span className="block font-medium">You&apos;re looking at a sample</span>
+          <span className="block text-sm opacity-85">Look around and tap anything. Nothing is saved until you create an account.</span>
+        </span>
+      </span>
+      <span className="flex flex-wrap gap-2 pl-8 sm:pl-0">
+        <ButtonLink href="/login?mode=signup" className="h-10 px-4">
+          Create account
+        </ButtonLink>
+        <ButtonLink href="/login" variant="ghost" className="h-10 px-4">
+          Sign in
+        </ButtonLink>
+      </span>
     </div>
   );
 }

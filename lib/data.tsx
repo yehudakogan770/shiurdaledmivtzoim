@@ -56,6 +56,8 @@ interface DataContextValue {
   error: string | null;
   backend: Backend | null;
   me: Profile | null;
+  /** Nobody is signed in: the site shows a blank sample and nothing can be saved. */
+  guest: boolean;
   data: AppData;
   /** Rows visible to me after applying membership rules (needed for shared stores). */
   mine: {
@@ -123,6 +125,16 @@ interface DataContextValue {
     adminUpdatePerson(userId: string, patch: PersonPatch): Promise<void>;
     adminDeletePerson(userId: string): Promise<void>;
   };
+}
+
+/** What someone without an account sees when they tap anything that would save. */
+export const GUEST_MESSAGE = "This is a sample. Create an account to save your Mivtzoim.";
+
+/** The same functions, except each one only says "create an account" and changes nothing. */
+function sampleOnly<T extends object>(fns: T): T {
+  const blocked = {} as T;
+  for (const k of Object.keys(fns) as (keyof T)[]) (blocked as Record<keyof T, unknown>)[k] = () => Promise.reject(new Error(GUEST_MESSAGE));
+  return blocked;
 }
 
 const DataContext = createContext<DataContextValue | null>(null);
@@ -268,11 +280,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
       saveLater(() => b.remove("mivtzoim_activity", realId(id)));
     };
 
-    return {
+    const guest = status === "ready" && !me && !!backend?.hasAuth;
+    const value: DataContextValue = {
       status,
       error,
       backend,
       me,
+      guest,
       data,
       mine,
       shared: data.categories.filter((c) => c.shared && !isBuiltinRow(c)),
@@ -490,6 +504,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
             await b.update("personal_categories", id, { name: name.trim(), description: description.trim() || null, ...(icon ? { icon } : {}) });
           }),
       },
+    };
+    if (!guest) return value;
+    // Signing in, creating an account and resetting a password still work; nothing else saves.
+    const { signIn, signUp, requestPasswordReset, updatePassword, finishRecovery } = value.auth;
+    return {
+      ...value,
+      actions: sampleOnly(value.actions),
+      auth: { ...sampleOnly(value.auth), signIn, signUp, requestPasswordReset, updatePassword, finishRecovery, recovering },
     };
   }, [backend, status, error, me, data, mine, settings, people, recovering, toast, notify, refresh, load]);
 
