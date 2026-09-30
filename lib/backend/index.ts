@@ -1,4 +1,4 @@
-import type { Profile, SignUpInput, SiteSettings, TableName, Tables } from "../types";
+import type { PersonalCategory, Profile, SignUpInput, SiteSettings, TableName, Tables } from "../types";
 
 /**
  * Where the app keeps its data. The UI talks only to this interface, so the
@@ -59,6 +59,8 @@ export interface Backend {
    * Only where the backend can't already see everyone's entries; null if unavailable.
    */
   communityActivity?(from: string, to: string): Promise<CommunityRow[] | null>;
+  /** The mivtzoim everyone shares (names, icons, order), readable without an account for the sample. */
+  sharedMivtzoim?(): Promise<PersonalCategory[]>;
 }
 
 export interface CommunityRow {

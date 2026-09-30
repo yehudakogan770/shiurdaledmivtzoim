@@ -219,7 +219,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   const wasSignedIn = useRef(false);
   useEffect(() => {
     if (me && path === "/login") go("/");
-    if (!me && wasSignedIn.current && status === "ready") go("/");
+    if (!me && wasSignedIn.current && status === "ready") {
+      setMenuOpen(false);
+      go("/");
+    }
     wasSignedIn.current = !!me;
   }, [me, status]); // eslint-disable-line react-hooks/exhaustive-deps
 

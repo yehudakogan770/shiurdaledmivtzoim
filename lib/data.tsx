@@ -175,7 +175,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setSettings(merged);
     setMe(user);
     if (!user) {
-      setData(EMPTY);
+      // The sample: nothing logged, but the same mivtzoim everyone has.
+      const categories = b.sharedMivtzoim ? await b.sharedMivtzoim().catch(() => []) : [];
+      setData({ ...EMPTY, categories });
       setPeople([]);
       return;
     }

@@ -148,6 +148,9 @@ export function createLocalBackend(): Backend {
       return { needsConfirmation: false };
     },
 
+    async sharedMivtzoim() {
+      return load().personal_categories.filter((c) => c.shared);
+    },
     async list(table) {
       if (table === "profiles") return load().profiles.map(publicProfile) as Tables[typeof table][];
       return [...load()[table]] as unknown as Tables[typeof table][];
