@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { displayName, type PersonalCategory, type Profile, type TableName, type Tables } from "../types";
-import { checkEmail, checkPassword, loginKey, normalizeUsername, type Backend, type CommunityRow } from "./index";
+import { NOT_ALLOWED, checkEmail, checkPassword, loginKey, normalizeUsername, type Backend, type CommunityRow } from "./index";
 
 /** Where email links (confirmation, password reset) send people back to. */
 function siteUrl() {
@@ -124,12 +124,15 @@ export function createSupabaseBackend(url: string, key: string): Backend {
       return data as Tables[typeof table];
     },
     async update(table, id, patch) {
-      const { error } = await sb.from(table).update(patch as never).eq("id", id);
+      const { data, error } = await sb.from(table).update(patch as never).eq("id", id).select("id");
       fail(error);
+      // The database skips rows this account may not change, without an error: say so.
+      if (Array.isArray(data) && data.length === 0) throw new Error(NOT_ALLOWED);
     },
     async remove(table: TableName, id) {
-      const { error } = await sb.from(table).delete().eq("id", id);
+      const { data, error } = await sb.from(table).delete().eq("id", id).select("id");
       fail(error);
+      if (Array.isArray(data) && data.length === 0) throw new Error(NOT_ALLOWED);
     },
 
     async joinGroup(code) {

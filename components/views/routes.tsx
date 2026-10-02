@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { Check, MapPin, Plus, RotateCcw, Trash2, X } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, MapPin, Pencil, Plus, RotateCcw, Trash2, X } from "lucide-react";
+import { useEditMode } from "@/lib/edit-mode";
+import { NOT_ALLOWED } from "@/lib/backend";
+import { EditSwitch } from "./dashboard";
 import { useData } from "@/lib/data";
 import { AddressInput, googleMapsLink } from "../address-input";
 import { useNav } from "@/lib/nav";
@@ -12,9 +15,15 @@ const STOP_TYPES = ["Store", "Office", "Home", "Hospital", "Campus", "Street cor
 type StopDraft = { name: string; address: string; type: string; notes: string };
 const blankStop: StopDraft = { name: "", address: "", type: "Store", notes: "" };
 
+/** The Owner's message when the database doesn't yet let it change other people's routes. */
+function ownerMessage(err: Error) {
+  return err.message === NOT_ALLOWED ? "To change other people's routes, run database update 010 in Supabase first." : err.message;
+}
+
 export function RoutesView() {
-  const { mine, data } = useData();
+  const { mine, data, isOwner } = useData();
   const { Link } = useNav();
+  if (isOwner) return <AllRoutesView />;
 
   return (
     <div className="grid grid-cols-1 gap-6">
@@ -172,10 +181,56 @@ export function NewRouteView() {
   );
 }
 
+/** The Owner sees everyone's routes, with whose route it is and how far along. */
+function AllRoutesView() {
+  const { data } = useData();
+  const { Link } = useNav();
+  const owner = (r: { created_by: string }) => data.names[r.created_by] || "Someone";
+  const routes = [...data.routes].sort((a, b) => owner(a).localeCompare(owner(b)) || a.name.localeCompare(b.name));
+  return (
+    <div className="grid grid-cols-1 gap-6">
+      <PageHeader title="Routes" subtitle="Everyone's routes. Open one to see all its stops; turn on Edit there to change it." action={<EditSwitch />} />
+      {routes.length === 0 ? (
+        <Card>
+          <Empty title="No routes yet" icon={MapPin}>
+            When people make routes, they show up here.
+          </Empty>
+        </Card>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2">
+          {routes.map((r) => {
+            const stops = data.stops.filter((s) => s.route_id === r.id);
+            const done = stops.filter((s) => s.completed).length;
+            const pct = stops.length ? (done / stops.length) * 100 : 0;
+            return (
+              <Link key={r.id} href={`/routes/view?id=${r.id}`} className="block rounded-[28px] bg-card p-6 transition hover:shadow-card">
+                <p className="text-sm font-medium text-accent">{owner(r)}</p>
+                <h2 className="text-xl font-medium">{r.name}</h2>
+                {r.description && <p className="mt-1 line-clamp-2 text-sm text-muted">{r.description}</p>}
+                <div className="mt-4 h-2 overflow-hidden rounded-full bg-sunken">
+                  <div className="h-full rounded-full bg-sage" style={{ width: `${pct}%` }} />
+                </div>
+                <p className="tabular mt-1.5 text-sm text-muted">
+                  {done} of {stops.length} stops done
+                </p>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function RouteDetailView() {
-  const { me, data, mine, actions, notify } = useData();
+  const { me, data, mine, actions, notify, isOwner } = useData();
+  const { editing } = useEditMode();
   const { query, go } = useNav();
-  const route = mine.routes.find((r) => r.id === query.id);
+  // The Owner can open anyone's route; with Edit on it can change everything on it.
+  const route = (isOwner ? data.routes : mine.routes).find((r) => r.id === query.id);
+  const canEdit = !isOwner || editing;
+  const [routeDraft, setRouteDraft] = useState<{ name: string; description: string } | null>(null);
+  const [stopDraft, setStopDraft] = useState<{ locationId: string; value: StopDraft } | null>(null);
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState<StopDraft>(blankStop);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -204,7 +259,7 @@ export function RouteDetailView() {
       await work();
       if (message) notify(message);
     } catch (err) {
-      notify((err as Error).message);
+      notify(isOwner ? ownerMessage(err as Error) : (err as Error).message);
     } finally {
       setPending(null);
     }
@@ -218,24 +273,72 @@ export function RouteDetailView() {
     setAdding(false);
   }
 
+  async function saveRoute(e: FormEvent) {
+    e.preventDefault();
+    if (!routeDraft) return;
+    await wrap("route", () => actions.updateRoute(route!.id, routeDraft), "Route saved.");
+    setRouteDraft(null);
+  }
+
+  async function saveStop(e: FormEvent) {
+    e.preventDefault();
+    if (!stopDraft) return;
+    await wrap("stop", () => actions.updateStop(stopDraft.locationId, stopDraft.value), "Stop saved.");
+    setStopDraft(null);
+  }
+
   return (
     <div className="grid grid-cols-1 gap-6">
       <PageHeader
         back={{ href: "/routes", label: "Routes" }}
+        eyebrow={isOwner ? `${data.names[route.created_by] || "Someone"}'s route` : undefined}
         title={route.name}
         subtitle={
           <>
             <span className="tabular">{done} of {stops.length} stops done</span>
           </>
         }
-        action={<ButtonLink href={`/log?${logQuery}`}>Log on this route</ButtonLink>}
+        action={isOwner ? <EditSwitch /> : <ButtonLink href={`/log?${logQuery}`}>Log on this route</ButtonLink>}
       />
-      {route.description && <p className="-mt-3 max-w-2xl text-muted">{route.description}</p>}
+      {isOwner && editing && (
+        <Card>
+          {routeDraft ? (
+            <form onSubmit={saveRoute} className="grid gap-3 p-6">
+              <Field label="Route name" htmlFor="route-name">
+                <Input id="route-name" required autoFocus value={routeDraft.name} onChange={(e) => setRouteDraft({ ...routeDraft, name: e.target.value })} />
+              </Field>
+              <Field label="Description" htmlFor="route-description">
+                <Textarea id="route-description" rows={2} value={routeDraft.description} onChange={(e) => setRouteDraft({ ...routeDraft, description: e.target.value })} />
+              </Field>
+              <div className="flex gap-2">
+                <Button type="submit" disabled={pending !== null} className="h-9 px-4">
+                  Save
+                </Button>
+                <Button type="button" variant="ghost" className="h-9 px-3" onClick={() => setRouteDraft(null)}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          ) : (
+            <div className="flex flex-wrap items-center gap-3 p-6">
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm text-muted">Route name and description</span>
+                <span className="block font-medium">{route.name}</span>
+                {route.description && <span className="block text-sm text-muted">{route.description}</span>}
+              </span>
+              <Button variant="tonal" className="h-9 px-4" onClick={() => setRouteDraft({ name: route.name, description: route.description ?? "" })}>
+                <Pencil size={16} aria-hidden /> Edit
+              </Button>
+            </div>
+          )}
+        </Card>
+      )}
+      {route.description && !(isOwner && editing) && <p className="-mt-3 max-w-2xl text-muted">{route.description}</p>}
 
       <Card>
         <CardTitle
           action={
-            done > 0 ? (
+            done > 0 && canEdit ? (
               <Button variant="ghost" className="h-9 px-3" disabled={pending !== null} onClick={() => wrap("reset", () => actions.resetRoute(route.id), "All stops unchecked.")}>
                 <RotateCcw size={14} aria-hidden /> Start over
               </Button>
@@ -248,13 +351,38 @@ export function RouteDetailView() {
           <Empty title="No stops yet" icon={MapPin}>Add the first place on this route below.</Empty>
         ) : (
           <ol className="divide-y divide-line/60">
-            {stops.map(({ stop, loc }, i) => (
+            {stops.map(({ stop, loc }, i) =>
+              stopDraft?.locationId === stop.location_id ? (
+                <li key={stop.id} className="px-6 py-4">
+                  <form onSubmit={saveStop} className="grid gap-3">
+                    <StopFields value={stopDraft.value} onChange={(value) => setStopDraft({ ...stopDraft, value })} idPrefix={`edit-stop-${stop.id}`} />
+                    <div className="flex gap-2">
+                      <Button type="submit" disabled={pending !== null} className="h-9 px-4">
+                        Save stop
+                      </Button>
+                      <Button type="button" variant="ghost" className="h-9 px-3" onClick={() => setStopDraft(null)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </form>
+                </li>
+              ) : (
               <li key={stop.id} className="flex items-center gap-3 px-6 py-3.5">
+                {isOwner && editing && (
+                  <span className="-ml-3 flex shrink-0 flex-col">
+                    <IconButton aria-label={`Move ${loc?.name} up`} disabled={i === 0 || pending !== null} onClick={() => wrap(stop.id, () => actions.moveStop(stop.id, -1))} className="h-7 w-9 disabled:opacity-25">
+                      <ChevronUp size={18} />
+                    </IconButton>
+                    <IconButton aria-label={`Move ${loc?.name} down`} disabled={i === stops.length - 1 || pending !== null} onClick={() => wrap(stop.id, () => actions.moveStop(stop.id, 1))} className="h-7 w-9 disabled:opacity-25">
+                      <ChevronDown size={18} />
+                    </IconButton>
+                  </span>
+                )}
                 <button
                   type="button"
                   aria-pressed={stop.completed}
                   aria-label={stop.completed ? `Mark ${loc?.name} not done` : `Mark ${loc?.name} done`}
-                  disabled={pending !== null}
+                  disabled={pending !== null || !canEdit}
                   onClick={() => wrap(stop.id, () => actions.toggleStop(stop))}
                   className={cx(
                     "grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 transition-colors",
@@ -275,16 +403,31 @@ export function RouteDetailView() {
                     {loc?.notes && <span className="block italic">{loc.notes}</span>}
                   </span>
                 </span>
-                <ButtonLink href={`/log?${logQuery}&location=${stop.location_id}`} variant="secondary" className="hidden px-3 py-1.5 sm:inline-flex">
-                  Log here
-                </ButtonLink>
-                <IconButton aria-label={`Remove ${loc?.name}`} disabled={pending !== null} onClick={() => wrap(stop.id, () => actions.removeStop(stop.id), "Stop removed.")}>
-                  <Trash2 size={18} />
-                </IconButton>
+                {!isOwner && (
+                  <ButtonLink href={`/log?${logQuery}&location=${stop.location_id}`} variant="secondary" className="hidden px-3 py-1.5 sm:inline-flex">
+                    Log here
+                  </ButtonLink>
+                )}
+                {isOwner && editing && loc && (
+                  <IconButton
+                    aria-label={`Edit ${loc.name}`}
+                    disabled={pending !== null}
+                    onClick={() => setStopDraft({ locationId: loc.id, value: { name: loc.name, address: loc.address ?? "", type: loc.type ?? "Store", notes: loc.notes ?? "" } })}
+                  >
+                    <Pencil size={18} />
+                  </IconButton>
+                )}
+                {canEdit && (
+                  <IconButton aria-label={`Remove ${loc?.name}`} disabled={pending !== null} onClick={() => wrap(stop.id, () => actions.removeStop(stop.id), "Stop removed.")}>
+                    <Trash2 size={18} />
+                  </IconButton>
+                )}
               </li>
-            ))}
+              ),
+            )}
           </ol>
         )}
+        {canEdit && (
         <div className="px-6 pt-2 pb-6">
           {adding ? (
             <form onSubmit={addStop} className="grid gap-3">
@@ -304,9 +447,11 @@ export function RouteDetailView() {
             </Button>
           )}
         </div>
+        )}
+        {!canEdit && <div className="pb-4" />}
       </Card>
 
-      {route.created_by === me?.id && (
+      {(route.created_by === me?.id || (isOwner && editing)) && (
         <div className="flex flex-wrap items-center gap-3">
           {confirmDelete ? (
             <>

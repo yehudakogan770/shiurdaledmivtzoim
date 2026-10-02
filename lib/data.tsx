@@ -115,6 +115,11 @@ interface DataContextValue {
     removeStop(stopId: string): Promise<void>;
     toggleStop(stop: RouteLocation): Promise<void>;
     resetRoute(routeId: string): Promise<void>;
+    updateRoute(routeId: string, patch: { name: string; description: string }): Promise<void>;
+    /** Change a stop's place: its name, address, type and notes. */
+    updateStop(locationId: string, stop: { name: string; address?: string; type?: string; notes?: string }): Promise<void>;
+    /** Move a stop one place up or down on its route. */
+    moveStop(stopId: string, by: -1 | 1): Promise<void>;
     addCategory(name: string, description?: string, shared?: boolean, icon?: string): Promise<void>;
     archiveCategory(id: string, archived: boolean): Promise<void>;
     /** Admins: the weeks a mivtza for everyone is hidden in (built-in type or category id). */
@@ -449,6 +454,31 @@ export function DataProvider({ children }: { children: ReactNode }) {
           setData((d) => ({ ...d, stops: d.stops.map((x) => (x.id === stop.id ? { ...x, completed } : x)) }));
           saveLater(() => b.update("route_locations", stop.id, { completed }));
         },
+        updateRoute: (routeId, patch) =>
+          run(async () => {
+            if (!patch.name.trim()) throw new Error("Give the route a name.");
+            await b.update("routes", routeId, { name: patch.name.trim(), description: patch.description.trim() || null });
+          }),
+        updateStop: (locationId, s) =>
+          run(async () => {
+            if (!s.name.trim()) throw new Error("Give the stop a name first.");
+            await b.update("locations", locationId, { name: s.name.trim(), address: s.address?.trim() || null, type: s.type || null, notes: s.notes?.trim() || null });
+          }),
+        moveStop: (stopId, by) =>
+          run(async () => {
+            const stop = data.stops.find((x) => x.id === stopId);
+            if (!stop) return;
+            const list = data.stops.filter((x) => x.route_id === stop.route_id).sort((x, y) => x.position - y.position);
+            const i = list.findIndex((x) => x.id === stopId);
+            const other = list[i + by];
+            if (!other) return;
+            // Number them 0, 1, 2… with the two swapped, so equal or missing positions can't get stuck.
+            const order = list.map((x) => x.id);
+            [order[i], order[i + by]] = [order[i + by], order[i]];
+            for (const [position, id] of order.entries()) {
+              if (list.find((x) => x.id === id)!.position !== position) await b.update("route_locations", id, { position });
+            }
+          }),
         resetRoute: (routeId) =>
           run(async () => {
             for (const s of data.stops.filter((x) => x.route_id === routeId && x.completed)) {

@@ -63,6 +63,9 @@ export interface Backend {
   sharedMivtzoim?(): Promise<PersonalCategory[]>;
 }
 
+/** When the database doesn't let this account change something (it may have been deleted meanwhile). */
+export const NOT_ALLOWED = "That didn't save: this account isn't allowed to change it, or it was already deleted.";
+
 export interface CommunityRow {
   activity_date: string;
   created_at: string;

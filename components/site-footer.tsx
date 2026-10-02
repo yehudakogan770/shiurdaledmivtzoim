@@ -125,21 +125,54 @@ export function SiteFooter({ className }: { className?: string }) {
 /** The Owner's form for the donation box, shown on Home while Edit is on. */
 function DonationEditor() {
   const { settings, actions, notify } = useData();
-  const [draft, setDraft] = useState<DonationInfo>(() => donationInfo(settings));
+  // Like the other settings: shown as it is, and typed in only after tapping the pencil.
+  const [draft, setDraft] = useState<DonationInfo | null>(null);
   const [busy, setBusy] = useState(false);
-  const set = (k: keyof DonationInfo) => (e: { target: { value: string } }) => setDraft({ ...draft, [k]: e.target.value });
+  const set = (k: keyof DonationInfo) => (e: { target: { value: string } }) => draft && setDraft({ ...draft, [k]: e.target.value });
+  const now = donationInfo(settings);
 
   async function save(e: FormEvent) {
     e.preventDefault();
+    if (!draft) return;
     setBusy(true);
     try {
       await actions.saveSettings({ ...settings, tagline: donationTagline(draft) });
       notify("Donation box saved.");
+      setDraft(null);
     } catch (err) {
       notify((err as Error).message);
     } finally {
       setBusy(false);
     }
+  }
+
+  if (!draft) {
+    return (
+      <section className="grid gap-4 rounded-[28px] bg-card p-6">
+        <div>
+          <h2 className="text-lg font-medium">Donation box</h2>
+          <p className="text-sm text-muted">Shown at the bottom of every page for everyone.</p>
+        </div>
+        <dl className="grid gap-x-6 gap-y-3 rounded-2xl bg-paper px-4 py-3 text-sm sm:grid-cols-2">
+          {(
+            [
+              ["Heading", now.title],
+              ["Text", now.text],
+              ["Cash App", now.cashtag],
+              ["Zelle", now.zelle],
+            ] as const
+          ).map(([k, v]) => (
+            <div key={k} className="min-w-0">
+              <dt className="text-muted">{k}</dt>
+              <dd className="break-words font-medium">{v}</dd>
+            </div>
+          ))}
+        </dl>
+        <Button variant="tonal" className="h-9 justify-self-start px-4" aria-label="Edit donation box" onClick={() => setDraft(now)}>
+          <Pencil size={16} aria-hidden /> Edit
+        </Button>
+      </section>
+    );
   }
 
   return (
@@ -167,9 +200,14 @@ function DonationEditor() {
           <Input id="donation-zelle" required maxLength={80} autoCapitalize="none" value={draft.zelle} onChange={set("zelle")} />
         </Field>
       </div>
-      <Button type="submit" disabled={busy} className="justify-self-start">
-        {busy ? "Saving…" : "Save donation box"}
-      </Button>
+      <div className="flex gap-2">
+        <Button type="submit" disabled={busy} className="h-9 px-4">
+          {busy ? "Saving…" : "Save"}
+        </Button>
+        <Button type="button" variant="ghost" className="h-9 px-3" onClick={() => setDraft(null)}>
+          Cancel
+        </Button>
+      </div>
     </form>
   );
 }
