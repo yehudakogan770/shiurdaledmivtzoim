@@ -5,7 +5,7 @@ import { ChevronDown, ChevronUp, Download, ClipboardList, Eye, EyeOff, KeyRound,
 import { TefillinIcon } from "../icons";
 import { categoryName, orderedMivtzoim, reportColumns, type BuiltinType } from "@/lib/categories";
 import { dayWithParsha, weekTitle } from "@/lib/parsha";
-import { allWeeks, currentWeek } from "@/lib/dates";
+import { addDays, allWeeks, currentWeek } from "@/lib/dates";
 import type { Activity, PersonalCategory, Profile } from "@/lib/types";
 import { ICON_CHOICES, iconForActivity, iconForCategory, iconForName } from "@/lib/category-icons";
 import { useData } from "@/lib/data";
@@ -14,7 +14,7 @@ import { Avatar, Badge, Button, Card, CardTitle, CategoryIcon, Empty, Field, Ico
 import { sum } from "./dashboard";
 
 export function AdminView() {
-  const { isAdmin } = useData();
+  const { isAdmin, isOwner } = useData();
   if (!isAdmin) {
     return (
       <Card>
@@ -27,10 +27,15 @@ export function AdminView() {
   return (
     <div className="grid grid-cols-1 gap-6">
       <PageHeader title="Admin" subtitle="Edit the website and manage everyone who uses it." />
-      <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
-        <SiteSettingsCard />
-        <SharedCategoriesCard />
-      </div>
+      {isOwner ? (
+        // The Owner edits the site name, announcement and mivtzoim right on the Home page.
+        <SiteSettingsCard welcomeOnly />
+      ) : (
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+          <SiteSettingsCard />
+          <SharedCategoriesCard />
+        </div>
+      )}
       <PeopleCard />
       <ExportCard />
       <ActivityCard />
@@ -38,7 +43,17 @@ export function AdminView() {
   );
 }
 
-function SiteSettingsCard() {
+function SiteSettingsCard({ welcomeOnly }: { welcomeOnly?: boolean }) {
+  if (welcomeOnly) {
+    return (
+      <Card>
+        <CardTitle sub="The site name, announcement and Mivtzoim are edited on the Home page: turn on Edit there.">Website</CardTitle>
+        <div className="grid gap-5 px-6 pb-6">
+          <SettingField field="welcome" label="Welcome text" hint="Shown on the sign-up screen." rows={2} maxLength={200} />
+        </div>
+      </Card>
+    );
+  }
   return (
     <Card>
       <CardTitle sub="Shown to everyone who opens the site">Website</CardTitle>
@@ -63,7 +78,7 @@ function SiteSettingsCard() {
  * One website setting, shown as plain text. It can only be typed in after tapping
  * its pencil, so a stray tap never changes anything.
  */
-function SettingField({
+export function SettingField({
   field,
   label,
   hint,
@@ -94,7 +109,7 @@ function SettingField({
     if (required && !draft.trim()) return notify(`The ${label.toLowerCase()} can't be empty.`);
     setBusy(true);
     try {
-      await actions.saveSettings({ ...settings, tagline: "", [field]: draft.trim() });
+      await actions.saveSettings({ ...settings, [field]: draft.trim() });
       notify(`${label} saved.`);
       setDraft(null);
     } catch (err) {
@@ -175,6 +190,59 @@ function IconPicker({ name, value, onChange }: { name: string; value: string; on
   );
 }
 
+/**
+ * Hiding a mivtza: from which week on. Weeks before that keep it, so people can still go
+ * back and add to or fix those weeks. Its history is never lost.
+ */
+function HideMivtzaDialog({ name, onHide, onCancel }: { name: string; onHide(from: string | null): void; onCancel(): void }) {
+  const thisWeek = currentWeek();
+  const nextWeek = addDays(thisWeek, 7);
+  const options: { value: string; label: string; hint: string }[] = [
+    { value: nextWeek, label: "Starting next week", hint: `${weekTitle(nextWeek)}. This week and earlier weeks keep it.` },
+    { value: thisWeek, label: "Starting this week", hint: `${weekTitle(thisWeek)}. Earlier weeks keep it.` },
+    { value: "all", label: "Every week", hint: "Also past weeks: nobody can add to or change it anymore." },
+  ];
+  const [choice, setChoice] = useState(nextWeek);
+  return (
+    <Modal onClose={onCancel}>
+      <div role="dialog" aria-modal="true" aria-labelledby="hide-title" className="grid w-full max-w-md gap-4 rounded-[28px] bg-card p-6 shadow-pop" onClick={(e) => e.stopPropagation()}>
+        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-accent-soft text-accent-on-soft">
+          <EyeOff size={22} aria-hidden />
+        </span>
+        <div className="grid gap-1">
+          <h2 id="hide-title" className="text-xl font-medium">
+            Hide {name}
+          </h2>
+          <p className="text-sm text-muted">Its history is kept, and you can show it again anytime.</p>
+        </div>
+        <div role="radiogroup" aria-label="Hide starting" className="grid gap-2">
+          {options.map((o) => (
+            <button
+              key={o.value}
+              type="button"
+              role="radio"
+              aria-checked={choice === o.value}
+              onClick={() => setChoice(o.value)}
+              className={cx("grid gap-0.5 rounded-2xl border px-4 py-3 text-left transition", choice === o.value ? "border-accent bg-accent-soft text-accent-on-soft" : "border-line hover:bg-ink/5")}
+            >
+              <span className="font-medium">{o.label}</span>
+              <span className="text-sm opacity-80">{o.hint}</span>
+            </button>
+          ))}
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button onClick={() => onHide(choice === "all" ? null : choice)}>
+            <EyeOff size={16} aria-hidden /> Hide
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 /** The warning before deleting a mivtza: it takes all of its history with it. */
 function DeleteMivtzaDialog({ name, entries, hidden, onHide, onDelete, onCancel }: { name: string; entries: number; hidden: boolean; onHide(): void; onDelete(): void; onCancel(): void }) {
   return (
@@ -219,7 +287,11 @@ function DeleteMivtzaDialog({ name, entries, hidden, onHide, onDelete, onCancel 
   );
 }
 
-function SharedCategoriesCard() {
+/**
+ * The mivtzoim everyone has, in front-page order. With `controls` an admin can add, rename,
+ * reorder, hide and delete them; without, it's just the list (hidden ones faded).
+ */
+export function SharedCategoriesCard({ controls = true, title = "Mivtzoim for everyone", sub }: { controls?: boolean; title?: string; sub?: string }) {
   const { shared, builtins, actions, notify, data } = useData();
   const [name, setName] = useState("");
   const [icon, setIcon] = useState("auto");
@@ -244,13 +316,13 @@ function SharedCategoriesCard() {
   const [editing, setEditing] = useState<{ key: string; name: string; icon: string } | null>(null);
 
   // Tefillin and Candles first, then the ones added here; all work the same way.
-  type Item = { key: string; name: string; hidden: boolean; builtin?: BuiltinType; icon?: string };
+  type Item = { key: string; name: string; hidden: boolean; hiddenFrom: string | null; builtin?: BuiltinType; icon?: string };
   const items: Item[] = orderedMivtzoim(builtins, shared).flatMap((m): Item[] =>
     m.builtin
       ? m.builtin.removed
         ? []
-        : [{ key: m.key, name: m.builtin.name, hidden: m.builtin.hidden, builtin: m.builtin.type }]
-      : [{ key: m.key, name: m.category.name, hidden: m.category.status === "archived", icon: m.category.icon }],
+        : [{ key: m.key, name: m.builtin.name, hidden: m.builtin.hidden, hiddenFrom: m.builtin.hiddenFrom, builtin: m.builtin.type }]
+      : [{ key: m.key, name: m.category.name, hidden: m.category.status === "archived", hiddenFrom: m.category.hidden_from ?? null, icon: m.category.icon }],
   );
 
   /** Move one up or down; the front page follows this order. */
@@ -291,16 +363,20 @@ function SharedCategoriesCard() {
   const historyCount = (item: Item) =>
     data.activity.filter((a) => (item.builtin ? a.category_type === item.builtin : a.personal_category_id === item.key)).length;
 
-  const toggle = (item: Item, hide: boolean) =>
-    attempt(() => (item.builtin ? actions.updateBuiltin(item.builtin, { hidden: hide }) : actions.archiveCategory(item.key, hide)));
+  const toggle = (item: Item, hide: boolean, from: string | null = null) =>
+    attempt(
+      () => (item.builtin ? actions.updateBuiltin(item.builtin, { hidden: hide, hiddenFrom: from }) : actions.archiveCategory(item.key, hide, from)),
+      hide ? `${item.name} is hidden ${from ? `starting the week of ${weekTitle(from)}` : "in every week"}. Its history is kept.` : `${item.name} is showing again.`,
+    );
+  const [hiding, setHiding] = useState<Item | null>(null);
 
   return (
     <Card>
-      <CardTitle sub="Each one gets its own counter and quick-add button on everyone's front page, in this order. Use the arrows to move them.">Mivtzoim for everyone</CardTitle>
+      <CardTitle sub={sub ?? "Each one gets its own counter and quick-add button on everyone's front page, in this order. Use the arrows to move them."}>{title}</CardTitle>
       {items.length > 0 && (
         <ul className={listClass}>
           {items.map((item, index) => (
-            <li key={item.key} className="flex flex-wrap items-center gap-2 px-6 py-3">
+            <li key={item.key} className="flex items-center gap-1 px-6 py-3 sm:gap-2">
               {editing?.key === item.key ? (
                 <form onSubmit={(e) => saveEdit(e, item)} className="grid w-full gap-3 py-1">
                   <Field label="Name" htmlFor={`edit-name-${item.key}`}>
@@ -318,6 +394,7 @@ function SharedCategoriesCard() {
                 </form>
               ) : (
                 <>
+                  {controls && (
                   <span className="-ml-3 flex flex-col">
                     <IconButton aria-label={`Move ${item.name} up`} disabled={index === 0} onClick={() => move(index, -1)} className="h-7 w-9 disabled:opacity-25">
                       <ChevronUp size={18} />
@@ -326,20 +403,24 @@ function SharedCategoriesCard() {
                       <ChevronDown size={18} />
                     </IconButton>
                   </span>
-                  <span className="min-w-0 flex flex-1 items-center gap-3">
+                  )}
+                  <span className="flex min-w-0 flex-1 items-center gap-3">
                     <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-accent-soft text-accent-on-soft">
                       <ItemIcon item={item} />
                     </span>
-                    <span className={item.hidden ? "block font-medium text-muted line-through" : "block font-medium"}>{item.name}</span>
+                    <span className="min-w-0">
+                      <span className={cx("block break-words font-medium", item.hidden && "text-muted line-through")}>{item.name}</span>
+                      {item.hidden && <span className="block text-xs text-muted">{item.hiddenFrom ? `Hidden from ${weekTitle(item.hiddenFrom)} on` : "Hidden"}</span>}
+                    </span>
                   </span>
-                  <>
+                  {controls && <span className="flex shrink-0 items-center">
                       {item.hidden ? (
-                        <Button variant="ghost" className="h-9 px-3" onClick={() => toggle(item, false)}>
-                          <Eye size={16} aria-hidden /> Show
+                        <Button variant="ghost" className="h-9 shrink-0 px-3" onClick={() => toggle(item, false)} aria-label={`Show ${item.name}`}>
+                          <Eye size={16} aria-hidden /> <span className="hidden sm:inline">Show</span>
                         </Button>
                       ) : (
-                        <Button variant="ghost" className="h-9 px-3" onClick={() => toggle(item, true)}>
-                          <EyeOff size={16} aria-hidden /> Hide
+                        <Button variant="ghost" className="h-9 shrink-0 px-3" onClick={() => setHiding(item)} aria-label={`Hide ${item.name}`}>
+                          <EyeOff size={16} aria-hidden /> <span className="hidden sm:inline">Hide</span>
                         </Button>
                       )}
                       <IconButton aria-label={`Edit ${item.name}`} onClick={() => setEditing({ key: item.key, name: item.name, icon: item.icon ?? "auto" })}>
@@ -348,12 +429,23 @@ function SharedCategoriesCard() {
                       <IconButton aria-label={`Delete ${item.name}`} onClick={() => setRemoving(item.key)}>
                         <Trash2 size={18} />
                       </IconButton>
-                  </>
+                  </span>}
                 </>
               )}
             </li>
           ))}
         </ul>
+      )}
+      {hiding && (
+        <HideMivtzaDialog
+          name={hiding.name}
+          onHide={(from) => {
+            const item = hiding;
+            setHiding(null);
+            toggle(item, true, from);
+          }}
+          onCancel={() => setHiding(null)}
+        />
       )}
       {removingItem && (
         <DeleteMivtzaDialog
@@ -362,14 +454,13 @@ function SharedCategoriesCard() {
           hidden={removingItem.hidden}
           onHide={() => {
             setRemoving(null);
-            toggle(removingItem, true);
-            notify(`${removingItem.name} is hidden. Its history is kept.`);
+            setHiding(removingItem);
           }}
           onDelete={() => remove(removingItem)}
           onCancel={() => setRemoving(null)}
         />
       )}
-      {removedBuiltins.length > 0 && (
+      {controls && removedBuiltins.length > 0 && (
         <p className="flex flex-wrap items-center gap-2 px-6 pt-3 text-sm text-muted">
           Removed:
           {removedBuiltins.map((b) => (
@@ -384,6 +475,7 @@ function SharedCategoriesCard() {
           ))}
         </p>
       )}
+      {controls ? (
       <form onSubmit={add} className="grid gap-3 px-6 pt-3 pb-6">
         <Field label="Name" htmlFor="shared-name">
           <Input id="shared-name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Mezuzah" />
@@ -393,6 +485,9 @@ function SharedCategoriesCard() {
           Add for everyone
         </Button>
       </form>
+      ) : (
+        <div className="pb-3" />
+      )}
     </Card>
   );
 }

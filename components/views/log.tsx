@@ -7,9 +7,9 @@ import { TefillinIcon } from "../icons";
 import { useData } from "@/lib/data";
 import { iconForCategory } from "@/lib/category-icons";
 import { useNav } from "@/lib/nav";
-import { activityWeek, today } from "@/lib/dates";
+import { activityWeek, currentWeek, today } from "@/lib/dates";
 import { weekTitle } from "@/lib/parsha";
-import { orderedMivtzoim } from "@/lib/categories";
+import { builtinHiddenIn, categoryHiddenIn, orderedMivtzoim } from "@/lib/categories";
 import type { CategoryType } from "@/lib/types";
 import { Button, Card, CardTitle, Field, Input, PageHeader, Select, cx } from "../ui";
 
@@ -31,11 +31,11 @@ export function LogView() {
       ...orderedMivtzoim(builtins, shared).flatMap((m): Choice[] => {
         if (m.builtin) {
           const b = m.builtin;
-          if (b.hidden || b.removed) return [];
+          if (builtinHiddenIn(b, currentWeek())) return [];
           return [{ key: b.type, type: b.type, personalId: null, label: b.name, hint: b.type === "tefillin" ? "People who put on Tefillin" : "Women and girls who received candles" }];
         }
         const c = m.category;
-        return c.status === "active" ? [{ key: c.id, type: "personal", personalId: c.id, label: c.name, hint: "For everyone", icon: iconForCategory(c) }] : [];
+        return !categoryHiddenIn(c, currentWeek()) ? [{ key: c.id, type: "personal", personalId: c.id, label: c.name, hint: "For everyone", icon: iconForCategory(c) }] : [];
       }),
       ...mine.categories
         .filter((c) => c.status === "active")

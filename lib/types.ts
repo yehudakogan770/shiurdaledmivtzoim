@@ -78,6 +78,8 @@ export interface PersonalCategory {
   shared?: boolean;
   /** Where an admin placed it on the front page (lower first). */
   position?: number | null;
+  /** When hidden: the first week (its Friday) it's hidden from; earlier weeks still show it. None means every week. */
+  hidden_from?: string | null;
   created_at: string;
 }
 

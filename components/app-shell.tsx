@@ -13,6 +13,7 @@ import { Avatar, ButtonLink, Empty, IconButton, cx } from "./ui";
 import { LogoMark } from "./brand";
 import { LoginView } from "./views/login";
 import { SiteFooter } from "./site-footer";
+import { EditModeProvider } from "@/lib/edit-mode";
 
 const links = [
   { href: "/", label: "Dashboard", short: "Home", icon: LayoutDashboard, match: ["/", "/dashboard"] },
@@ -282,6 +283,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
+    <EditModeProvider>
     <div className="min-h-screen bg-paper lg:flex">
       <HoverRail />
       <ModalDrawer open={menuOpen} onClose={closeMenu} />
@@ -300,6 +302,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
       <Snackbar message={toast} />
     </div>
+    </EditModeProvider>
   );
 }
 

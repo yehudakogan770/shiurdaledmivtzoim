@@ -33,7 +33,10 @@ export interface Builtin {
   type: BuiltinType;
   name: string;
   short: string;
+  /** Hidden (in at least some weeks). */
   hidden: boolean;
+  /** The first week it's hidden from; null means every week. */
+  hiddenFrom: string | null;
   removed: boolean;
   position: number;
   row: PersonalCategory | null;
@@ -52,6 +55,7 @@ export function builtins(categories: PersonalCategory[]): Builtin[] {
       name,
       short: name === std.label ? std.short : name,
       hidden: row?.status === "archived",
+      hiddenFrom: row?.hidden_from ?? null,
       removed: row?.description === REMOVED,
       // Until an admin reorders, Tefillin and Candles come first.
       position: row?.position ?? i - 100,
@@ -59,6 +63,17 @@ export function builtins(categories: PersonalCategory[]): Builtin[] {
     };
   });
 }
+
+/**
+ * Whether a hidden mivtza is hidden in a given week (its Friday, YYYY-MM-DD). Hidden ones with a
+ * starting week stay in earlier weeks, so people can still add to or fix those weeks.
+ */
+export function hiddenInWeek(hidden: boolean, hiddenFrom: string | null | undefined, week: string) {
+  return hidden && (!hiddenFrom || week >= hiddenFrom);
+}
+
+export const categoryHiddenIn = (c: Pick<PersonalCategory, "status" | "hidden_from">, week: string) => hiddenInWeek(c.status === "archived", c.hidden_from, week);
+export const builtinHiddenIn = (b: Builtin, week: string) => b.removed || hiddenInWeek(b.hidden, b.hiddenFrom, week);
 
 /** One mivtza on the front page: a built-in one or one an admin added. */
 export type Mivtza = { key: string; builtin: Builtin; category?: undefined } | { key: string; builtin?: undefined; category: PersonalCategory };

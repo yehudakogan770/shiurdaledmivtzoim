@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, type ComponentType } from "react";
-import { ClipboardList, Flame, Megaphone, Minus, Plus, Sparkles, Trash2 } from "lucide-react";
+import { ClipboardList, Flame, Megaphone, Minus, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
+import { useEditMode } from "@/lib/edit-mode";
+import { SettingField, SharedCategoriesCard } from "./admin";
 import { TefillinIcon } from "../icons";
 import { useData, type LogInput } from "@/lib/data";
 import { iconForActivity, iconForCategory } from "@/lib/category-icons";
@@ -10,7 +12,7 @@ import { categoryName } from "@/lib/categories";
 import { activityMoment, activityWeek, addDays, allWeeks, currentWeek, formatDay, formatShort, hebrewDate, longDate, recentWeeks, today, weekLabel } from "@/lib/dates";
 import { InstallBanner } from "../install-app";
 import type { CommunityRow } from "@/lib/backend";
-import { orderedMivtzoim, type BuiltinType } from "@/lib/categories";
+import { builtinHiddenIn, categoryHiddenIn, orderedMivtzoim, type BuiltinType } from "@/lib/categories";
 import { parshaName, parshaOfWeek, weekTitle } from "@/lib/parsha";
 import type { Activity } from "@/lib/types";
 import { Card, CardTitle, CategoryIcon, Empty, IconButton, PageHeader, Select, Stat, cx, listClass } from "../ui";
@@ -47,7 +49,8 @@ type Counter = {
 /** Distinct colors for admin-added mivtzoim, in the order they were added. */
 const EXTRA_COLORS = ["#2e8b57", "#6a5acd", "#c0563a", "#1f7fa3", "#a07a12", "#b03a78", "#4b7f2a", "#8a4fb8"];
 
-export function useCounters(): Counter[] {
+/** The mivtzoim shown in a week (default: this week). One hidden from a later week still shows in earlier ones. */
+export function useCounters(week: string = currentWeek()): Counter[] {
   const { shared, builtins } = useData();
   const standard: Record<BuiltinType, Omit<Counter, "title" | "short">> = {
     tefillin: {
@@ -76,9 +79,9 @@ export function useCounters(): Counter[] {
   const colorOf = new Map([...shared].sort((x, y) => x.created_at.localeCompare(y.created_at)).map((c, i) => [c.id, EXTRA_COLORS[i % EXTRA_COLORS.length]]));
   // Same order as the admin set; hidden or removed ones are left off.
   return orderedMivtzoim(builtins, shared).flatMap((m): Counter[] => {
-    if (m.builtin) return m.builtin.hidden || m.builtin.removed ? [] : [{ ...standard[m.builtin.type], title: m.builtin.name, short: m.builtin.short }];
+    if (m.builtin) return builtinHiddenIn(m.builtin, week) ? [] : [{ ...standard[m.builtin.type], title: m.builtin.name, short: m.builtin.short }];
     const c = m.category;
-    if (c.status !== "active") return [];
+    if (categoryHiddenIn(c, week)) return [];
     return [
       {
         key: c.id,
@@ -99,6 +102,94 @@ export function useCounters(): Counter[] {
 }
 
 export function DashboardView() {
+  const { isOwner } = useData();
+  return isOwner ? <OwnerHome /> : <PersonalHome />;
+}
+
+/** The Owner's switch for editing what everyone sees, right on the page. */
+export function EditSwitch() {
+  const { editing, setEditing } = useEditMode();
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={editing}
+      onClick={() => setEditing(!editing)}
+      className={cx(
+        "inline-flex h-11 items-center gap-2.5 rounded-full pr-4 pl-1.5 text-sm font-medium transition",
+        editing ? "bg-accent text-accent-ink" : "bg-card text-ink shadow-card hover:bg-ink/5",
+      )}
+    >
+      <span className={cx("relative h-7 w-12 rounded-full transition", editing ? "bg-accent-ink/30" : "bg-ink/15")}>
+        <span className={cx("absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all", editing ? "left-6" : "left-1")} />
+      </span>
+      <Pencil size={16} aria-hidden />
+      {editing ? "Editing" : "Edit"}
+    </button>
+  );
+}
+
+/**
+ * The Owner runs the site and doesn't log Mivtzoim: Home shows what everyone sees, and with
+ * Edit on, the site name, announcement and mivtzoim can be changed right here.
+ */
+function OwnerHome() {
+  const { settings } = useData();
+  const { editing } = useEditMode();
+  const [week, setWeek] = useState(currentWeek());
+  const hd = hebrewDate();
+  return (
+    <div className="grid grid-cols-1 gap-6">
+      <PageHeader eyebrow={`${longDate()}${hd ? ` · ${hd}` : ""} · ${parshaOfWeek(currentWeek()).english}`} title="Dashboard" action={<EditSwitch />} />
+
+      {editing && (
+        <Card>
+          <CardTitle sub="Turn off Edit when you're done.">Editing the site</CardTitle>
+          <div className="px-6 pb-6">
+            <SettingField field="site_name" label="Site name" hint="Shown at the top of every page." maxLength={40} required />
+          </div>
+        </Card>
+      )}
+
+      <WeekPicker week={week} onChange={setWeek} />
+
+      <EveryoneStrip week={week} />
+
+      <InstallBanner />
+
+      {editing ? (
+        <Card>
+          <div className="px-6 py-6">
+            <SettingField
+              field="announcement"
+              label="Announcement"
+              hint="Shown at the top of everyone's Home page. Leave empty to hide it."
+              rows={3}
+              maxLength={500}
+              placeholder="Mivtzoim this Friday at 2:00. Meet outside the shul."
+              empty="No announcement right now."
+            />
+          </div>
+        </Card>
+      ) : (
+        settings.announcement.trim() && (
+          <div role="status" className="flex items-start gap-3 rounded-[28px] bg-secondary-soft px-5 py-4 text-secondary-on-soft">
+            <Megaphone size={20} aria-hidden className="mt-0.5 shrink-0" />
+            <p className="whitespace-pre-line">{settings.announcement}</p>
+          </div>
+        )
+      )}
+
+      <SharedCategoriesCard
+        controls={editing}
+        title="Mivtzoim"
+        sub={editing ? "Everyone's buttons, in this order. Use the arrows to move them." : "The buttons everyone has, in this order. Turn on Edit to change them."}
+      />
+    </div>
+  );
+}
+
+function PersonalHome() {
   const { me, mine, data, settings } = useData();
   const { Link } = useNav();
   const thisWeek = currentWeek();
@@ -106,7 +197,7 @@ export function DashboardView() {
   const lastWeek = addDays(week, -7);
   const weekRows = mine.activity.filter((a) => activityWeek(a) === week);
   const lastRows = mine.activity.filter((a) => activityWeek(a) === lastWeek);
-  const counters = useCounters();
+  const counters = useCounters(week);
   const weekEntries = [...weekRows].sort((x, y) => activityMoment(y).getTime() - activityMoment(x).getTime());
   const hd = hebrewDate();
 
@@ -209,7 +300,7 @@ function useTouch() {
 function QuickLog({ week }: { week: string }) {
   const touch = useTouch();
   const { actions, notify, mine, guest } = useData();
-  const counters = useCounters();
+  const counters = useCounters(week);
   const past = week !== currentWeek();
 
   async function add(c: Counter) {
@@ -461,7 +552,7 @@ function useEveryoneRows(week: string): Activity[] {
  * to left; a single one just sits there; with nothing logged the section is hidden.
  */
 function EveryoneStrip({ week }: { week: string }) {
-  const counters = useCounters();
+  const counters = useCounters(week);
   const rows = useEveryoneRows(week);
   // Only mivtzoim someone actually did this week.
   const items = counters.map((c) => ({ c, total: sum(rows.filter(c.matches)) })).filter((x) => x.total > 0);

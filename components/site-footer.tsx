@@ -1,21 +1,25 @@
 "use client";
 
-import { useState } from "react";
-import { Check, Copy, HandHeart, Mail } from "lucide-react";
+import { useState, type FormEvent } from "react";
+import { Check, Copy, HandHeart, Mail, Pencil } from "lucide-react";
 import { useData } from "@/lib/data";
 import { useNav } from "@/lib/nav";
-import { cx } from "./ui";
+import { useEditMode } from "@/lib/edit-mode";
+import { donationInfo, donationTagline, type DonationInfo } from "@/lib/donation";
+import { Button, Field, Input, Textarea, cx } from "./ui";
 
 const EMAIL = "sdmivtzoim87@gmail.com";
-const CASHTAG = "$sdmivtzoim87";
-const ZELLE = EMAIL;
 
 /** Bottom of every page: ways to partner in the mivtzoim (Cash App, Zelle) and how to reach us. */
 export function SiteFooter({ className }: { className?: string }) {
-  const { settings } = useData();
+  const { settings, isOwner } = useData();
   const { path } = useNav();
+  const { editing } = useEditMode();
+  const home = path === "/" || path.startsWith("/dashboard");
   // The Admin page is for running the site, so it skips the Cash App / Zelle box.
-  const showPartner = !path.startsWith("/admin");
+  // The Owner sees it only on Home, where it can be edited.
+  const showPartner = !path.startsWith("/admin") && (!isOwner || home);
+  const { title, text, cashtag: CASHTAG, zelle: ZELLE } = donationInfo(settings);
   const [copied, setCopied] = useState(false);
 
   async function copyZelle() {
@@ -33,22 +37,21 @@ export function SiteFooter({ className }: { className?: string }) {
 
   return (
     <footer className={cx("mt-10 grid gap-6", className)}>
-      {showPartner && (
+      {showPartner && isOwner && editing && <DonationEditor />}
+      {showPartner && !(isOwner && editing) && (
         <section className="grid min-w-0 grid-cols-1 gap-4 rounded-[28px] bg-card p-6 lg:grid-cols-[1fr_auto] lg:items-center">
           <div className="flex items-start gap-3">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-accent-soft text-accent-on-soft">
               <HandHeart size={22} aria-hidden />
             </span>
             <div>
-              <h2 className="text-lg font-medium">Partner in the Mivtzoim</h2>
-              <p className="text-sm text-muted">
-                Your participation helps make the Mivtzoim possible.
-              </p>
+              <h2 className="text-lg font-medium">{title}</h2>
+              <p className="text-sm text-muted">{text}</p>
             </div>
           </div>
           <div className="flex min-w-0 flex-wrap gap-2">
             <a
-              href={`https://cash.app/${CASHTAG}`}
+              href={`https://cash.app/${CASHTAG.startsWith("$") ? CASHTAG : `$${CASHTAG}`}`}
               target="_blank"
               rel="noopener noreferrer"
               className={cx(pill, "bg-[#00d64f]/15 text-ink")}
@@ -73,8 +76,14 @@ export function SiteFooter({ className }: { className?: string }) {
               <span className="min-w-0 flex-1 leading-tight">
                 <span className="block font-medium">Zelle</span>
                 <span className="block text-[13px] text-muted sm:text-sm">
-                  {ZELLE.split("@")[0]}
-                  <wbr />@{ZELLE.split("@")[1]}
+                  {ZELLE.includes("@") ? (
+                    <>
+                      {ZELLE.split("@")[0]}
+                      <wbr />@{ZELLE.split("@")[1]}
+                    </>
+                  ) : (
+                    ZELLE
+                  )}
                 </span>
               </span>
               {copied ? (
@@ -110,5 +119,57 @@ export function SiteFooter({ className }: { className?: string }) {
         </span>
       </div>
     </footer>
+  );
+}
+
+/** The Owner's form for the donation box, shown on Home while Edit is on. */
+function DonationEditor() {
+  const { settings, actions, notify } = useData();
+  const [draft, setDraft] = useState<DonationInfo>(() => donationInfo(settings));
+  const [busy, setBusy] = useState(false);
+  const set = (k: keyof DonationInfo) => (e: { target: { value: string } }) => setDraft({ ...draft, [k]: e.target.value });
+
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await actions.saveSettings({ ...settings, tagline: donationTagline(draft) });
+      notify("Donation box saved.");
+    } catch (err) {
+      notify((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={save} className="grid gap-4 rounded-[28px] bg-card p-6">
+      <div className="flex items-center gap-3">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-accent-soft text-accent-on-soft">
+          <Pencil size={20} aria-hidden />
+        </span>
+        <div>
+          <h2 className="text-lg font-medium">Donation box</h2>
+          <p className="text-sm text-muted">Shown at the bottom of every page for everyone.</p>
+        </div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Heading" htmlFor="donation-title">
+          <Input id="donation-title" required maxLength={60} value={draft.title} onChange={set("title")} />
+        </Field>
+        <Field label="Text" htmlFor="donation-text">
+          <Textarea id="donation-text" required rows={2} maxLength={160} value={draft.text} onChange={set("text")} />
+        </Field>
+        <Field label="Cash App name" htmlFor="donation-cashtag" hint="Starts with $">
+          <Input id="donation-cashtag" required maxLength={40} autoCapitalize="none" value={draft.cashtag} onChange={set("cashtag")} />
+        </Field>
+        <Field label="Zelle email or phone" htmlFor="donation-zelle">
+          <Input id="donation-zelle" required maxLength={80} autoCapitalize="none" value={draft.zelle} onChange={set("zelle")} />
+        </Field>
+      </div>
+      <Button type="submit" disabled={busy} className="justify-self-start">
+        {busy ? "Saving…" : "Save donation box"}
+      </Button>
+    </form>
   );
 }

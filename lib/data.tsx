@@ -16,6 +16,7 @@ import type {
 import { DEFAULT_SETTINGS, type SignUpInput } from "./types";
 import { today } from "./dates";
 import { newVersionOnline } from "./install";
+import { isAdminIdentifier } from "./admin";
 import { builtinDescription, builtinIcon, builtins, isBuiltinRow, type Builtin, type BuiltinType } from "./categories";
 
 export interface AppData {
@@ -72,6 +73,8 @@ interface DataContextValue {
   builtins: Builtin[];
   settings: SiteSettings;
   isAdmin: boolean;
+  /** The site's main account (sdmivtzoim87@gmail.com): it runs the site and edits it right on the pages. */
+  isOwner: boolean;
   /** Every account; filled in for admins only. */
   people: Profile[];
   toast: string | null;
@@ -110,13 +113,14 @@ interface DataContextValue {
     toggleStop(stop: RouteLocation): Promise<void>;
     resetRoute(routeId: string): Promise<void>;
     addCategory(name: string, description?: string, shared?: boolean, icon?: string): Promise<void>;
-    archiveCategory(id: string, archived: boolean): Promise<void>;
+    /** Hide (or show) a mivtza; `from` is the first week it's hidden in (none: every week). */
+    archiveCategory(id: string, archived: boolean, from?: string | null): Promise<void>;
     deleteCategory(id: string): Promise<void>;
     /** Admins: delete a mivtza for everyone together with all of its entries in everyone's history. */
     deleteMivtzaEverywhere(key: string): Promise<void>;
     updateCategory(id: string, name: string, description: string, icon?: string): Promise<void>;
     /** Admins: rename, hide or remove Tefillin or Shabbos Candles for everyone. */
-    updateBuiltin(type: BuiltinType, patch: { name?: string; hidden?: boolean; removed?: boolean }): Promise<void>;
+    updateBuiltin(type: BuiltinType, patch: { name?: string; hidden?: boolean; hiddenFrom?: string | null; removed?: boolean }): Promise<void>;
     /** Admins: the new front-page order, as mivtza keys (built-in type or category id). */
     reorderMivtzoim(keys: string[]): Promise<void>;
     saveSettings(settings: SiteSettings): Promise<void>;
@@ -274,6 +278,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
           unsaved.current--;
         });
     };
+    /**
+     * The fields that hide or show a row. The starting week needs database update 009;
+     * it's only sent when a week was chosen or the database already has the column.
+     */
+    const hideFields = (row: PersonalCategory | null | undefined, archived: boolean, from: string | null | undefined) => {
+      const fields: Partial<PersonalCategory> = { status: archived ? "archived" : "active" };
+      if (from || (row && "hidden_from" in row)) fields.hidden_from = archived ? from ?? null : null;
+      return fields;
+    };
+    const needs009 = (e: Error) => {
+      throw new Error(e.message.includes("hidden_from") ? "To hide from a certain week, run database update 009 in Supabase first." : e.message);
+    };
     /** Rows added a moment ago have a temporary id until the server gives them their real one. */
     const realId = (id: string) => savedIds.current.get(id) ?? id;
     const patchActivity = (fn: (rows: Activity[]) => Activity[]) => setData((d) => ({ ...d, activity: fn(d.activity) }));
@@ -295,6 +311,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       builtins: builtins(data.categories),
       settings,
       isAdmin: me?.role === "admin",
+      isOwner: isAdminIdentifier(me?.email) || isAdminIdentifier(me?.username),
       people,
       toast,
       notify,
@@ -445,7 +462,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         adminSetPassword: (userId, password) => b.adminSetPassword(userId, password),
         adminUpdatePerson: (userId, patch) => run(() => b.adminUpdatePerson(userId, patch)),
         adminDeletePerson: (userId) => run(() => b.adminDeletePerson(userId)),
-        archiveCategory: (id, archived) => run(() => b.update("personal_categories", id, { status: archived ? "archived" : "active" })),
+        archiveCategory: (id, archived, from) =>
+          run(() => b.update("personal_categories", id, hideFields(data.categories.find((c) => c.id === id), archived, from))).catch(needs009),
         deleteCategory: (id) => run(() => b.remove("personal_categories", id)),
         deleteMivtzaEverywhere: (key) =>
           run(async () => {
@@ -467,11 +485,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
             const current = builtins(data.categories).find((x) => x.type === type)!;
             if (patch.name !== undefined && !patch.name.trim()) throw new Error("Give it a name.");
             const name = patch.name?.trim() ?? current.name;
-            const status = (patch.hidden ?? current.hidden) ? "archived" : "active";
-            const description = builtinDescription(patch.removed ?? current.removed);
-            if (current.row) await b.update("personal_categories", current.row.id, { name, status, description });
-            else await b.insert("personal_categories", { user_id: uid(), name, description, icon: builtinIcon(type), status, shared: true });
-          }),
+            const hidden = patch.hidden ?? current.hidden;
+            const from = patch.hidden === undefined ? current.hiddenFrom : patch.hiddenFrom;
+            const fields = { ...hideFields(current.row, hidden, from), name, description: builtinDescription(patch.removed ?? current.removed) };
+            if (current.row) await b.update("personal_categories", current.row.id, fields);
+            else await b.insert("personal_categories", { user_id: uid(), icon: builtinIcon(type), shared: true, ...fields } as Parameters<typeof b.insert<"personal_categories">>[1]);
+          }).catch(needs009),
         reorderMivtzoim: async (keys) => {
           const list = builtins(data.categories);
           const rowId = (key: string) => list.find((x) => x.type === key)?.row?.id ?? key;
