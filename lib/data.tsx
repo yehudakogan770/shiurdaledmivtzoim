@@ -74,6 +74,8 @@ interface DataContextValue {
   builtins: Builtin[];
   settings: SiteSettings;
   isAdmin: boolean;
+  /** Hiding and bringing back by week is set up (database update 009 was run). */
+  weeklyHiding: boolean;
   /** The site's main account (sdmivtzoim87@gmail.com): it runs the site and edits it right on the pages. */
   isOwner: boolean;
   /** Every account; filled in for admins only. */
@@ -317,6 +319,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       settings,
       isAdmin: me?.role === "admin",
       isOwner: isAdminIdentifier(me?.email) || isAdminIdentifier(me?.username),
+      // Once update 009 is run, every item row comes back with a hidden_weeks field.
+      weeklyHiding: backend?.kind !== "supabase" || data.categories.some((c) => "hidden_weeks" in c),
       people,
       toast,
       notify,

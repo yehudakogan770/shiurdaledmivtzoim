@@ -309,7 +309,7 @@ function DeleteMivtzaDialog({ name, entries, hidden, onHide, onDelete, onCancel 
  * reorder, hide and delete them; without, it's just the list (hidden ones faded).
  */
 export function SharedCategoriesCard({ controls = true, title = "Mivtzoim for everyone", sub }: { controls?: boolean; title?: string; sub?: string }) {
-  const { shared, builtins, actions, notify, data } = useData();
+  const { shared, builtins, actions, notify, data, weeklyHiding } = useData();
   const [name, setName] = useState("");
   const [icon, setIcon] = useState("auto");
   const [busy, setBusy] = useState(false);
@@ -388,7 +388,9 @@ export function SharedCategoriesCard({ controls = true, title = "Mivtzoim for ev
         ? `${item.name} is hidden ${from ? `starting the week of ${weekTitle(from)}` : "in every week"}. Its history is kept.`
         : `${item.name} is back ${from ? `starting the week of ${weekTitle(from)}` : "in every week"}.`,
     );
-  const [hiding, setHiding] = useState<{ item: Item; hide: boolean } | null>(null);
+  const [hiding, setHidingState] = useState<{ item: Item; hide: boolean } | null>(null);
+  // Choosing the week needs database update 009; until then it's every week, in one tap.
+  const setHiding = (next: { item: Item; hide: boolean } | null) => (next && !weeklyHiding ? toggle(next.item, next.hide, null) : setHidingState(next));
 
   return (
     <Card>
