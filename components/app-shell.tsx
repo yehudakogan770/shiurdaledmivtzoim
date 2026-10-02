@@ -31,8 +31,10 @@ function isActive(path: string, match: string[]) {
 /** The side panel's contents. `expanded` shows labels; collapsed shows icons only. */
 function PanelContent({ expanded, onNavigate }: { expanded: boolean; onNavigate?: () => void }) {
   const { path, Link } = useNav();
-  const { me, guest, backend, auth, settings, isAdmin } = useData();
-  const items = isAdmin ? [...links, ADMIN_LINK] : guest ? links.filter((l) => l.href !== "/profile") : links;
+  const { me, guest, backend, auth, settings, isAdmin, isOwner } = useData();
+  // No Profile page for people without an account, or for the Owner (it doesn't log).
+  const shown = guest || isOwner ? links.filter((l) => l.href !== "/profile") : links;
+  const items = isAdmin ? [...shown, ADMIN_LINK] : shown;
   const label = cx("whitespace-nowrap transition-opacity duration-200", expanded ? "opacity-100" : "opacity-0");
   return (
     <div className="flex h-full flex-col px-3 py-4" onClick={(e) => (e.target as HTMLElement).closest("a") && onNavigate?.()}>
@@ -81,7 +83,7 @@ function PanelContent({ expanded, onNavigate }: { expanded: boolean; onNavigate?
         )}
         {me && (
           <div className={cx("flex items-center gap-2 overflow-hidden rounded-[28px] p-2 transition-colors", expanded ? "bg-card" : "bg-transparent")}>
-            <Link href="/profile" className="flex min-w-0 flex-1 items-center gap-3 rounded-full p-1 pr-3 hover:bg-ink/5">
+            <Link href={isOwner ? "/" : "/profile"} className="flex min-w-0 flex-1 items-center gap-3 rounded-full p-1 pr-3 hover:bg-ink/5">
               <Avatar name={me.name} id={me.id} size={40} />
               <span className={cx("min-w-0", label)}>
                 <span className="block truncate text-sm font-medium">{displayName(me)}</span>
@@ -173,7 +175,7 @@ function ModalDrawer({ open, onClose }: { open: boolean; onClose: () => void }) 
 /** Top app bar (phones and tablets). */
 function TopAppBar({ onMenu }: { onMenu: () => void }) {
   const { Link } = useNav();
-  const { me, guest, settings } = useData();
+  const { me, guest, settings, isOwner } = useData();
   return (
     <header className="sticky top-[env(safe-area-inset-top,0px)] z-30 flex h-16 items-center gap-1 px-2 lg:hidden">
       {/* The bar's background runs a little past its bottom edge and fades out there, so content scrolls under it softly. */}
@@ -196,7 +198,7 @@ function TopAppBar({ onMenu }: { onMenu: () => void }) {
         </span>
       </Link>
       {me && (
-        <Link href="/profile" aria-label="Profile" className="ml-auto mr-2 rounded-full">
+        <Link href={isOwner ? "/" : "/profile"} aria-label={isOwner ? "Home" : "Profile"} className="ml-auto mr-2 rounded-full">
           <Avatar name={me.name} id={me.id} size={36} />
         </Link>
       )}
@@ -210,7 +212,7 @@ function TopAppBar({ onMenu }: { onMenu: () => void }) {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { status, error, me, guest, backend, toast, auth } = useData();
+  const { status, error, me, guest, backend, toast, auth, isOwner } = useData();
   const { path: rawPath, query, go } = useNav();
   const path = rawPath.length > 1 ? rawPath.replace(/\/+$/, "") : rawPath;
   const [menuOpen, setMenuOpen] = useState(false);
@@ -220,12 +222,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   const wasSignedIn = useRef(false);
   useEffect(() => {
     if (me && path === "/login") go("/");
+    if (isOwner && path === "/profile") go("/");
     if (!me && wasSignedIn.current && status === "ready") {
       setMenuOpen(false);
       go("/");
     }
     wasSignedIn.current = !!me;
-  }, [me, status]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [me, status, path]); // eslint-disable-line react-hooks/exhaustive-deps
 
   let body: ReactNode;
   if (status === "loading") {

@@ -103,6 +103,8 @@ interface DataContextValue {
   actions: {
     log(input: LogInput): Promise<void>;
     deleteActivity(id: string): Promise<void>;
+    /** Fix an entry: how many, which day, notes (0 deletes it). */
+    updateActivity(id: string, patch: { quantity: number; activity_date: string; notes: string }): Promise<void>;
     /** Change how many an entry counts; 0 deletes it. */
     setActivityQuantity(id: string, quantity: number): Promise<void>;
     createGroup(name: string): Promise<Group>;
@@ -370,6 +372,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
           });
         },
         deleteActivity: async (id) => removeActivity(id),
+        updateActivity: async (id, patch) => {
+          if (patch.quantity <= 0) return removeActivity(id);
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(patch.activity_date)) throw new Error("Pick a date.");
+          const fields = { quantity: Math.round(patch.quantity), activity_date: patch.activity_date, notes: patch.notes.trim() || null };
+          patchActivity((rows) => rows.map((x) => (x.id === id ? { ...x, ...fields } : x)));
+          saveLater(() => b.update("mivtzoim_activity", realId(id), fields));
+        },
         setActivityQuantity: async (id, quantity) => {
           if (quantity <= 0) return removeActivity(id);
           const q = Math.round(quantity);
