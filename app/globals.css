@@ -1,0 +1,228 @@
+@import "tailwindcss";
+@source "../components";
+@source "../lib";
+@source "../spa";
+
+/*
+ * Material You color scheme generated from the brand colors
+ * #106a7a (primary, teal) and #c5c2c2 (neutral, warm grey).
+ * Candle amber and success green are harmonized toward the primary.
+ */
+:root {
+  --paper: #efedf0;
+  --surface: #ffffff;
+  --card: #ffffff;
+  --sunken: #e9e7ea;
+  --high: #e4e2e4;
+  --ink: #1b1b1e;
+  --muted: #44474c;
+  --line: #c5c6cc;
+  --outline: #75777d;
+  --accent: #006878;
+  --accent-ink: #ffffff;
+  --accent-soft: #a8edff;
+  --accent-on-soft: #001f25;
+  --secondary-soft: #d1e6ec;
+  --secondary-on-soft: #0a1e23;
+  --candle: #755b00;
+  --candle-soft: #ffe08e;
+  --candle-on-soft: #241a00;
+  --sage: #256a4a;
+  --sage-soft: #abf2c9;
+  --sage-on-soft: #002112;
+  --danger: #ba1a1a;
+  --danger-soft: #ffdad6;
+  --minus: #ffdad6;
+  --minus-ink: #ba1a1a;
+  --brand: #106a7a;
+  --brand-neutral: #c5c2c2;
+  --elev-1: 0 1px 2px rgba(0, 0, 0, 0.08), 0 1px 3px 1px rgba(0, 0, 0, 0.04);
+  --elev-3: 0 4px 8px 3px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.14);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #131315;
+    --surface: #0d0e10;
+    --card: #1f2022;
+    --sunken: #292a2c;
+    --high: #343537;
+    --ink: #e4e2e4;
+    --muted: #c5c6cc;
+    --line: #44474c;
+    --outline: #8f9096;
+    --accent: #84d2e5;
+    --accent-ink: #00363f;
+    --accent-soft: #004e5b;
+    --accent-on-soft: #a8edff;
+    --secondary-soft: #374a4f;
+    --secondary-on-soft: #d1e6ec;
+    --candle: #e6c361;
+    --candle-soft: #584400;
+    --candle-on-soft: #ffe08e;
+    --sage: #90d5ae;
+    --sage-soft: #005234;
+    --sage-on-soft: #abf2c9;
+    --danger: #ffb4ab;
+    --danger-soft: #93000a;
+    --minus: #d9544c;
+    --minus-ink: #fff4f2;
+    --brand: #106a7a;
+    --brand-neutral: #c5c2c2;
+    --elev-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px 1px rgba(0, 0, 0, 0.2);
+    --elev-3: 0 4px 8px 3px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.4);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --paper: #131315;
+  --surface: #0d0e10;
+  --card: #1f2022;
+  --sunken: #292a2c;
+  --high: #343537;
+  --ink: #e4e2e4;
+  --muted: #c5c6cc;
+  --line: #44474c;
+  --outline: #8f9096;
+  --accent: #84d2e5;
+  --accent-ink: #00363f;
+  --accent-soft: #004e5b;
+  --accent-on-soft: #a8edff;
+  --secondary-soft: #374a4f;
+  --secondary-on-soft: #d1e6ec;
+  --candle: #e6c361;
+  --candle-soft: #584400;
+  --candle-on-soft: #ffe08e;
+  --sage: #90d5ae;
+  --sage-soft: #005234;
+  --sage-on-soft: #abf2c9;
+  --danger: #ffb4ab;
+  --danger-soft: #93000a;
+  --minus: #d9544c;
+  --minus-ink: #fff4f2;
+  --brand: #106a7a;
+  --brand-neutral: #c5c2c2;
+  --elev-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px 1px rgba(0, 0, 0, 0.2);
+  --elev-3: 0 4px 8px 3px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.4);
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-card: var(--card);
+  --color-sunken: var(--sunken);
+  --color-high: var(--high);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-outline: var(--outline);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-on-soft: var(--accent-on-soft);
+  --color-secondary-soft: var(--secondary-soft);
+  --color-secondary-on-soft: var(--secondary-on-soft);
+  --color-candle: var(--candle);
+  --color-candle-soft: var(--candle-soft);
+  --color-candle-on-soft: var(--candle-on-soft);
+  --color-sage: var(--sage);
+  --color-sage-soft: var(--sage-soft);
+  --color-sage-on-soft: var(--sage-on-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-minus: var(--minus);
+  --color-minus-ink: var(--minus-ink);
+  --color-brand: var(--brand);
+  --color-brand-neutral: var(--brand-neutral);
+  --shadow-card: var(--elev-1);
+  --shadow-pop: var(--elev-3);
+  --font-display: "Google Sans Flex", "Google Sans", Roboto, ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Google Sans Flex", "Google Sans", Roboto, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+html,
+body {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* The "Everyone this week" strip: two identical copies slide left forever. */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.marquee-track {
+  animation: marquee linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .marquee {
+    overflow-x: auto;
+  }
+}
+
+/* The little "+3" on a quick-add button: pops a bit each time it goes up. */
+@keyframes tally-pop {
+  0% {
+    transform: scale(0.6);
+  }
+  60% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.tally-pop {
+  animation: tally-pop 220ms ease-out;
+}
+
+/* The logo on the loading screen gently fades in and out. */
+@keyframes logo-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.15;
+  }
+}
+.logo-breathe {
+  animation: logo-breathe 1.6s ease-in-out infinite;
+}
