@@ -49,8 +49,12 @@ type Counter = {
 /** Distinct colors for admin-added mivtzoim, in the order they were added. */
 const EXTRA_COLORS = ["#2e8b57", "#6a5acd", "#c0563a", "#1f7fa3", "#a07a12", "#b03a78", "#4b7f2a", "#8a4fb8"];
 
-/** The mivtzoim shown in a week (default: this week). One hidden from a later week still shows in earlier ones. */
-export function useCounters(week: string = currentWeek()): Counter[] {
+/**
+ * The mivtzoim shown in a week (default: this week). One hidden from a later week still shows in
+ * earlier ones. With `keep`, a hidden one still shows when it has entries there, so a week's totals
+ * never change because something was hidden (it just can't be added to anymore).
+ */
+export function useCounters(week: string = currentWeek(), keep?: Activity[]): Counter[] {
   const { shared, builtins } = useData();
   const standard: Record<BuiltinType, Omit<Counter, "title" | "short">> = {
     tefillin: {
@@ -77,11 +81,14 @@ export function useCounters(week: string = currentWeek()): Counter[] {
     },
   };
   const colorOf = new Map([...shared].sort((x, y) => x.created_at.localeCompare(y.created_at)).map((c, i) => [c.id, EXTRA_COLORS[i % EXTRA_COLORS.length]]));
+  const show = (hidden: boolean, c: Counter) => !hidden || !!keep?.some(c.matches);
   // Same order as the admin set; hidden or removed ones are left off.
   return orderedMivtzoim(builtins, shared).flatMap((m): Counter[] => {
-    if (m.builtin) return builtinHiddenIn(m.builtin, week) ? [] : [{ ...standard[m.builtin.type], title: m.builtin.name, short: m.builtin.short }];
+    if (m.builtin) {
+      const c: Counter = { ...standard[m.builtin.type], title: m.builtin.name, short: m.builtin.short };
+      return show(builtinHiddenIn(m.builtin, week), c) ? [c] : [];
+    }
     const c = m.category;
-    if (categoryHiddenIn(c, week)) return [];
     return [
       {
         key: c.id,
@@ -97,7 +104,7 @@ export function useCounters(week: string = currentWeek()): Counter[] {
         matches: (a: Activity) => a.category_type === "personal" && a.personal_category_id === c.id,
         log: { category_type: "personal" as const, personal_category_id: c.id, quantity: 1 },
       },
-    ];
+    ].filter((x) => show(categoryHiddenIn(c, week), x));
   });
 }
 
@@ -197,7 +204,8 @@ function PersonalHome() {
   const lastWeek = addDays(week, -7);
   const weekRows = mine.activity.filter((a) => activityWeek(a) === week);
   const lastRows = mine.activity.filter((a) => activityWeek(a) === lastWeek);
-  const counters = useCounters(week);
+  // The week's totals keep anything with entries, even if it was hidden since.
+  const counters = useCounters(week, weekRows);
   const weekEntries = [...weekRows].sort((x, y) => activityMoment(y).getTime() - activityMoment(x).getTime());
   const hd = hebrewDate();
 
@@ -552,8 +560,8 @@ function useEveryoneRows(week: string): Activity[] {
  * to left; a single one just sits there; with nothing logged the section is hidden.
  */
 function EveryoneStrip({ week }: { week: string }) {
-  const counters = useCounters(week);
   const rows = useEveryoneRows(week);
+  const counters = useCounters(week, rows);
   // Only mivtzoim someone actually did this week.
   const items = counters.map((c) => ({ c, total: sum(rows.filter(c.matches)) })).filter((x) => x.total > 0);
   if (items.length === 0) return null;

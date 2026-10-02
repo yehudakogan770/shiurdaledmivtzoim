@@ -67,6 +67,12 @@ export interface RouteLocation {
   completed: boolean;
 }
 
+/** A stretch of weeks a mivtza is hidden: from `from` (none: the start) until `to` (none: from then on). */
+export interface HiddenRange {
+  from: string | null;
+  to: string | null;
+}
+
 export interface PersonalCategory {
   id: string;
   user_id: string;
@@ -78,8 +84,11 @@ export interface PersonalCategory {
   shared?: boolean;
   /** Where an admin placed it on the front page (lower first). */
   position?: number | null;
-  /** When hidden: the first week (its Friday) it's hidden from; earlier weeks still show it. None means every week. */
-  hidden_from?: string | null;
+  /**
+   * The stretches of weeks it's hidden in (weeks are their Friday, YYYY-MM-DD; `to` is the first week
+   * it shows again). None: hidden in every week when archived, otherwise never.
+   */
+  hidden_weeks?: HiddenRange[] | null;
   created_at: string;
 }
 

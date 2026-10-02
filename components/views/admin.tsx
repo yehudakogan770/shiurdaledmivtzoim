@@ -3,10 +3,10 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { ChevronDown, ChevronUp, Download, ClipboardList, Eye, EyeOff, KeyRound, Flame, Pencil, ShieldCheck, Sparkles, Trash2, Users } from "lucide-react";
 import { TefillinIcon } from "../icons";
-import { categoryName, orderedMivtzoim, reportColumns, type BuiltinType } from "@/lib/categories";
+import { bringBackFrom, categoryName, hiddenNowOrLater, hiddenRanges, hideFrom, orderedMivtzoim, reportColumns, type BuiltinType } from "@/lib/categories";
 import { dayWithParsha, weekTitle } from "@/lib/parsha";
 import { addDays, allWeeks, currentWeek } from "@/lib/dates";
-import type { Activity, PersonalCategory, Profile } from "@/lib/types";
+import type { Activity, HiddenRange, PersonalCategory, Profile } from "@/lib/types";
 import { ICON_CHOICES, iconForActivity, iconForCategory, iconForName } from "@/lib/category-icons";
 import { useData } from "@/lib/data";
 import { handle, isAdminIdentifier } from "@/lib/admin";
@@ -190,32 +190,49 @@ function IconPicker({ name, value, onChange }: { name: string; value: string; on
   );
 }
 
+/** "Hidden", "Hidden since Bereshis", "Hidden from Noach on", "Hidden until Lech Lecha": the hidden mivtza's weeks now. */
+function hiddenLabel(ranges: HiddenRange[]) {
+  const thisWeek = currentWeek();
+  const r = ranges.find((x) => !x.to || x.to > thisWeek);
+  if (!r) return "Hidden";
+  const from = !r.from ? "" : r.from > thisWeek ? `from ${weekTitle(r.from)} ` : `since ${weekTitle(r.from)} `;
+  if (r.to) return `Hidden ${from}until ${weekTitle(r.to)}`;
+  return !r.from ? "Hidden" : r.from > thisWeek ? `Hidden ${from}on` : `Hidden ${from}`.trim();
+}
+
 /**
- * Hiding a mivtza: from which week on. Weeks before that keep it, so people can still go
- * back and add to or fix those weeks. Its history is never lost.
+ * Hiding or bringing back a mivtza: from which week on. The other weeks stay as they were, so
+ * people can still add to (or fix) the weeks it showed in. Its history is never lost.
  */
-function HideMivtzaDialog({ name, onHide, onCancel }: { name: string; onHide(from: string | null): void; onCancel(): void }) {
+function WeekChoiceDialog({ name, hide, onChoose, onCancel }: { name: string; hide: boolean; onChoose(from: string | null): void; onCancel(): void }) {
   const thisWeek = currentWeek();
   const nextWeek = addDays(thisWeek, 7);
-  const options: { value: string; label: string; hint: string }[] = [
-    { value: nextWeek, label: "Starting next week", hint: `${weekTitle(nextWeek)}. This week and earlier weeks keep it.` },
-    { value: thisWeek, label: "Starting this week", hint: `${weekTitle(thisWeek)}. Earlier weeks keep it.` },
-    { value: "all", label: "Every week", hint: "Also past weeks: nobody can add to or change it anymore." },
-  ];
-  const [choice, setChoice] = useState(nextWeek);
+  const options: { value: string; label: string; hint: string }[] = hide
+    ? [
+        { value: nextWeek, label: "Starting next week", hint: `${weekTitle(nextWeek)}. This week and earlier weeks keep it.` },
+        { value: thisWeek, label: "Starting this week", hint: `${weekTitle(thisWeek)}. Earlier weeks keep it.` },
+        { value: "all", label: "Every week", hint: "Also past weeks: nobody can add to or change it anymore." },
+      ]
+    : [
+        { value: nextWeek, label: "Starting next week", hint: `${weekTitle(nextWeek)}. This week and the weeks it was hidden stay hidden.` },
+        { value: thisWeek, label: "Starting this week", hint: `${weekTitle(thisWeek)}. Earlier weeks it was hidden stay hidden.` },
+        { value: "all", label: "Every week", hint: "Also the weeks it was hidden, as if it never was." },
+      ];
+  const [choice, setChoice] = useState(hide ? nextWeek : thisWeek);
+  const Icon = hide ? EyeOff : Eye;
   return (
     <Modal onClose={onCancel}>
       <div role="dialog" aria-modal="true" aria-labelledby="hide-title" className="grid w-full max-w-md gap-4 rounded-[28px] bg-card p-6 shadow-pop" onClick={(e) => e.stopPropagation()}>
         <span className="grid h-12 w-12 place-items-center rounded-2xl bg-accent-soft text-accent-on-soft">
-          <EyeOff size={22} aria-hidden />
+          <Icon size={22} aria-hidden />
         </span>
         <div className="grid gap-1">
           <h2 id="hide-title" className="text-xl font-medium">
-            Hide {name}
+            {hide ? `Hide ${name}` : `Bring back ${name}`}
           </h2>
-          <p className="text-sm text-muted">Its history is kept, and you can show it again anytime.</p>
+          <p className="text-sm text-muted">{hide ? "Its history is kept, and you can bring it back anytime." : "Choose from which week people can add it again."}</p>
         </div>
-        <div role="radiogroup" aria-label="Hide starting" className="grid gap-2">
+        <div role="radiogroup" aria-label={hide ? "Hide starting" : "Bring back starting"} className="grid gap-2">
           {options.map((o) => (
             <button
               key={o.value}
@@ -234,8 +251,8 @@ function HideMivtzaDialog({ name, onHide, onCancel }: { name: string; onHide(fro
           <Button variant="ghost" onClick={onCancel}>
             Cancel
           </Button>
-          <Button onClick={() => onHide(choice === "all" ? null : choice)}>
-            <EyeOff size={16} aria-hidden /> Hide
+          <Button onClick={() => onChoose(choice === "all" ? null : choice)}>
+            <Icon size={16} aria-hidden /> {hide ? "Hide" : "Bring back"}
           </Button>
         </div>
       </div>
@@ -316,13 +333,13 @@ export function SharedCategoriesCard({ controls = true, title = "Mivtzoim for ev
   const [editing, setEditing] = useState<{ key: string; name: string; icon: string } | null>(null);
 
   // Tefillin and Candles first, then the ones added here; all work the same way.
-  type Item = { key: string; name: string; hidden: boolean; hiddenFrom: string | null; builtin?: BuiltinType; icon?: string };
+  type Item = { key: string; name: string; hidden: boolean; ranges: HiddenRange[]; builtin?: BuiltinType; icon?: string };
   const items: Item[] = orderedMivtzoim(builtins, shared).flatMap((m): Item[] =>
     m.builtin
       ? m.builtin.removed
         ? []
-        : [{ key: m.key, name: m.builtin.name, hidden: m.builtin.hidden, hiddenFrom: m.builtin.hiddenFrom, builtin: m.builtin.type }]
-      : [{ key: m.key, name: m.category.name, hidden: m.category.status === "archived", hiddenFrom: m.category.hidden_from ?? null, icon: m.category.icon }],
+        : [{ key: m.key, name: m.builtin.name, hidden: m.builtin.hidden, ranges: m.builtin.ranges, builtin: m.builtin.type }]
+      : [{ key: m.key, name: m.category.name, hidden: hiddenNowOrLater(hiddenRanges(m.category)), ranges: hiddenRanges(m.category), icon: m.category.icon }],
   );
 
   /** Move one up or down; the front page follows this order. */
@@ -363,12 +380,15 @@ export function SharedCategoriesCard({ controls = true, title = "Mivtzoim for ev
   const historyCount = (item: Item) =>
     data.activity.filter((a) => (item.builtin ? a.category_type === item.builtin : a.personal_category_id === item.key)).length;
 
+  /** Hide, or bring back, from a week on (none: every week). Other weeks stay as they were. */
   const toggle = (item: Item, hide: boolean, from: string | null = null) =>
     attempt(
-      () => (item.builtin ? actions.updateBuiltin(item.builtin, { hidden: hide, hiddenFrom: from }) : actions.archiveCategory(item.key, hide, from)),
-      hide ? `${item.name} is hidden ${from ? `starting the week of ${weekTitle(from)}` : "in every week"}. Its history is kept.` : `${item.name} is showing again.`,
+      () => actions.setHiddenWeeks(item.key, hide ? hideFrom(item.ranges, from) : bringBackFrom(item.ranges, from)),
+      hide
+        ? `${item.name} is hidden ${from ? `starting the week of ${weekTitle(from)}` : "in every week"}. Its history is kept.`
+        : `${item.name} is back ${from ? `starting the week of ${weekTitle(from)}` : "in every week"}.`,
     );
-  const [hiding, setHiding] = useState<Item | null>(null);
+  const [hiding, setHiding] = useState<{ item: Item; hide: boolean } | null>(null);
 
   return (
     <Card>
@@ -410,16 +430,16 @@ export function SharedCategoriesCard({ controls = true, title = "Mivtzoim for ev
                     </span>
                     <span className="min-w-0">
                       <span className={cx("block break-words font-medium", item.hidden && "text-muted line-through")}>{item.name}</span>
-                      {item.hidden && <span className="block text-xs text-muted">{item.hiddenFrom ? `Hidden from ${weekTitle(item.hiddenFrom)} on` : "Hidden"}</span>}
+                      {item.hidden && <span className="block text-xs text-muted">{hiddenLabel(item.ranges)}</span>}
                     </span>
                   </span>
                   {controls && <span className="flex shrink-0 items-center">
                       {item.hidden ? (
-                        <Button variant="ghost" className="h-9 shrink-0 px-3" onClick={() => toggle(item, false)} aria-label={`Show ${item.name}`}>
-                          <Eye size={16} aria-hidden /> <span className="hidden sm:inline">Show</span>
+                        <Button variant="ghost" className="h-9 shrink-0 px-3" onClick={() => setHiding({ item, hide: false })} aria-label={`Bring back ${item.name}`}>
+                          <Eye size={16} aria-hidden /> <span className="hidden sm:inline">Bring back</span>
                         </Button>
                       ) : (
-                        <Button variant="ghost" className="h-9 shrink-0 px-3" onClick={() => setHiding(item)} aria-label={`Hide ${item.name}`}>
+                        <Button variant="ghost" className="h-9 shrink-0 px-3" onClick={() => setHiding({ item, hide: true })} aria-label={`Hide ${item.name}`}>
                           <EyeOff size={16} aria-hidden /> <span className="hidden sm:inline">Hide</span>
                         </Button>
                       )}
@@ -437,12 +457,13 @@ export function SharedCategoriesCard({ controls = true, title = "Mivtzoim for ev
         </ul>
       )}
       {hiding && (
-        <HideMivtzaDialog
-          name={hiding.name}
-          onHide={(from) => {
-            const item = hiding;
+        <WeekChoiceDialog
+          name={hiding.item.name}
+          hide={hiding.hide}
+          onChoose={(from) => {
+            const { item, hide } = hiding;
             setHiding(null);
-            toggle(item, true, from);
+            toggle(item, hide, from);
           }}
           onCancel={() => setHiding(null)}
         />
@@ -454,7 +475,7 @@ export function SharedCategoriesCard({ controls = true, title = "Mivtzoim for ev
           hidden={removingItem.hidden}
           onHide={() => {
             setRemoving(null);
-            setHiding(removingItem);
+            setHiding({ item: removingItem, hide: true });
           }}
           onDelete={() => remove(removingItem)}
           onCancel={() => setRemoving(null)}

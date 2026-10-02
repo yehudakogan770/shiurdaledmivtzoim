@@ -1,4 +1,5 @@
-import type { Activity, PersonalCategory } from "./types";
+import type { Activity, HiddenRange, PersonalCategory } from "./types";
+import { currentWeek } from "./dates";
 
 export const STANDARD = {
   tefillin: { label: "Tefillin", unit: "people put on Tefillin", short: "Tefillin" },
@@ -33,10 +34,10 @@ export interface Builtin {
   type: BuiltinType;
   name: string;
   short: string;
-  /** Hidden (in at least some weeks). */
+  /** Hidden now or from a coming week on (it can be brought back). */
   hidden: boolean;
-  /** The first week it's hidden from; null means every week. */
-  hiddenFrom: string | null;
+  /** The stretches of weeks it's hidden in. */
+  ranges: HiddenRange[];
   removed: boolean;
   position: number;
   row: PersonalCategory | null;
@@ -54,8 +55,8 @@ export function builtins(categories: PersonalCategory[]): Builtin[] {
       type,
       name,
       short: name === std.label ? std.short : name,
-      hidden: row?.status === "archived",
-      hiddenFrom: row?.hidden_from ?? null,
+      hidden: row ? hiddenNowOrLater(hiddenRanges(row)) : false,
+      ranges: row ? hiddenRanges(row) : [],
       removed: row?.description === REMOVED,
       // Until an admin reorders, Tefillin and Candles come first.
       position: row?.position ?? i - 100,
@@ -65,15 +66,39 @@ export function builtins(categories: PersonalCategory[]): Builtin[] {
 }
 
 /**
- * Whether a hidden mivtza is hidden in a given week (its Friday, YYYY-MM-DD). Hidden ones with a
- * starting week stay in earlier weeks, so people can still add to or fix those weeks.
+ * The weeks a mivtza is hidden in. Weeks outside these keep it, so people can still go back and
+ * add to or fix them. Rows from before weeks were tracked: archived means every week.
  */
-export function hiddenInWeek(hidden: boolean, hiddenFrom: string | null | undefined, week: string) {
-  return hidden && (!hiddenFrom || week >= hiddenFrom);
+export function hiddenRanges(c: Pick<PersonalCategory, "status" | "hidden_weeks">): HiddenRange[] {
+  if (Array.isArray(c.hidden_weeks)) return c.hidden_weeks.filter((r) => r && (!r.from || !r.to || r.from < r.to));
+  return c.status === "archived" ? [{ from: null, to: null }] : [];
 }
 
-export const categoryHiddenIn = (c: Pick<PersonalCategory, "status" | "hidden_from">, week: string) => hiddenInWeek(c.status === "archived", c.hidden_from, week);
-export const builtinHiddenIn = (b: Builtin, week: string) => b.removed || hiddenInWeek(b.hidden, b.hiddenFrom, week);
+export const hiddenInWeek = (ranges: HiddenRange[], week: string) => ranges.some((r) => (!r.from || week >= r.from) && (!r.to || week < r.to));
+
+/** Hidden in the current week or from a coming week on: shows "Bring back" instead of "Hide". */
+export const hiddenNowOrLater = (ranges: HiddenRange[], thisWeek = currentWeek()) => ranges.some((r) => !r.to || r.to > thisWeek);
+
+/** Hide from a week on (none: every week). Earlier stretches stay as they were. */
+export function hideFrom(ranges: HiddenRange[], from: string | null): HiddenRange[] {
+  if (!from) return [{ from: null, to: null }];
+  // Already hidden from before then on: nothing changes.
+  if (ranges.some((r) => !r.to && (!r.from || r.from <= from))) return ranges;
+  return [...ranges.filter((r) => r.to && r.to <= from), ...ranges.filter((r) => r.to && r.to > from && (!r.from || r.from < from)).map((r) => ({ ...r, to: from })), { from, to: null }];
+}
+
+/** Bring back from a week on (none: every week, as if never hidden). Weeks before stay as they were. */
+export function bringBackFrom(ranges: HiddenRange[], from: string | null): HiddenRange[] {
+  if (!from) return [];
+  return ranges.flatMap((r) => {
+    if (r.from && r.from >= from) return []; // would only have started later
+    if (!r.to || r.to > from) return [{ ...r, to: from }];
+    return [r];
+  });
+}
+
+export const categoryHiddenIn = (c: Pick<PersonalCategory, "status" | "hidden_weeks">, week: string) => hiddenInWeek(hiddenRanges(c), week);
+export const builtinHiddenIn = (b: Builtin, week: string) => b.removed || hiddenInWeek(b.ranges, week);
 
 /** One mivtza on the front page: a built-in one or one an admin added. */
 export type Mivtza = { key: string; builtin: Builtin; category?: undefined } | { key: string; builtin?: undefined; category: PersonalCategory };
@@ -97,7 +122,7 @@ export function reportColumns(builtinList: Builtin[], shared: PersonalCategory[]
     const matches = m.builtin
       ? (a: Pick<Activity, "category_type" | "personal_category_id">) => a.category_type === m.builtin!.type
       : (a: Pick<Activity, "category_type" | "personal_category_id">) => a.personal_category_id === m.category.id;
-    const off = m.builtin ? m.builtin.hidden || m.builtin.removed : m.category.status === "archived";
+    const off = m.builtin ? m.builtin.hidden || m.builtin.removed : hiddenNowOrLater(hiddenRanges(m.category));
     return { key: m.key, label: m.builtin ? m.builtin.name : m.category.name, off, matches };
   });
   return cols.filter((c) => !c.off || rows.some(c.matches));

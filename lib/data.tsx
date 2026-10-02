@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { newId, newJoinCode, pickBackend, type Backend, type PersonPatch } from "./backend";
 import type {
   Activity,
+  HiddenRange,
   Group,
   GroupMember,
   Location,
@@ -113,14 +114,15 @@ interface DataContextValue {
     toggleStop(stop: RouteLocation): Promise<void>;
     resetRoute(routeId: string): Promise<void>;
     addCategory(name: string, description?: string, shared?: boolean, icon?: string): Promise<void>;
-    /** Hide (or show) a mivtza; `from` is the first week it's hidden in (none: every week). */
-    archiveCategory(id: string, archived: boolean, from?: string | null): Promise<void>;
+    archiveCategory(id: string, archived: boolean): Promise<void>;
+    /** Admins: the weeks a mivtza for everyone is hidden in (built-in type or category id). */
+    setHiddenWeeks(key: string, ranges: HiddenRange[]): Promise<void>;
     deleteCategory(id: string): Promise<void>;
     /** Admins: delete a mivtza for everyone together with all of its entries in everyone's history. */
     deleteMivtzaEverywhere(key: string): Promise<void>;
     updateCategory(id: string, name: string, description: string, icon?: string): Promise<void>;
     /** Admins: rename, hide or remove Tefillin or Shabbos Candles for everyone. */
-    updateBuiltin(type: BuiltinType, patch: { name?: string; hidden?: boolean; hiddenFrom?: string | null; removed?: boolean }): Promise<void>;
+    updateBuiltin(type: BuiltinType, patch: { name?: string; hidden?: boolean; removed?: boolean }): Promise<void>;
     /** Admins: the new front-page order, as mivtza keys (built-in type or category id). */
     reorderMivtzoim(keys: string[]): Promise<void>;
     saveSettings(settings: SiteSettings): Promise<void>;
@@ -279,16 +281,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
         });
     };
     /**
-     * The fields that hide or show a row. The starting week needs database update 009;
-     * it's only sent when a week was chosen or the database already has the column.
+     * The fields for the weeks a row is hidden in. "Never" and "every week" work with the status
+     * alone; anything by week needs database update 009 (hidden_weeks), sent only when needed or
+     * when the database already has it.
      */
-    const hideFields = (row: PersonalCategory | null | undefined, archived: boolean, from: string | null | undefined) => {
-      const fields: Partial<PersonalCategory> = { status: archived ? "archived" : "active" };
-      if (from || (row && "hidden_from" in row)) fields.hidden_from = archived ? from ?? null : null;
+    const hideFields = (row: PersonalCategory | null | undefined, ranges: HiddenRange[]) => {
+      const all = ranges.length === 1 && !ranges[0].from && !ranges[0].to;
+      const fields: Partial<PersonalCategory> = { status: ranges.some((r) => !r.to) ? "archived" : "active" };
+      if (ranges.length > 0 && !all) fields.hidden_weeks = ranges;
+      else if (row && "hidden_weeks" in row) fields.hidden_weeks = null;
       return fields;
     };
     const needs009 = (e: Error) => {
-      throw new Error(e.message.includes("hidden_from") ? "To hide from a certain week, run database update 009 in Supabase first." : e.message);
+      throw new Error(e.message.includes("hidden_weeks") ? "To hide or bring back by week, run database update 009 in Supabase first." : e.message);
     };
     /** Rows added a moment ago have a temporary id until the server gives them their real one. */
     const realId = (id: string) => savedIds.current.get(id) ?? id;
@@ -462,8 +467,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
         adminSetPassword: (userId, password) => b.adminSetPassword(userId, password),
         adminUpdatePerson: (userId, patch) => run(() => b.adminUpdatePerson(userId, patch)),
         adminDeletePerson: (userId) => run(() => b.adminDeletePerson(userId)),
-        archiveCategory: (id, archived, from) =>
-          run(() => b.update("personal_categories", id, hideFields(data.categories.find((c) => c.id === id), archived, from))).catch(needs009),
+        archiveCategory: (id, archived) => run(() => b.update("personal_categories", id, { status: archived ? "archived" : "active" })),
+        setHiddenWeeks: (key, ranges) =>
+          run(async () => {
+            const bi = builtins(data.categories).find((x) => x.type === key);
+            if (!bi) return b.update("personal_categories", key, hideFields(data.categories.find((c) => c.id === key), ranges));
+            const fields = { ...hideFields(bi.row, ranges), name: bi.name, description: builtinDescription(bi.removed) };
+            if (bi.row) await b.update("personal_categories", bi.row.id, fields);
+            else await b.insert("personal_categories", { user_id: uid(), icon: builtinIcon(bi.type), shared: true, ...fields } as Parameters<typeof b.insert<"personal_categories">>[1]);
+          }).catch(needs009),
         deleteCategory: (id) => run(() => b.remove("personal_categories", id)),
         deleteMivtzaEverywhere: (key) =>
           run(async () => {
@@ -485,9 +497,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
             const current = builtins(data.categories).find((x) => x.type === type)!;
             if (patch.name !== undefined && !patch.name.trim()) throw new Error("Give it a name.");
             const name = patch.name?.trim() ?? current.name;
-            const hidden = patch.hidden ?? current.hidden;
-            const from = patch.hidden === undefined ? current.hiddenFrom : patch.hiddenFrom;
-            const fields = { ...hideFields(current.row, hidden, from), name, description: builtinDescription(patch.removed ?? current.removed) };
+            // Renaming or removing keeps the weeks it's hidden in; `hidden` sets every week or none.
+            const ranges = patch.hidden === undefined ? current.ranges : patch.hidden ? [{ from: null, to: null }] : [];
+            const fields = { ...hideFields(current.row, ranges), name, description: builtinDescription(patch.removed ?? current.removed) };
             if (current.row) await b.update("personal_categories", current.row.id, fields);
             else await b.insert("personal_categories", { user_id: uid(), icon: builtinIcon(type), shared: true, ...fields } as Parameters<typeof b.insert<"personal_categories">>[1]);
           }).catch(needs009),
