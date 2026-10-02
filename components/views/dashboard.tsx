@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ComponentType } from "react";
 import { ClipboardList, Flame, Megaphone, Minus, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useEditMode } from "@/lib/edit-mode";
 import { SettingField, SharedCategoriesCard } from "./admin";
+import { EntryGroups } from "../entry-groups";
 import { TefillinIcon } from "../icons";
 import { useData, type LogInput } from "@/lib/data";
 import { iconForActivity, iconForCategory } from "@/lib/category-icons";
@@ -492,7 +493,18 @@ function WeekEntries({ week, rows, counters }: { week: string; rows: Activity[];
         </Empty>
       ) : (
         <ul className={listClass}>
-          {rows.map((a) => (
+          <EntryGroups
+            rows={rows}
+            summary={(a) => (
+              <>
+                <RowIcon a={a} counters={counters} />
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium">{categoryName(a, data.categories)}</span>
+                  <span className="block truncate text-sm text-muted">{formatDay(a.activity_date)}</span>
+                </span>
+              </>
+            )}
+            row={(a) => (
             <li key={a.id} className="flex flex-wrap items-center gap-3 px-6 py-3">
               <RowIcon a={a} counters={counters} />
               <span className="min-w-0 flex-1">
@@ -515,7 +527,8 @@ function WeekEntries({ week, rows, counters }: { week: string; rows: Activity[];
                 </IconButton>
               </span>
             </li>
-          ))}
+            )}
+          />
         </ul>
       )}
     </Card>

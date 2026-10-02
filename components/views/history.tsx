@@ -12,6 +12,7 @@ import { activityMoment, activityWeek, currentWeek, formatDay, weekLabel } from 
 import { parshaOfWeek } from "@/lib/parsha";
 import { Button, ButtonLink, Card, CategoryIcon, Empty, Field, IconButton, Input, PageHeader, Select } from "../ui";
 import { EditSwitch, sum } from "./dashboard";
+import { EntryGroups } from "../entry-groups";
 
 export function HistoryView() {
   const { isOwner } = useData();
@@ -29,6 +30,8 @@ function EveryonesHistory() {
   const [person, setPerson] = useState("all");
   const [draft, setDraft] = useState<{ id: string; quantity: string; activity_date: string; notes: string } | null>(null);
   const nameOf = (id: string) => data.names[id] || "Someone";
+  const metaOf = (a: Activity) =>
+    [formatDay(a.activity_date), data.routes.find((r) => r.id === a.route_id)?.name, data.locations.find((l) => l.id === a.location_id)?.name].filter(Boolean).join(" · ");
   const people = [...new Set(data.activity.map((a) => a.user_id))].sort((a, b) => nameOf(a).localeCompare(nameOf(b)));
 
   const rows = data.activity
@@ -108,10 +111,20 @@ function EveryonesHistory() {
               <ChevronDown size={20} aria-hidden className="shrink-0 text-muted transition-transform group-open:rotate-180" />
             </summary>
             <ul className="divide-y divide-line/60 border-t border-line/60">
-              {list.map((a) => {
-                const route = data.routes.find((r) => r.id === a.route_id);
-                const place = data.locations.find((l) => l.id === a.location_id);
-                const meta = [formatDay(a.activity_date), route?.name, place?.name].filter(Boolean).join(" · ");
+              <EntryGroups
+                rows={list}
+                summary={(a) => (
+                  <>
+                    <CategoryIcon type={a.category_type} icon={iconForActivity(a, data.categories)} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-medium text-accent">{nameOf(a.user_id)}</span>
+                      <span className="block font-medium">{categoryName(a, data.categories)}</span>
+                      <span className="block text-sm text-muted">{metaOf(a)}</span>
+                    </span>
+                  </>
+                )}
+                row={(a) => {
+                const meta = metaOf(a);
                 if (draft?.id === a.id) {
                   return (
                     <li key={a.id} className="px-6 py-4">
@@ -167,7 +180,8 @@ function EveryonesHistory() {
                     )}
                   </li>
                 );
-              })}
+                }}
+              />
             </ul>
           </details>
         ))
@@ -178,6 +192,8 @@ function EveryonesHistory() {
 
 function MyHistory() {
   const { mine, data, builtins, shared, actions, notify } = useData();
+  const metaOf = (a: Activity) =>
+    [formatDay(a.activity_date), data.routes.find((r) => r.id === a.route_id)?.name, data.locations.find((l) => l.id === a.location_id)?.name].filter(Boolean).join(" · ");
   const [filter, setFilter] = useState("all");
 
   const rows = mine.activity
@@ -252,10 +268,19 @@ function MyHistory() {
               <ChevronDown size={20} aria-hidden className="shrink-0 text-muted transition-transform group-open:rotate-180" />
             </summary>
             <ul className="divide-y divide-line/60 border-t border-line/60">
-              {list.map((a) => {
-                const route = data.routes.find((r) => r.id === a.route_id);
-                const place = data.locations.find((l) => l.id === a.location_id);
-                const meta = [formatDay(a.activity_date), route?.name, place?.name].filter(Boolean).join(" · ");
+              <EntryGroups
+                rows={list}
+                summary={(a) => (
+                  <>
+                    <CategoryIcon type={a.category_type} icon={iconForActivity(a, data.categories)} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-medium">{categoryName(a, data.categories)}</span>
+                      <span className="block text-sm text-muted">{metaOf(a)}</span>
+                    </span>
+                  </>
+                )}
+                row={(a) => {
+                const meta = metaOf(a);
                 return (
                   <li key={a.id} className="flex items-center gap-3 px-6 py-3.5">
                     <CategoryIcon type={a.category_type} icon={iconForActivity(a, data.categories)} />
@@ -270,7 +295,8 @@ function MyHistory() {
                     </IconButton>
                   </li>
                 );
-              })}
+                }}
+              />
             </ul>
           </details>
         ))
