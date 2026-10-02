@@ -5,6 +5,8 @@ import { AtSign, KeyRound, Mail, Pencil, Plus, X } from "lucide-react";
 import { handle } from "@/lib/admin";
 import { useData } from "@/lib/data";
 import { SUGGESTED_PERSONAL } from "@/lib/categories";
+import { BLANK_CHAVRUSA, chavrusasOf, chavrusasText, encodeChavrusa, type Chavrusa } from "@/lib/chavrusa";
+import { ChavrusaFields } from "../chavrusa-fields";
 import { Button, Card, CardTitle, Field, IconButton, Input, Modal, PageHeader } from "../ui";
 import { sum } from "./dashboard";
 import { InstallCard } from "../install-app";
@@ -131,13 +133,13 @@ function AccountCard() {
   const [open, setOpen] = useState<null | "details">(null);
   const [dialog, setDialog] = useState<null | "username" | "email" | "password">(null);
   const [name, setName] = useState("");
-  const [partners, setPartners] = useState<string[]>([""]);
+  const [partners, setPartners] = useState<Chavrusa[]>([BLANK_CHAVRUSA]);
   const [busy, setBusy] = useState(false);
   const editable = backend?.kind !== "claude";
 
   function start(which: NonNullable<typeof open>) {
     setName(me?.name ?? "");
-    setPartners(me?.partners?.length ? [...me.partners] : [""]);
+    setPartners(me?.partners?.length ? chavrusasOf(me.partners) : [BLANK_CHAVRUSA]);
     setOpen(which);
   }
 
@@ -158,7 +160,7 @@ function AccountCard() {
     if (open === "details") {
       return run(async () => {
         if (!name.trim()) throw new Error("Enter the route name.");
-        await auth.updateProfile(name.trim(), partners.map((p) => p.trim()).filter(Boolean));
+        await auth.updateProfile(name.trim(), partners.filter((c) => c.name.trim() || c.hebrew.trim()).map(encodeChavrusa));
         return "Saved.";
       });
     }
@@ -206,23 +208,7 @@ function AccountCard() {
             </Field>
             <div className="grid gap-1.5">
               <p className="px-1 text-sm font-medium text-muted">Chavrusas on this route</p>
-              {partners.map((p, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <Input
-                    id={`profile-partner-${i}`}
-                    aria-label={`Chavrusa ${i + 1}`}
-                    value={p}
-                    onChange={(e) => setPartners(partners.map((x, j) => (j === i ? e.target.value : x)))}
-                    placeholder="Chavrusa's name"
-                  />
-                  <IconButton aria-label={`Remove Chavrusa ${i + 1}`} onClick={() => setPartners(partners.length > 1 ? partners.filter((_, j) => j !== i) : [""])}>
-                    <X size={18} />
-                  </IconButton>
-                </div>
-              ))}
-              <Button variant="ghost" className="h-9 justify-self-start px-3" onClick={() => setPartners([...partners, ""])}>
-                <Plus size={16} aria-hidden /> Add a Chavrusa
-              </Button>
+              <ChavrusaFields value={partners} onChange={setPartners} idPrefix="profile-partner" requireHebrew />
             </div>
             {buttons}
           </form>
@@ -234,7 +220,7 @@ function AccountCard() {
                 <p className="break-words text-2xl font-medium">{me?.name}</p>
                 <p className="mt-1 text-sm">
                   <span className="text-muted">Chavrusas: </span>
-                  {me?.partners?.length ? me.partners.join(", ") : <span className="text-muted">none yet</span>}
+                  {chavrusasOf(me?.partners).length ? chavrusasText(me?.partners) : <span className="text-muted">none yet</span>}
                 </p>
               </div>
               {editable && (

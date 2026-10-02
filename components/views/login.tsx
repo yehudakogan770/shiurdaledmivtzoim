@@ -6,6 +6,8 @@ import { useData } from "@/lib/data";
 import { currentWeek, hebrewDate } from "@/lib/dates";
 import { parshaOfWeek } from "@/lib/parsha";
 import { ADMIN_EMAILS } from "@/lib/admin";
+import { BLANK_CHAVRUSA, encodeChavrusa, type Chavrusa } from "@/lib/chavrusa";
+import { ChavrusaFields } from "../chavrusa-fields";
 import { LogoMark } from "../brand";
 import { Button, Field, IconButton, Input, cx } from "../ui";
 import { SiteFooter } from "../site-footer";
@@ -23,7 +25,7 @@ export function LoginView({ initialMode = "signin", onBack }: { initialMode?: Mo
   const { auth, backend, settings } = useData();
   const [mode, setMode] = useState<Mode>(initialMode);
   const [name, setName] = useState("");
-  const [partners, setPartners] = useState<string[]>([""]);
+  const [partners, setPartners] = useState<Chavrusa[]>([BLANK_CHAVRUSA]);
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -50,7 +52,7 @@ export function LoginView({ initialMode = "signin", onBack }: { initialMode?: Mo
       if (mode === "signup") {
         const { needsConfirmation } = await auth.signUp({
           name: name.trim(),
-          partners: partners.map((p) => p.trim()).filter(Boolean),
+          partners: partners.filter((c) => c.name.trim() || c.hebrew.trim()).map(encodeChavrusa),
           username,
           email,
           password,
@@ -112,30 +114,7 @@ export function LoginView({ initialMode = "signin", onBack }: { initialMode?: Mo
               </Field>
               <div className="grid gap-1.5">
                 <p className="px-1 text-sm font-medium text-muted">Chavrusas on this route</p>
-                {partners.map((p, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <Input
-                      id={`login-partner-${i}`}
-                      aria-label={`Chavrusa ${i + 1}`}
-                      value={p}
-                      onChange={(e) => setPartners(partners.map((x, j) => (j === i ? e.target.value : x)))}
-                      placeholder="Chavrusa's name"
-                    />
-                    {partners.length > 1 && (
-                      <IconButton aria-label={`Remove Chavrusa ${i + 1}`} onClick={() => setPartners(partners.filter((_, j) => j !== i))}>
-                        <X size={18} />
-                      </IconButton>
-                    )}
-                  </div>
-                ))}
-                <div className="flex items-center justify-between gap-2">
-                  <p className="px-1 text-xs text-muted">The name of each person who does this route.</p>
-                  {partners.length < 5 && (
-                    <Button variant="ghost" className="h-9 shrink-0 px-3" onClick={() => setPartners([...partners, ""])}>
-                      <Plus size={16} aria-hidden /> Add another
-                    </Button>
-                  )}
-                </div>
+                <ChavrusaFields value={partners} onChange={setPartners} idPrefix="login-partner" requireHebrew />
               </div>
             </>
           )}

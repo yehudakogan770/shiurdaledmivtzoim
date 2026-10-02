@@ -10,6 +10,8 @@ import type { Activity, HiddenRange, PersonalCategory, Profile } from "@/lib/typ
 import { ICON_CHOICES, iconForActivity, iconForCategory, iconForName } from "@/lib/category-icons";
 import { useData } from "@/lib/data";
 import { handle, isAdminIdentifier } from "@/lib/admin";
+import { chavrusasOf, chavrusasText, encodeChavrusa, type Chavrusa } from "@/lib/chavrusa";
+import { ChavrusaFields } from "../chavrusa-fields";
 import { Avatar, Badge, Button, Card, CardTitle, CategoryIcon, Empty, Field, IconButton, Input, Modal, PageHeader, Select, Textarea, cx, listClass } from "../ui";
 import { sum } from "./dashboard";
 
@@ -604,7 +606,7 @@ function PersonDetails({ person }: { person: Profile }) {
   const facts: [string, string][] = [
     ["Username", person.username ? handle(person.username) : "—"],
     ["Email", person.email || "—"],
-    ["Chavrusas", person.partners?.length ? person.partners.join(", ") : "None"],
+    ["Chavrusas", chavrusasText(person.partners) || "None"],
     ["Routes made", String(routes)],
     ["Own categories", categories.length ? categories.join(", ") : "None"],
     ["Last active", rows[0] ? dayWithParsha(rows[0]) : "Never"],
@@ -821,7 +823,7 @@ function ActivityCard() {
 
 function EditPerson({ person }: { person: Profile }) {
   const { actions, notify } = useData();
-  const [draft, setDraft] = useState<{ name: string; username: string; email: string; partners: string } | null>(null);
+  const [draft, setDraft] = useState<{ name: string; username: string; email: string; partners: Chavrusa[] } | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function save(e: FormEvent) {
@@ -833,7 +835,7 @@ function EditPerson({ person }: { person: Profile }) {
         name: draft.name,
         username: draft.username,
         email: draft.email,
-        partners: draft.partners.split(",").map((x) => x.trim()).filter(Boolean),
+        partners: draft.partners.filter((c) => c.name.trim() || c.hebrew.trim()).map(encodeChavrusa),
       });
       notify(`${draft.name.trim()}'s account was updated.`);
       setDraft(null);
@@ -850,7 +852,7 @@ function EditPerson({ person }: { person: Profile }) {
         variant="tonal"
         className="h-9 px-4"
         onClick={() =>
-          setDraft({ name: person.name, username: person.username ?? "", email: person.email ?? "", partners: (person.partners ?? []).join(", ") })
+          setDraft({ name: person.name, username: person.username ?? "", email: person.email ?? "", partners: chavrusasOf(person.partners) })
         }
       >
         <Pencil size={16} aria-hidden /> Edit account
@@ -870,9 +872,10 @@ function EditPerson({ person }: { person: Profile }) {
         <Field label="Email" htmlFor={id("email")}>
           <Input id={id("email")} type="email" required value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} />
         </Field>
-        <Field label="Chavrusas" htmlFor={id("partners")} hint="Separate names with commas.">
-          <Input id={id("partners")} value={draft.partners} onChange={(e) => setDraft({ ...draft, partners: e.target.value })} />
-        </Field>
+        <div className="grid gap-1.5 sm:col-span-2">
+          <p className="px-1 text-sm font-medium text-muted">Chavrusas</p>
+          <ChavrusaFields value={draft.partners} onChange={(partners) => setDraft({ ...draft, partners })} idPrefix={id("partners")} />
+        </div>
       </div>
       <div className="flex gap-2">
         <Button type="submit" disabled={busy} className="h-9 px-4">
