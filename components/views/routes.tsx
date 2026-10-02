@@ -183,9 +183,10 @@ export function NewRouteView() {
 
 /** The Owner sees everyone's routes, with whose route it is and how far along. */
 function AllRoutesView() {
-  const { data } = useData();
+  const { data, people } = useData();
   const { Link } = useNav();
   const owner = (r: { created_by: string }) => data.names[r.created_by] || "Someone";
+  const chavrusas = (r: { created_by: string }) => (people.find((p) => p.id === r.created_by)?.partners ?? []).filter(Boolean).join(", ");
   const routes = [...data.routes].sort((a, b) => owner(a).localeCompare(owner(b)) || a.name.localeCompare(b.name));
   return (
     <div className="grid grid-cols-1 gap-6">
@@ -204,7 +205,10 @@ function AllRoutesView() {
             const pct = stops.length ? (done / stops.length) * 100 : 0;
             return (
               <Link key={r.id} href={`/routes/view?id=${r.id}`} className="block rounded-[28px] bg-card p-6 transition hover:shadow-card">
-                <p className="text-sm font-medium text-accent">{owner(r)}</p>
+                <p className="text-sm">
+                  <span className="font-medium text-accent">{owner(r)}</span>
+                  {chavrusas(r) && <span className="text-xs text-muted"> · {chavrusas(r)}</span>}
+                </p>
                 <h2 className="text-xl font-medium">{r.name}</h2>
                 {r.description && <p className="mt-1 line-clamp-2 text-sm text-muted">{r.description}</p>}
                 <div className="mt-4 h-2 overflow-hidden rounded-full bg-sunken">
@@ -223,7 +227,7 @@ function AllRoutesView() {
 }
 
 export function RouteDetailView() {
-  const { me, data, mine, actions, notify, isOwner } = useData();
+  const { me, data, mine, actions, notify, isOwner, people } = useData();
   const { editing } = useEditMode();
   const { query, go } = useNav();
   // The Owner can open anyone's route; with Edit on it can change everything on it.
@@ -291,7 +295,16 @@ export function RouteDetailView() {
     <div className="grid grid-cols-1 gap-6">
       <PageHeader
         back={{ href: "/routes", label: "Routes" }}
-        eyebrow={isOwner ? `${data.names[route.created_by] || "Someone"}'s route` : undefined}
+        eyebrow={
+          isOwner ? (
+            <>
+              {data.names[route.created_by] || "Someone"}&apos;s route
+              {(people.find((p) => p.id === route.created_by)?.partners ?? []).filter(Boolean).length > 0 && (
+                <span className="text-xs font-normal text-muted"> · {(people.find((p) => p.id === route.created_by)?.partners ?? []).filter(Boolean).join(", ")}</span>
+              )}
+            </>
+          ) : undefined
+        }
         title={route.name}
         subtitle={
           <>
