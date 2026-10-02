@@ -38,7 +38,8 @@ export function AdminView() {
       )}
       <PeopleCard />
       <ExportCard />
-      <ActivityCard />
+      {/* The Owner's History already shows everyone's entries. */}
+      {!isOwner && <ActivityCard />}
     </div>
   );
 }
