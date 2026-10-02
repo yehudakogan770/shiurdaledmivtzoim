@@ -14,6 +14,7 @@ import { LogoMark } from "./brand";
 import { LoginView } from "./views/login";
 import { SiteFooter } from "./site-footer";
 import { EditModeProvider } from "@/lib/edit-mode";
+import { HebrewNamesGate, missingHebrewNames } from "./hebrew-names-gate";
 
 const links = [
   { href: "/", label: "Dashboard", short: "Home", icon: LayoutDashboard, match: ["/", "/dashboard"] },
@@ -303,6 +304,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           <SiteFooter />
         </main>
       </div>
+      {/* Everyone but the Owner fills in their Chavrusas' Hebrew names before using the site. */}
+      {me && !isOwner && backend?.hasAuth && missingHebrewNames(me.partners) && <HebrewNamesGate key={me.id} />}
       <Snackbar message={toast} />
     </div>
     </EditModeProvider>
