@@ -5,10 +5,14 @@ import { MapPin } from "lucide-react";
 import { Input, cx } from "./ui";
 
 /**
- * Address box with Google Maps suggestions as you type (Google Places).
- * Needs NEXT_PUBLIC_GOOGLE_MAPS_KEY; without it this is a plain text box.
+ * Address box with suggestions as you type. Free by default: OpenStreetMap's address search
+ * (Photon), with no account, key or card. With NEXT_PUBLIC_GOOGLE_MAPS_KEY set it uses Google
+ * Places instead.
  */
 const GOOGLE_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY || "";
+const PHOTON_URL = "https://photon.komoot.io/api/";
+/** The last address picked, so suggestions lean toward where people actually go. */
+const BIAS_KEY = "shiur-daled-mivtzoim:address-bias";
 
 export interface AddressPick {
   address: string;
@@ -19,6 +23,106 @@ export interface AddressPick {
 interface Suggestion extends AddressPick {
   line1: string;
   line2: string;
+  lat?: number;
+  lon?: number;
+}
+
+type PhotonFeature = {
+  geometry: { coordinates: [number, number] };
+  properties: Record<string, string | undefined>;
+};
+
+function readPoint(key: string): { lat: number; lon: number } | null {
+  try {
+    const p = JSON.parse(localStorage.getItem(key) || "null");
+    return typeof p?.lat === "number" && typeof p?.lon === "number" ? { lat: p.lat, lon: p.lon } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Where to look first: the last address picked, else this device's location (from Shkiah), else Crown Heights. */
+function nearPoint() {
+  return readPoint(BIAS_KEY) ?? readPoint("sdm-location") ?? { lat: 40.6694, lon: -73.9422 };
+}
+
+function townOf(p: Record<string, string | undefined>) {
+  return p.district && p.city && p.district !== p.city ? p.district : p.city || p.town || p.village || p.county;
+}
+
+function fromPhoton(f: PhotonFeature): Suggestion | null {
+  const p = f.properties;
+  const street = [p.housenumber, p.street].filter(Boolean).join(" ");
+  const town = townOf(p);
+  const region = [p.state, p.postcode].filter(Boolean).join(" ");
+  const place = p.name && p.name !== p.housenumber && p.name !== street ? p.name : null;
+  const firstPart = street || place || p.name;
+  if (!firstPart) return null;
+  return {
+    address: [firstPart, town, region].filter(Boolean).join(", "),
+    placeName: place,
+    line1: place || firstPart,
+    line2: [place ? street : null, town, region].filter(Boolean).join(", "),
+    lat: f.geometry.coordinates[1],
+    lon: f.geometry.coordinates[0],
+  };
+}
+
+async function photon(params: Record<string, string>, signal: AbortSignal) {
+  const res = await fetch(`${PHOTON_URL}?${new URLSearchParams({ lang: "en", ...params })}`, { signal });
+  return ((await res.json()) as { features: PhotonFeature[] }).features;
+}
+
+/**
+ * Free suggestions near where people go. The free map doesn't have every house number, so
+ * "412 Kingston Ave" also offers "412 Kingston Avenue" built from the matching nearby street.
+ */
+async function photonSuggest(q: string, signal: AbortSignal): Promise<Suggestion[]> {
+  const near = nearPoint();
+  const box = [near.lon - 0.25, near.lat - 0.2, near.lon + 0.25, near.lat + 0.2].map((n) => n.toFixed(4)).join(",");
+  const bias = { lat: String(near.lat), lon: String(near.lon) };
+  const m = q.match(/^(\d+[a-z]?)\s+(.{2,})$/i);
+  const number = m?.[1]?.toLowerCase();
+  const [places, streets] = await Promise.all([
+    photon({ q, limit: "12", ...bias }, signal),
+    m ? photon({ q: m[2], limit: "6", layer: "street", bbox: box, ...bias }, signal) : Promise.resolve([] as PhotonFeature[]),
+  ]);
+  const exact: Suggestion[] = [];
+  const others: Suggestion[] = [];
+  for (const f of places) {
+    if (f.properties.countrycode && f.properties.countrycode !== "US") continue;
+    const sug = fromPhoton(f);
+    if (!sug) continue;
+    const hn = f.properties.housenumber?.toLowerCase();
+    if (!number) others.push(sug);
+    else if (hn === number) exact.push(sug);
+    else if (hn?.startsWith(number)) others.push(sug);
+  }
+  const built: Suggestion[] = [];
+  if (m) {
+    for (const f of streets) {
+      const p = f.properties;
+      if (!p.name || (p.countrycode && p.countrycode !== "US")) continue;
+      const street = `${m[1]} ${p.name}`;
+      const town = townOf(p);
+      built.push({
+        address: [street, town, p.state].filter(Boolean).join(", "),
+        placeName: null,
+        line1: street,
+        line2: [town, p.state].filter(Boolean).join(", "),
+        lat: f.geometry.coordinates[1],
+        lon: f.geometry.coordinates[0],
+      });
+    }
+  }
+  const known = new Set([...exact, ...others].map((x) => x.line1.toLowerCase()));
+  // Closest first: the right house number nearby beats the same number in another state.
+  const away = (x: Suggestion) => (x.lat == null || x.lon == null ? 1e9 : (x.lat - near.lat) ** 2 + (x.lon - near.lon) ** 2);
+  const byDistance = (a: Suggestion, b: Suggestion) => away(a) - away(b);
+  const seen = new Set<string>();
+  return [...[...exact, ...built.filter((x) => !known.has(x.line1.toLowerCase()))].sort(byDistance), ...others.sort(byDistance)]
+    .filter((x) => !seen.has(x.address.toLowerCase()) && !!seen.add(x.address.toLowerCase()))
+    .slice(0, 6);
 }
 
 /* Minimal shapes of the Google Maps JavaScript API used here. */
@@ -93,17 +197,54 @@ export function AddressInput({
   const [active, setActive] = useState(-1);
   const typed = useRef(false);
   const session = useRef<unknown>(null);
+  const [source, setSource] = useState<"google" | "osm">(GOOGLE_KEY ? "google" : "osm");
 
   useEffect(() => {
     const q = value.trim();
-    if (!GOOGLE_KEY || !typed.current || q.length < 3) {
+    if (!typed.current || q.length < 3) {
       setResults([]);
       return;
     }
     let cancelled = false;
+    if (!GOOGLE_KEY) {
+      const controller = new AbortController();
+      const timer = setTimeout(async () => {
+        try {
+          const list = await photonSuggest(q, controller.signal);
+          if (cancelled) return;
+          setResults(list);
+          setActive(-1);
+          setOpen(true);
+        } catch {
+          // Offline or the search didn't answer: typing still works normally.
+        }
+      }, 300);
+      return () => {
+        cancelled = true;
+        clearTimeout(timer);
+        controller.abort();
+      };
+    }
     const timer = setTimeout(async () => {
+      const controller = new AbortController();
+      // Google didn't load or answer (for example its daily limit was reached): use the free search.
+      const free = async () => {
+        try {
+          const list = await photonSuggest(q, controller.signal);
+          if (cancelled) return;
+          setResults(list);
+          setActive(-1);
+          setOpen(true);
+        } catch {
+          // Offline: typing still works normally.
+        }
+      };
       const places = await loadPlaces();
-      if (!places || cancelled) return;
+      if (cancelled) return;
+      if (!places) {
+        setSource("osm");
+        return free();
+      }
       try {
         // One session token per address typed keeps Google's billing to a single session.
         session.current ??= new places.AutocompleteSessionToken();
@@ -113,11 +254,13 @@ export function AddressInput({
           includedRegionCodes: ["us"],
         });
         if (cancelled) return;
-        setResults(suggestions.flatMap((s) => (s.placePrediction ? [toSuggestion(s.placePrediction)] : [])).slice(0, 6));
+        setResults(suggestions.flatMap((x) => (x.placePrediction ? [toSuggestion(x.placePrediction)] : [])).slice(0, 6));
         setActive(-1);
         setOpen(true);
+        setSource("google");
       } catch {
-        // Google didn't answer: typing still works normally.
+        setSource("osm");
+        await free();
       }
     }, 250);
     return () => {
@@ -133,6 +276,13 @@ export function AddressInput({
     onPick?.({ address: s.address, placeName: s.placeName });
     setOpen(false);
     setResults([]);
+    if (s.lat != null && s.lon != null) {
+      try {
+        localStorage.setItem(BIAS_KEY, JSON.stringify({ lat: s.lat, lon: s.lon }));
+      } catch {
+        // Suggestions just won't lean toward this area next time.
+      }
+    }
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLInputElement>) {
@@ -158,11 +308,11 @@ export function AddressInput({
       <Input
         id={id}
         value={value}
-        autoComplete={GOOGLE_KEY ? "off" : "street-address"}
-        role={GOOGLE_KEY ? "combobox" : undefined}
-        aria-autocomplete={GOOGLE_KEY ? "list" : undefined}
-        aria-expanded={GOOGLE_KEY ? showList : undefined}
-        aria-controls={GOOGLE_KEY ? listId : undefined}
+        autoComplete="off"
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded={showList}
+        aria-controls={listId}
         aria-activedescendant={showList && active >= 0 ? `${listId}-${active}` : undefined}
         placeholder={placeholder}
         onChange={(e) => {
@@ -197,8 +347,8 @@ export function AddressInput({
               </li>
             ))}
           </ul>
-          {/* Google requires its logo next to Places suggestions shown outside a Google map. */}
-          <p className="border-t border-line/60 px-4 py-1.5 text-right text-[11px] text-muted">powered by Google</p>
+          {/* Each service asks to be credited next to its suggestions. */}
+          <p className="border-t border-line/60 px-4 py-1.5 text-right text-[11px] text-muted">{source === "google" ? "powered by Google" : "Suggestions © OpenStreetMap"}</p>
         </div>
       )}
     </div>
