@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { ChevronDown, ChevronUp, Download, ClipboardList, Eye, EyeOff, KeyRound, Flame, Pencil, ShieldCheck, Sparkles, Trash2, Users } from "lucide-react";
 import { TefillinIcon } from "../icons";
 import { bringBackFrom, categoryName, hiddenNowOrLater, hiddenRanges, hideFrom, orderedMivtzoim, reportColumns, type BuiltinType } from "@/lib/categories";
@@ -10,8 +10,8 @@ import type { Activity, HiddenRange, PersonalCategory, Profile } from "@/lib/typ
 import { ICON_CHOICES, iconForActivity, iconForCategory, iconForName } from "@/lib/category-icons";
 import { useData } from "@/lib/data";
 import { handle, isAdminIdentifier } from "@/lib/admin";
-import { chavrusasOf, chavrusasText, encodeChavrusa, type Chavrusa } from "@/lib/chavrusa";
-import { ChavrusaFields } from "../chavrusa-fields";
+import { chavrusasOf, encodeChavrusa, type Chavrusa } from "@/lib/chavrusa";
+import { ChavrusaFields, ChavrusaNames } from "../chavrusa-fields";
 import { Avatar, Badge, Button, Card, CardTitle, CategoryIcon, Empty, Field, IconButton, Input, Modal, PageHeader, Select, Textarea, cx, listClass } from "../ui";
 import { sum } from "./dashboard";
 
@@ -603,10 +603,10 @@ function PersonDetails({ person }: { person: Profile }) {
     .sort((a, b) => (b.activity_date + b.created_at).localeCompare(a.activity_date + a.created_at));
   const routes = data.routes.filter((r) => r.created_by === userId).length;
   const categories = data.categories.filter((c) => c.user_id === userId && !c.shared).map((c) => c.name);
-  const facts: [string, string][] = [
+  const facts: [string, ReactNode][] = [
     ["Username", person.username ? handle(person.username) : "—"],
     ["Email", person.email || "—"],
-    ["Chavrusas", chavrusasText(person.partners) || "None"],
+    ["Chavrusas", chavrusasOf(person.partners).length ? <ChavrusaNames partners={person.partners} /> : "None"],
     ["Routes made", String(routes)],
     ["Own categories", categories.length ? categories.join(", ") : "None"],
     ["Last active", rows[0] ? dayWithParsha(rows[0]) : "Never"],

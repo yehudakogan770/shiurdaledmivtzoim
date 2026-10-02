@@ -5,8 +5,8 @@ import { AtSign, KeyRound, Mail, Pencil, Plus, X } from "lucide-react";
 import { handle } from "@/lib/admin";
 import { useData } from "@/lib/data";
 import { SUGGESTED_PERSONAL } from "@/lib/categories";
-import { BLANK_CHAVRUSA, chavrusasOf, chavrusasText, encodeChavrusa, type Chavrusa } from "@/lib/chavrusa";
-import { ChavrusaFields } from "../chavrusa-fields";
+import { BLANK_CHAVRUSA, chavrusasOf, encodeChavrusa, type Chavrusa } from "@/lib/chavrusa";
+import { ChavrusaFields, ChavrusaNames } from "../chavrusa-fields";
 import { Button, Card, CardTitle, Field, IconButton, Input, Modal, PageHeader } from "../ui";
 import { sum } from "./dashboard";
 import { InstallCard } from "../install-app";
@@ -218,10 +218,10 @@ function AccountCard() {
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-muted">Route name</p>
                 <p className="break-words text-2xl font-medium">{me?.name}</p>
-                <p className="mt-1 text-sm">
-                  <span className="text-muted">Chavrusas: </span>
-                  {chavrusasOf(me?.partners).length ? chavrusasText(me?.partners) : <span className="text-muted">none yet</span>}
-                </p>
+                <div className="mt-2 text-sm">
+                  <p className="text-muted">Chavrusas</p>
+                  {chavrusasOf(me?.partners).length ? <ChavrusaNames partners={me?.partners} /> : <span className="text-muted">none yet</span>}
+                </div>
               </div>
               {editable && (
                 <Button variant="tonal" className="h-9 shrink-0 px-4" onClick={() => start("details")}>

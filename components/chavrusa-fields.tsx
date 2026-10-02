@@ -1,8 +1,8 @@
 "use client";
 
 import { Plus, X } from "lucide-react";
-import { BLANK_CHAVRUSA, type Chavrusa } from "@/lib/chavrusa";
-import { Button, IconButton, Input } from "./ui";
+import { BLANK_CHAVRUSA, chavrusasOf, hebrewName, type Chavrusa } from "@/lib/chavrusa";
+import { Button, IconButton, Input, cx } from "./ui";
 
 /**
  * The Chavrusas on a route: each one's English name, and under it the Hebrew name and the
@@ -91,5 +91,25 @@ export function ChavrusaFields({
         )}
       </div>
     </div>
+  );
+}
+
+/** The Chavrusas for display: each English name, with the Hebrew name small, gray and italic under it. */
+export function ChavrusaNames({ partners, className }: { partners: string[] | null | undefined; className?: string }) {
+  const list = chavrusasOf(partners);
+  if (list.length === 0) return null;
+  return (
+    <span className={cx("inline-flex flex-wrap gap-x-4 gap-y-1 align-top", className)}>
+      {list.map((c, i) => (
+        <span key={i} className="inline-flex flex-col leading-tight">
+          <span>{c.name || hebrewName(c)}</span>
+          {c.name && hebrewName(c) && (
+            <span dir="rtl" lang="he" className="text-xs italic text-muted">
+              {hebrewName(c)}
+            </span>
+          )}
+        </span>
+      ))}
+    </span>
   );
 }

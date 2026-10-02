@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { Check, ChevronDown, ChevronUp, MapPin, Pencil, Plus, RotateCcw, Trash2, X } from "lucide-react";
 import { useEditMode } from "@/lib/edit-mode";
-import { chavrusasText } from "@/lib/chavrusa";
+import { ChavrusaNames } from "../chavrusa-fields";
 import { NOT_ALLOWED } from "@/lib/backend";
 import { EditSwitch } from "./dashboard";
 import { useData } from "@/lib/data";
@@ -187,7 +187,7 @@ function AllRoutesView() {
   const { data, people } = useData();
   const { Link } = useNav();
   const owner = (r: { created_by: string }) => data.names[r.created_by] || "Someone";
-  const chavrusas = (r: { created_by: string }) => chavrusasText(people.find((p) => p.id === r.created_by)?.partners);
+  const partners = (r: { created_by: string }) => people.find((p) => p.id === r.created_by)?.partners;
   const routes = [...data.routes].sort((a, b) => owner(a).localeCompare(owner(b)) || a.name.localeCompare(b.name));
   return (
     <div className="grid grid-cols-1 gap-6">
@@ -206,10 +206,8 @@ function AllRoutesView() {
             const pct = stops.length ? (done / stops.length) * 100 : 0;
             return (
               <Link key={r.id} href={`/routes/view?id=${r.id}`} className="block rounded-[28px] bg-card p-6 transition hover:shadow-card">
-                <p className="text-sm">
-                  <span className="font-medium text-accent">{owner(r)}</span>
-                  {chavrusas(r) && <span className="text-xs text-muted"> · {chavrusas(r)}</span>}
-                </p>
+                <p className="text-sm font-medium text-accent">{owner(r)}</p>
+                <ChavrusaNames partners={partners(r)} className="mt-0.5 text-sm text-muted" />
                 <h2 className="text-xl font-medium">{r.name}</h2>
                 {r.description && <p className="mt-1 line-clamp-2 text-sm text-muted">{r.description}</p>}
                 <div className="mt-4 h-2 overflow-hidden rounded-full bg-sunken">
@@ -299,10 +297,8 @@ export function RouteDetailView() {
         eyebrow={
           isOwner ? (
             <>
-              {data.names[route.created_by] || "Someone"}&apos;s route
-              {chavrusasText(people.find((p) => p.id === route.created_by)?.partners) && (
-                <span className="text-xs font-normal text-muted"> · {chavrusasText(people.find((p) => p.id === route.created_by)?.partners)}</span>
-              )}
+              <span className="block">{data.names[route.created_by] || "Someone"}&apos;s route</span>
+              <ChavrusaNames partners={people.find((p) => p.id === route.created_by)?.partners} className="mt-1 text-sm font-normal text-muted" />
             </>
           ) : undefined
         }
