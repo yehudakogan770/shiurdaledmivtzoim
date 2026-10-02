@@ -94,7 +94,7 @@ export function ChavrusaFields({
   );
 }
 
-/** The Chavrusas for display: each English name, with the Hebrew name small, gray and italic under it. */
+/** The Chavrusas for display: each English name, with the Hebrew name small and gray under it. */
 export function ChavrusaNames({ partners, className }: { partners: string[] | null | undefined; className?: string }) {
   const list = chavrusasOf(partners);
   if (list.length === 0) return null;
@@ -104,7 +104,7 @@ export function ChavrusaNames({ partners, className }: { partners: string[] | nu
         <span key={i} className="inline-flex flex-col leading-tight">
           <span>{c.name || hebrewName(c)}</span>
           {c.name && hebrewName(c) && (
-            <span dir="rtl" lang="he" className="text-xs italic text-muted">
+            <span dir="rtl" lang="he" className="text-xs text-muted">
               {hebrewName(c)}
             </span>
           )}
