@@ -190,7 +190,7 @@ export function createSupabaseBackend(url: string, key: string): Backend {
       const url = (path: string) => sb.storage.from("photos").getPublicUrl(path).data.publicUrl;
       return (data as Photo[]).map((p) => ({ ...p, url: url(p.path), thumbUrl: url(p.thumb_path) }));
     },
-    async uploadPhoto(full, thumb, size) {
+    async uploadPhoto(full, thumb, info) {
       const me = await uid();
       const id = crypto.randomUUID();
       const ext = (b: Blob) => (b.type === "image/webp" ? "webp" : "jpg");
@@ -205,7 +205,7 @@ export function createSupabaseBackend(url: string, key: string): Backend {
         const msg = (a.error ?? b.error)!.message;
         throw new Error(/bucket not found/i.test(msg) ? "Photos aren't set up yet: run database update 011 in Supabase first." : `The photo didn't upload: ${msg}`);
       }
-      const row = { id, user_id: me, path, thumb_path: thumbPath, width: size.width, height: size.height, bytes: full.size + thumb.size };
+      const row = { id, user_id: me, path, thumb_path: thumbPath, width: info.width, height: info.height, color: info.color ?? null, bytes: full.size + thumb.size };
       const { data, error } = await sb.from("photos").insert(row).select().single();
       if (error) {
         await store.remove([path, thumbPath]).catch(() => {});

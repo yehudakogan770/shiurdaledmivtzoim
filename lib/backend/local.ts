@@ -157,12 +157,12 @@ export function createLocalBackend(): Backend {
     async listPhotos() {
       return [...(load().photos ?? [])].sort((a, b) => b.created_at.localeCompare(a.created_at)).map(({ data, thumbData, ...p }) => ({ ...p, url: data, thumbUrl: thumbData }));
     },
-    async uploadPhoto(full, thumb, size) {
+    async uploadPhoto(full, thumb, info) {
       const s = load();
       if (!s.session) throw new Error("Please sign in first.");
       const asData = (b: Blob) => new Promise<string>((res) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.readAsDataURL(b); });
       const id = newId();
-      const photo = { id, user_id: s.session, path: `${id}`, thumb_path: `${id}-thumb`, width: size.width, height: size.height, bytes: full.size + thumb.size, created_at: new Date().toISOString() };
+      const photo = { id, user_id: s.session, path: `${id}`, thumb_path: `${id}-thumb`, width: info.width, height: info.height, color: info.color ?? null, bytes: full.size + thumb.size, created_at: new Date().toISOString() };
       const [data, thumbData] = await Promise.all([asData(full), asData(thumb)]);
       const fresh = load(); // another upload may have saved while this one was reading the file
       fresh.photos = [...(fresh.photos ?? []), { ...photo, data, thumbData }];

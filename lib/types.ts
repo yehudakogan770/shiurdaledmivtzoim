@@ -26,6 +26,8 @@ export interface Photo {
   height: number;
   /** Size of both files together, for the storage meter. */
   bytes: number;
+  /** The photo's overall colour ("#rrggbb"), measured on the phone, for arranging the wall. */
+  color?: string | null;
   created_at: string;
   /** Filled in when the photos are loaded. */
   url?: string;

@@ -1,5 +1,6 @@
 "use client";
 
+import { arrange } from "@/lib/photos";
 import { useEffect, useRef, useState, type ComponentType } from "react";
 import { ClipboardList, Flame, Megaphone, Minus, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useEditMode } from "@/lib/edit-mode";
@@ -649,7 +650,7 @@ function PhotoHero({ week }: { week: string }) {
   const rows = useEveryoneRows(week);
   const total = sum(rows);
   const thisWeek = photos.filter((p) => weekOf(new Date(p.created_at)) === week);
-  const shown = (thisWeek.length ? thisWeek : photos).slice(0, 12);
+  const shown = arrange((thisWeek.length ? thisWeek : photos).slice(0, 12));
   const [k, setK] = useState(0);
   useEffect(() => {
     if (shown.length < 2 || matchMedia("(prefers-reduced-motion: reduce)").matches) return;

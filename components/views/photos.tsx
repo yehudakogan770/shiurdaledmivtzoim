@@ -5,7 +5,7 @@ import { ChevronDown, ImagePlus, Images, Trash2, X } from "lucide-react";
 import { useData, GUEST_MESSAGE } from "@/lib/data";
 import { formatShort, weekOf } from "@/lib/dates";
 import { parshaOfWeek } from "@/lib/parsha";
-import { shrinkPhoto, type ShrunkPhoto } from "@/lib/photos";
+import { arrange, shrinkPhoto, type ShrunkPhoto } from "@/lib/photos";
 import type { Photo } from "@/lib/types";
 import { Button, Card, Empty, IconButton, Modal, PageHeader, cx } from "../ui";
 import { useEditMode } from "@/lib/edit-mode";
@@ -31,15 +31,16 @@ export function PhotosView() {
   const [open, setOpen] = useState<Photo | null>(null);
   const input = useRef<HTMLInputElement>(null);
 
-  // Grouped by week, newest week first. Within a week everyone's photos are mixed together
-  // (in a fixed order, so the wall doesn't jump around from one visit to the next).
+  // Grouped by week, newest week first. Within a week everyone's photos are mixed together so
+  // neighbours set each other off (darker and lighter, different colours), in a fixed order so
+  // the wall doesn't jump around from one visit to the next.
   const weeks = useMemo(() => {
     const map = new Map<string, Photo[]>();
     for (const p of photos) {
       const w = weekOf(new Date(p.created_at));
       map.set(w, [...(map.get(w) ?? []), p]);
     }
-    return [...map.entries()].map(([w, list]) => [w, [...list].sort((a, b) => mix(a.id) - mix(b.id))] as [string, Photo[]]);
+    return [...map.entries()].map(([w, list]) => [w, arrange(list)] as [string, Photo[]]);
   }, [photos]);
 
   function choose() {
@@ -211,13 +212,6 @@ function PhotoWall({ weeks, onOpen }: { weeks: [string, Photo[]][]; onOpen(p: Ph
       {loops && wall(undefined, true)}
     </div>
   );
-}
-
-/** A number from a photo's id: sorting by it mixes everyone's photos in a fixed order. */
-function mix(id: string) {
-  let h = 2166136261;
-  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619);
-  return h >>> 0;
 }
 
 /**

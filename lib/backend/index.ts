@@ -64,7 +64,7 @@ export interface Backend {
   /** Everyone's photos, newest first (anyone can see them, even without an account). */
   listPhotos?(): Promise<Photo[]>;
   /** Save one photo (already made smaller) and its preview. */
-  uploadPhoto?(full: Blob, thumb: Blob, size: { width: number; height: number }): Promise<Photo>;
+  uploadPhoto?(full: Blob, thumb: Blob, info: { width: number; height: number; color?: string }): Promise<Photo>;
   /** The person who shared it, or an admin. */
   deletePhoto?(photo: Photo): Promise<void>;
 }

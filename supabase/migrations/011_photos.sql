@@ -9,8 +9,11 @@ create table if not exists public.photos (
   width integer not null default 0,
   height integer not null default 0,
   bytes integer not null default 0,
+  color text,
   created_at timestamptz not null default now()
 );
+-- Each photo's overall colour, so the wall can put photos that set each other off side by side.
+alter table public.photos add column if not exists color text;
 create index if not exists idx_photos_created on public.photos(created_at desc);
 alter table public.photos enable row level security;
 

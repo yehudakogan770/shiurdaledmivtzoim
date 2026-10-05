@@ -143,7 +143,7 @@ interface DataContextValue {
     adminUpdatePerson(userId: string, patch: PersonPatch): Promise<void>;
     adminDeletePerson(userId: string): Promise<void>;
     /** Share photos (already made smaller); reports how many are done as they go. */
-    uploadPhotos(photos: { full: Blob; thumb: Blob; width: number; height: number }[], onProgress?: (done: number) => void): Promise<void>;
+    uploadPhotos(photos: { full: Blob; thumb: Blob; width: number; height: number; color?: string }[], onProgress?: (done: number) => void): Promise<void>;
     /** The person who shared it, or an admin. */
     deletePhoto(id: string): Promise<void>;
   };
@@ -531,7 +531,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
             const queue = [...list];
             const worker = async () => {
               for (let next = queue.shift(); next; next = queue.shift()) {
-                added.push(await b.uploadPhoto!(next.full, next.thumb, { width: next.width, height: next.height }));
+                added.push(await b.uploadPhoto!(next.full, next.thumb, { width: next.width, height: next.height, color: next.color }));
                 onProgress?.(++done);
               }
             };

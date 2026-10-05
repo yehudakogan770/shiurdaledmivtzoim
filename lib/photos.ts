@@ -11,6 +11,8 @@ export interface ShrunkPhoto {
   thumb: Blob;
   width: number;
   height: number;
+  /** Its overall colour, "#rrggbb". */
+  color: string;
   /** A preview to show before sending. */
   preview: string;
 }
@@ -56,10 +58,96 @@ export async function shrinkPhoto(file: File): Promise<ShrunkPhoto> {
     const big = draw(img, FULL);
     const small = draw(img, THUMB);
     const [full, thumb] = await Promise.all([encode(big, 0.8), encode(small, 0.74)]);
-    return { full, thumb, width: big.width, height: big.height, preview: URL.createObjectURL(thumb) };
+    return { full, thumb, width: big.width, height: big.height, color: colorOf(small), preview: URL.createObjectURL(thumb) };
   } finally {
     URL.revokeObjectURL(img.src);
   }
+}
+
+/**
+ * A photo's overall colour: its average brightness, and the hue of its most colourful parts (so
+ * a blue sky with grey pavement reads as blue, not grey).
+ */
+function colorOf(canvas: HTMLCanvasElement) {
+  const tiny = document.createElement("canvas");
+  tiny.width = tiny.height = 32;
+  const ctx = tiny.getContext("2d", { willReadFrequently: true })!;
+  ctx.drawImage(canvas, 0, 0, 32, 32);
+  const px = ctx.getImageData(0, 0, 32, 32).data;
+  let light = 0, chroma = 0, x = 0, y = 0;
+  const n = px.length / 4;
+  for (let i = 0; i < px.length; i += 4) {
+    const r = px[i] / 255, g = px[i + 1] / 255, b = px[i + 2] / 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), c = max - min;
+    light += 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    chroma += c;
+    if (c > 0) {
+      const h = max === r ? ((g - b) / c) % 6 : max === g ? (b - r) / c + 2 : (r - g) / c + 4;
+      x += Math.cos((h * Math.PI) / 3) * c;
+      y += Math.sin((h * Math.PI) / 3) * c;
+    }
+  }
+  const hue = ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+  return hslToHex(hue, Math.min(1, (chroma / n) * 1.6), light / n);
+}
+
+function hslToHex(h: number, s: number, l: number) {
+  const k = (n: number) => (n + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n: number) => Math.round(255 * (l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1))));
+  return "#" + [f(0), f(8), f(4)].map((v) => v.toString(16).padStart(2, "0")).join("");
+}
+
+function hexToHsl(hex: string) {
+  const v = parseInt(hex.slice(1), 16);
+  const r = (v >> 16) / 255, g = ((v >> 8) & 255) / 255, b = (v & 255) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), c = max - min, l = (max + min) / 2;
+  const h = c === 0 ? 0 : max === r ? 60 * (((g - b) / c + 6) % 6) : max === g ? 60 * ((b - r) / c + 2) : 60 * ((r - g) / c + 4);
+  return { h, s: c === 0 ? 0 : c / (1 - Math.abs(2 * l - 1)), l };
+}
+
+/** A number from a photo's id: sorting by it mixes everyone's photos in a fixed order. */
+export function mix(id: string) {
+  let h = 2166136261;
+  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619);
+  return h >>> 0;
+}
+
+/**
+ * Puts photos in a mixed-up but fixed order where neighbours set each other off: darker and
+ * lighter photos take turns, and photos next to each other (and above and below, on the wall)
+ * have different colours. Photos without a measured colour just go in their random spot.
+ */
+export function arrange<T extends { id: string; color?: string | null }>(list: T[]): T[] {
+  const items = list.map((p) => ({ p, c: p.color && /^#[0-9a-f]{6}$/i.test(p.color) ? hexToHsl(p.color) : null, r: mix(p.id) })).sort((a, b) => a.r - b.r);
+  type Item = (typeof items)[number];
+  const measured = items.filter((i) => i.c).sort((a, b) => a.c!.l - b.c!.l);
+  const middle = measured.length ? measured[Math.floor(measured.length / 2)].c!.l : 0.5;
+  const dark = items.filter((i) => !i.c || i.c.l < middle);
+  const light = items.filter((i) => i.c && i.c.l >= middle);
+  // How well two photos set each other off: different brightness, and different colour (when both have colour).
+  const apart = (a: Item, b: Item) => {
+    if (!a.c || !b.c) return 0.5;
+    const dh = Math.abs(a.c.h - b.c.h);
+    return Math.abs(a.c.l - b.c.l) * 1.5 + (Math.min(dh, 360 - dh) / 180) * Math.min(a.c.s, b.c.s);
+  };
+  const out: Item[] = [];
+  const startDark = (items[0]?.r ?? 0) % 2 === 0;
+  while (dark.length || light.length) {
+    const wantDark = (out.length % 2 === 0) === startDark;
+    const group = (wantDark ? dark : light).length ? (wantDark ? dark : light) : wantDark ? light : dark;
+    // Of the next few (still in random order), take the one that best stands apart from its neighbours.
+    let best = 0, bestScore = -1;
+    for (let i = 0; i < Math.min(6, group.length); i++) {
+      const score = [1, 0.4, 0.8].reduce((s, w, back) => {
+        const n = out[out.length - 1 - back];
+        return n ? s + w * apart(group[i], n) : s;
+      }, 0);
+      if (score > bestScore + 0.02) [best, bestScore] = [i, score];
+    }
+    out.push(group.splice(best, 1)[0]);
+  }
+  return out.map((i) => i.p);
 }
 
 export const extensionOf = (blob: Blob) => (blob.type === "image/webp" ? "webp" : "jpg");
