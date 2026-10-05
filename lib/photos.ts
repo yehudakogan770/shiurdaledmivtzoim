@@ -150,6 +150,32 @@ export function arrange<T extends { id: string; color?: string | null }>(list: T
   return out.map((i) => i.p);
 }
 
+/**
+ * Fits photos to the wall's pattern of big, tall and small spots: the most eye-catching photo
+ * nearby goes in each big spot, and a photo taller than it is wide goes in each tall spot, so
+ * nothing important is cut off. Only nearby photos swap, so the colour mix stays.
+ */
+export function fitToSpots<T extends { width: number; height: number; color?: string | null }>(list: T[], spots: string[]): T[] {
+  const out = [...list];
+  const shape = (p: T) => (p.width > 0 && p.height > 0 ? p.width / p.height : 1);
+  const striking = (p: T) => {
+    if (!p.color || !/^#[0-9a-f]{6}$/i.test(p.color)) return 0;
+    const { s, l } = hexToHsl(p.color);
+    return s * (1 - Math.abs(2 * l - 1)) + Math.abs(l - 0.5) * 0.5 + (shape(p) >= 1 ? 0.15 : 0);
+  };
+  for (let i = 0; i < out.length; i++) {
+    const spot = spots[i % spots.length];
+    if (!spot) continue;
+    let best = i;
+    for (let j = i + 1; j < Math.min(out.length, i + 4); j++) {
+      // Don't take a photo another big or tall spot right after this one needs more.
+      if (spot === "h2" ? shape(out[j]) < shape(out[best]) - 0.05 : striking(out[j]) > striking(out[best]) + 0.05) best = j;
+    }
+    if (best !== i) [out[i], out[best]] = [out[best], out[i]];
+  }
+  return out;
+}
+
 export const extensionOf = (blob: Blob) => (blob.type === "image/webp" ? "webp" : "jpg");
 
 /** "120 KB", "3.4 MB". */

@@ -5,7 +5,7 @@ import { ChevronDown, ImagePlus, Images, Trash2, X } from "lucide-react";
 import { useData, GUEST_MESSAGE } from "@/lib/data";
 import { formatShort, weekOf } from "@/lib/dates";
 import { parshaOfWeek } from "@/lib/parsha";
-import { arrange, shrinkPhoto, type ShrunkPhoto } from "@/lib/photos";
+import { arrange, fitToSpots, shrinkPhoto, type ShrunkPhoto } from "@/lib/photos";
 import type { Photo } from "@/lib/types";
 import { Button, Card, Empty, IconButton, Modal, PageHeader, cx } from "../ui";
 import { useEditMode } from "@/lib/edit-mode";
@@ -40,7 +40,7 @@ export function PhotosView() {
       const w = weekOf(new Date(p.created_at));
       map.set(w, [...(map.get(w) ?? []), p]);
     }
-    return [...map.entries()].map(([w, list]) => [w, arrange(list)] as [string, Photo[]]);
+    return [...map.entries()].map(([w, list]) => [w, fitToSpots(arrange(list), SIZES)] as [string, Photo[]]);
   }, [photos]);
 
   function choose() {
