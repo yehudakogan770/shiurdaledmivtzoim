@@ -301,17 +301,30 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (!me) throw new Error("Please sign in first.");
       return me.id;
     };
+    // A card that didn't save: said after the page's own "saved" message, so it isn't covered up.
+    let cardTrouble: string | null = null;
     const run = async <T,>(work: () => Promise<T>): Promise<T> => {
+      cardTrouble = null;
       const result = await work();
       await load(b);
+      const trouble = cardTrouble;
+      if (trouble) setTimeout(() => notify(trouble), 0);
       return result;
     };
-    /** Saves a place's business card details, when there are any (or there were before). */
+    /**
+     * Saves a place's business card details, when there are any (or there were before). If that
+     * fails (say, database update 012 isn't run yet), the place itself is still saved, and it says
+     * so instead of stopping the rest.
+     */
     const saveCardFor = async (locationId: string, owner: string, s: StopInput) => {
       const fields = { contact: s.contact?.trim() || null, phone: s.phone?.trim() || null, email: s.email?.trim() || null, website: s.website?.trim() || null };
       const hasAny = Object.values(fields).some(Boolean) || s.card;
       if (!b.saveCard || (!hasAny && !cards[locationId])) return;
-      await b.saveCard({ location_id: locationId, user_id: owner, ...fields }, s.card);
+      try {
+        await b.saveCard({ location_id: locationId, user_id: owner, ...fields }, s.card);
+      } catch (e) {
+        cardTrouble = `Saved, but not the card details (phone, email, card picture). ${(e as Error).message}`;
+      }
     };
     /** Save in the background after the screen already changed; on failure, reload what's really saved. */
     const saveLater = (job: () => Promise<void>) => {
