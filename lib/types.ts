@@ -16,6 +16,22 @@ export function displayName(p: Pick<Profile, "name" | "partners">) {
   return p.name?.trim() || "Route";
 }
 
+/** A photo someone shared. Stored twice, small: a full photo and a preview for the scrolling wall. */
+export interface Photo {
+  id: string;
+  user_id: string;
+  path: string;
+  thumb_path: string;
+  width: number;
+  height: number;
+  /** Size of both files together, for the storage meter. */
+  bytes: number;
+  created_at: string;
+  /** Filled in when the photos are loaded. */
+  url?: string;
+  thumbUrl?: string;
+}
+
 export interface SignUpInput {
   name: string;
   partners: string[];

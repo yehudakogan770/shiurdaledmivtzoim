@@ -5,6 +5,7 @@ import { newId, newJoinCode, pickBackend, type Backend, type PersonPatch } from 
 import type {
   Activity,
   HiddenRange,
+  Photo,
   Group,
   GroupMember,
   Location,
@@ -78,6 +79,8 @@ interface DataContextValue {
   weeklyHiding: boolean;
   /** The site's main account (sdmivtzoim87@gmail.com): it runs the site and edits it right on the pages. */
   isOwner: boolean;
+  /** Everyone's photos, newest first; seen by everyone, even without an account. */
+  photos: Photo[];
   /** Every account; filled in for admins only. */
   people: Profile[];
   toast: string | null;
@@ -139,6 +142,10 @@ interface DataContextValue {
     adminSetPassword(userId: string, password: string): Promise<void>;
     adminUpdatePerson(userId: string, patch: PersonPatch): Promise<void>;
     adminDeletePerson(userId: string): Promise<void>;
+    /** Share photos (already made smaller); reports how many are done as they go. */
+    uploadPhotos(photos: { full: Blob; thumb: Blob; width: number; height: number }[], onProgress?: (done: number) => void): Promise<void>;
+    /** The person who shared it, or an admin. */
+    deletePhoto(id: string): Promise<void>;
   };
 }
 
@@ -168,6 +175,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<AppData>(EMPTY);
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
   const [people, setPeople] = useState<Profile[]>([]);
+  const [photos, setPhotos] = useState<Photo[]>([]);
   const [recovering, setRecovering] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -189,6 +197,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     for (const [k, v] of Object.entries(saved)) if (typeof v === "string" && (v || k === "announcement")) merged[k as keyof SiteSettings] = v;
     setSettings(merged);
     setMe(user);
+    // Photos are for everyone, signed in or not.
+    if (b.listPhotos) b.listPhotos().then(setPhotos, () => {});
     if (!user) {
       // The sample: nothing logged, but the same mivtzoim everyone has.
       const categories = b.sharedMivtzoim ? await b.sharedMivtzoim().catch(() => []) : [];
@@ -329,6 +339,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       // Once update 009 is run, every item row comes back with a hidden_weeks field.
       weeklyHiding: backend?.kind !== "supabase" || data.categories.some((c) => "hidden_weeks" in c),
       people,
+      photos,
       toast,
       notify,
       refresh,
@@ -510,6 +521,31 @@ export function DataProvider({ children }: { children: ReactNode }) {
         adminSetPassword: (userId, password) => b.adminSetPassword(userId, password),
         adminUpdatePerson: (userId, patch) => run(() => b.adminUpdatePerson(userId, patch)),
         adminDeletePerson: (userId) => run(() => b.adminDeletePerson(userId)),
+        uploadPhotos: async (list, onProgress) => {
+          if (!b.uploadPhoto) throw new Error("Photos aren't available here.");
+          uid();
+          let done = 0;
+          const added: Photo[] = [];
+          try {
+            // Two at a time: quicker than one by one, gentle on slow phone connections.
+            const queue = [...list];
+            const worker = async () => {
+              for (let next = queue.shift(); next; next = queue.shift()) {
+                added.push(await b.uploadPhoto!(next.full, next.thumb, { width: next.width, height: next.height }));
+                onProgress?.(++done);
+              }
+            };
+            await Promise.all([worker(), worker()]);
+          } finally {
+            if (added.length) setPhotos((p) => [...added, ...p]);
+          }
+        },
+        deletePhoto: async (id) => {
+          const photo = photos.find((x) => x.id === id);
+          if (!photo || !b.deletePhoto) return;
+          await b.deletePhoto(photo);
+          setPhotos((p) => p.filter((x) => x.id !== id));
+        },
         archiveCategory: (id, archived) => run(() => b.update("personal_categories", id, { status: archived ? "archived" : "active" })),
         setHiddenWeeks: (key, ranges) =>
           run(async () => {
@@ -589,7 +625,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       actions: sampleOnly(value.actions),
       auth: { ...sampleOnly(value.auth), signIn, signUp, requestPasswordReset, updatePassword, finishRecovery, recovering },
     };
-  }, [backend, status, error, me, data, mine, settings, people, recovering, toast, notify, refresh, load]);
+  }, [backend, status, error, me, data, mine, settings, people, photos, recovering, toast, notify, refresh, load]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }

@@ -226,3 +226,16 @@ h3 {
 .logo-breathe {
   animation: logo-breathe 1.6s ease-in-out infinite;
 }
+
+/* The Home page photo slowly zooms out while it shows. */
+@keyframes photo-zoom {
+  from {
+    transform: scale(1.08);
+  }
+  to {
+    transform: scale(1.01);
+  }
+}
+.photo-zoom {
+  animation: photo-zoom 1.4s ease-out forwards;
+}

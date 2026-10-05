@@ -10,6 +10,7 @@ import { ChavrusaFields, ChavrusaNames } from "../chavrusa-fields";
 import { Button, Card, CardTitle, Field, IconButton, Input, Modal, PageHeader } from "../ui";
 import { sum } from "./dashboard";
 import { InstallCard } from "../install-app";
+import { MyPhotos } from "./photos";
 
 export function ProfileView() {
   const { me, backend, mine, auth, actions, notify } = useData();
@@ -121,6 +122,8 @@ export function ProfileView() {
           </div>
         </Card>
       </div>
+
+      <MyPhotos />
 
       <InstallCard />
     </div>

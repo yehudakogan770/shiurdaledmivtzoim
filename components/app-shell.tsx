@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { Eye, History, LayoutDashboard, LogIn, LogOut, Map, Menu, ShieldCheck, Sunset, UserRound, UserRoundPlus } from "lucide-react";
+import { Eye, History, Images, LayoutDashboard, LogIn, LogOut, Map, Menu, ShieldCheck, Sunset, UserRound, UserRoundPlus } from "lucide-react";
 import { handle } from "@/lib/admin";
 import { useData } from "@/lib/data";
 import { displayName } from "@/lib/types";
@@ -20,6 +20,7 @@ const links = [
   { href: "/", label: "Dashboard", short: "Home", icon: LayoutDashboard, match: ["/", "/dashboard"] },
   { href: "/routes", label: "Routes", short: "Routes", icon: Map, match: ["/routes"] },
   { href: "/history", label: "History", short: "History", icon: History, match: ["/history"] },
+  { href: "/photos", label: "Photos", short: "Photos", icon: Images, match: ["/photos"] },
   { href: "/profile", label: "Profile", short: "Profile", icon: UserRound, match: ["/profile"] },
 ];
 

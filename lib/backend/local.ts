@@ -1,11 +1,17 @@
-import { displayName, type Profile, type SiteSettings, type TableName, type Tables } from "../types";
+import { displayName, type Photo, type Profile, type SiteSettings, type TableName, type Tables } from "../types";
 import { isAdminIdentifier } from "../admin";
 import { checkEmail, checkPassword, loginKey, newId, normalizeUsername, type Backend } from "./index";
 
 const KEY = "shiur-daled-mivtzoim:v1";
 
 type LocalProfile = Profile & { password_hash?: string };
-type Store = { [K in Exclude<TableName, "profiles">]: Tables[K][] } & { profiles: LocalProfile[]; session: string | null; settings: Partial<SiteSettings> };
+type Store = { [K in Exclude<TableName, "profiles">]: Tables[K][] } & {
+  profiles: LocalProfile[];
+  session: string | null;
+  settings: Partial<SiteSettings>;
+  /** Photos kept as small data URLs, only on this device. */
+  photos?: (Photo & { data: string; thumbData: string })[];
+};
 
 /** Salted SHA-256 so passwords are never stored as plain text. */
 async function hashPassword(password: string, salt: string) {
@@ -148,6 +154,28 @@ export function createLocalBackend(): Backend {
       return { needsConfirmation: false };
     },
 
+    async listPhotos() {
+      return [...(load().photos ?? [])].sort((a, b) => b.created_at.localeCompare(a.created_at)).map(({ data, thumbData, ...p }) => ({ ...p, url: data, thumbUrl: thumbData }));
+    },
+    async uploadPhoto(full, thumb, size) {
+      const s = load();
+      if (!s.session) throw new Error("Please sign in first.");
+      const asData = (b: Blob) => new Promise<string>((res) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.readAsDataURL(b); });
+      const id = newId();
+      const photo = { id, user_id: s.session, path: `${id}`, thumb_path: `${id}-thumb`, width: size.width, height: size.height, bytes: full.size + thumb.size, created_at: new Date().toISOString() };
+      const [data, thumbData] = await Promise.all([asData(full), asData(thumb)]);
+      const fresh = load(); // another upload may have saved while this one was reading the file
+      fresh.photos = [...(fresh.photos ?? []), { ...photo, data, thumbData }];
+      save(fresh);
+      return { ...photo, url: data, thumbUrl: thumbData };
+    },
+    async deletePhoto(photo) {
+      const s = load();
+      const me = s.profiles.find((x) => x.id === s.session);
+      if (!me || (photo.user_id !== me.id && roleOf(me) !== "admin")) throw new Error("Only the person who shared it, or an admin, can delete it.");
+      s.photos = (s.photos ?? []).filter((p) => p.id !== photo.id);
+      save(s);
+    },
     async sharedMivtzoim() {
       return load().personal_categories.filter((c) => c.shared);
     },

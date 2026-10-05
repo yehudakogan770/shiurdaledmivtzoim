@@ -1,4 +1,4 @@
-import type { PersonalCategory, Profile, SignUpInput, SiteSettings, TableName, Tables } from "../types";
+import type { PersonalCategory, Photo, Profile, SignUpInput, SiteSettings, TableName, Tables } from "../types";
 
 /**
  * Where the app keeps its data. The UI talks only to this interface, so the
@@ -61,6 +61,12 @@ export interface Backend {
   communityActivity?(from: string, to: string): Promise<CommunityRow[] | null>;
   /** The mivtzoim everyone shares (names, icons, order), readable without an account for the sample. */
   sharedMivtzoim?(): Promise<PersonalCategory[]>;
+  /** Everyone's photos, newest first (anyone can see them, even without an account). */
+  listPhotos?(): Promise<Photo[]>;
+  /** Save one photo (already made smaller) and its preview. */
+  uploadPhoto?(full: Blob, thumb: Blob, size: { width: number; height: number }): Promise<Photo>;
+  /** The person who shared it, or an admin. */
+  deletePhoto?(photo: Photo): Promise<void>;
 }
 
 /** When the database doesn't let this account change something (it may have been deleted meanwhile). */

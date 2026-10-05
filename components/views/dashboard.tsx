@@ -10,7 +10,7 @@ import { useData, type LogInput } from "@/lib/data";
 import { iconForActivity, iconForCategory } from "@/lib/category-icons";
 import { useNav } from "@/lib/nav";
 import { categoryName } from "@/lib/categories";
-import { activityMoment, activityWeek, addDays, allWeeks, currentWeek, formatDay, formatShort, hebrewDate, longDate, recentWeeks, today, weekLabel } from "@/lib/dates";
+import { activityMoment, activityWeek, addDays, allWeeks, currentWeek, formatDay, formatShort, hebrewDate, longDate, recentWeeks, today, weekLabel, weekOf } from "@/lib/dates";
 import { InstallBanner } from "../install-app";
 import type { CommunityRow } from "@/lib/backend";
 import { builtinHiddenIn, categoryHiddenIn, orderedMivtzoim, type BuiltinType } from "@/lib/categories";
@@ -161,6 +161,8 @@ function OwnerHome() {
 
       <WeekPicker week={week} onChange={setWeek} />
 
+      <PhotoHero week={week} />
+
       <EveryoneStrip week={week} />
 
       <InstallBanner />
@@ -215,6 +217,8 @@ function PersonalHome() {
       <PageHeader eyebrow={`${longDate()}${hd ? ` · ${hd}` : ""} · ${parshaOfWeek(currentWeek()).english}`} title={me?.name || "Dashboard"} />
 
       <WeekPicker week={week} onChange={setWeek} />
+
+      <PhotoHero week={week} />
 
       <EveryoneStrip week={week} />
 
@@ -632,6 +636,47 @@ function EveryoneStrip({ week }: { week: string }) {
         </div>
       </div>
     </section>
+  );
+}
+
+/**
+ * The week's photos, changing about once a second behind the week's total. Tapping it opens
+ * the Photos page. Shows the most recent photos when the week has none yet; hidden without photos.
+ */
+function PhotoHero({ week }: { week: string }) {
+  const { photos } = useData();
+  const { Link } = useNav();
+  const rows = useEveryoneRows(week);
+  const total = sum(rows);
+  const thisWeek = photos.filter((p) => weekOf(new Date(p.created_at)) === week);
+  const shown = (thisWeek.length ? thisWeek : photos).slice(0, 12);
+  const [k, setK] = useState(0);
+  useEffect(() => {
+    if (shown.length < 2 || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const t = setInterval(() => setK((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, [shown.length]);
+  if (shown.length === 0) return null;
+  const on = k % shown.length;
+  return (
+    <Link href="/photos" aria-label="Open the Photos page" className="relative block h-56 overflow-hidden rounded-[28px] bg-ink text-white sm:h-72">
+      {shown.map((p, i) => (
+        <img
+          key={p.id}
+          src={p.url}
+          alt=""
+          className={cx("absolute inset-0 h-full w-full object-cover transition-opacity duration-500", i === on ? "photo-zoom opacity-100" : "opacity-0")}
+        />
+      ))}
+      <span className="absolute inset-0 bg-gradient-to-b from-black/0 via-black/10 to-black/75" />
+      <span className="absolute inset-x-5 bottom-4 grid gap-0.5">
+        <span className="text-xl opacity-90" dir="rtl" lang="he" style={{ fontFamily: '"Frank Ruhl Libre", "David", "Times New Roman", serif' }}>
+          {parshaOfWeek(week).hebrew}
+        </span>
+        {total > 0 && <span className="tabular text-5xl leading-none font-medium">{total}</span>}
+        <span className="text-sm opacity-90">{total > 0 ? "Mivtzoim this week · see the photos" : "See this week's photos"}</span>
+      </span>
+    </Link>
   );
 }
 

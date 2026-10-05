@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { displayName, type PersonalCategory, type Profile, type TableName, type Tables } from "../types";
+import { displayName, type PersonalCategory, type Photo, type Profile, type TableName, type Tables } from "../types";
 import { NOT_ALLOWED, checkEmail, checkPassword, loginKey, normalizeUsername, type Backend, type CommunityRow } from "./index";
 
 /** Where email links (confirmation, password reset) send people back to. */
@@ -183,6 +183,41 @@ export function createSupabaseBackend(url: string, key: string): Backend {
       const { error } = await sb.rpc("admin_delete_person", { p_user: userId });
       if (error?.message.includes("admin_delete_person")) throw new Error("Run the latest setup file in Supabase first.");
       fail(error);
+    },
+    async listPhotos() {
+      const { data, error } = await sb.from("photos").select("*").order("created_at", { ascending: false }).limit(2000);
+      if (error) return [];
+      const url = (path: string) => sb.storage.from("photos").getPublicUrl(path).data.publicUrl;
+      return (data as Photo[]).map((p) => ({ ...p, url: url(p.path), thumbUrl: url(p.thumb_path) }));
+    },
+    async uploadPhoto(full, thumb, size) {
+      const me = await uid();
+      const id = crypto.randomUUID();
+      const ext = (b: Blob) => (b.type === "image/webp" ? "webp" : "jpg");
+      // Each person's photos go in their own folder; the database only lets them write there.
+      const path = `${me}/${id}.${ext(full)}`;
+      const thumbPath = `${me}/${id}-thumb.${ext(thumb)}`;
+      const store = sb.storage.from("photos");
+      const put = (p: string, b: Blob) => store.upload(p, b, { contentType: b.type, cacheControl: "31536000", upsert: false });
+      const [a, b] = await Promise.all([put(path, full), put(thumbPath, thumb)]);
+      if (a.error || b.error) {
+        await store.remove([path, thumbPath]).catch(() => {});
+        const msg = (a.error ?? b.error)!.message;
+        throw new Error(/bucket not found/i.test(msg) ? "Photos aren't set up yet: run database update 011 in Supabase first." : `The photo didn't upload: ${msg}`);
+      }
+      const row = { id, user_id: me, path, thumb_path: thumbPath, width: size.width, height: size.height, bytes: full.size + thumb.size };
+      const { data, error } = await sb.from("photos").insert(row).select().single();
+      if (error) {
+        await store.remove([path, thumbPath]).catch(() => {});
+        throw new Error(error.message.includes("photos") ? "Photos aren't set up yet: run database update 011 in Supabase first." : error.message);
+      }
+      return { ...(data as Photo), url: store.getPublicUrl(path).data.publicUrl, thumbUrl: store.getPublicUrl(thumbPath).data.publicUrl };
+    },
+    async deletePhoto(photo) {
+      const { data, error } = await sb.from("photos").delete().eq("id", photo.id).select("id");
+      fail(error);
+      if (Array.isArray(data) && data.length === 0) throw new Error(NOT_ALLOWED);
+      await sb.storage.from("photos").remove([photo.path, photo.thumb_path]);
     },
     async sharedMivtzoim() {
       const { data, error } = await sb.rpc("shared_mivtzoim");
