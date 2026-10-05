@@ -135,7 +135,7 @@ export function Textarea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
 }
 
 export function Select(props: SelectHTMLAttributes<HTMLSelectElement>) {
-  return <select {...props} className={cx(inputClass, "appearance-none bg-[length:1.1rem] bg-[right_1rem_center] bg-no-repeat pe-10", props.className)} style={{ backgroundImage: CHEVRON }} />;
+  return <select {...props} className={cx(inputClass, "appearance-none bg-[length:1.1rem] bg-[right_1rem_center] bg-no-repeat pe-10 rtl:bg-[left_1rem_center]", props.className)} style={{ backgroundImage: CHEVRON }} />;
 }
 
 const CHEVRON = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2375777d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`;

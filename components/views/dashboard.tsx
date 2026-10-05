@@ -163,7 +163,6 @@ function OwnerHome() {
 
       <WeekPicker week={week} onChange={setWeek} />
 
-      <PhotoHero week={week} />
 
       <EveryoneStrip week={week} />
 
@@ -220,7 +219,6 @@ function PersonalHome() {
 
       <WeekPicker week={week} onChange={setWeek} />
 
-      <PhotoHero week={week} />
 
       <EveryoneStrip week={week} />
 
@@ -645,76 +643,117 @@ function EveryoneStrip({ week }: { week: string }) {
  * The week's photos, changing about once a second behind the week's total. Tapping it opens
  * the Photos page. Shows the most recent photos when the week has none yet; hidden without photos.
  */
-function PhotoHero({ week }: { week: string }) {
+/**
+ * The week's card: the parsha, with a menu to look at another week. When there are photos it
+ * becomes a photo that changes about every second (this week's photos, else the latest), with
+ * everyone's total for the week on it; tapping it opens the Photos page.
+ */
+function WeekPicker({ week, onChange }: { week: string; onChange(week: string): void }) {
   const { photos } = useData();
   const { Link } = useNav();
-  const rows = useEveryoneRows(week);
-  const total = sum(rows);
-  const thisWeek = photos.filter((p) => weekOf(new Date(p.created_at)) === week);
-  const shown = arrange((thisWeek.length ? thisWeek : photos).slice(0, 12));
+  const total = sum(useEveryoneRows(week));
+  const thisWeek = currentWeek();
+  const weeks = allWeeks();
+  const parsha = parshaOfWeek(week);
+  const inWeek = photos.filter((p) => weekOf(new Date(p.created_at)) === week);
+  const shown = arrange((inWeek.length ? inWeek : photos).slice(0, 12));
   const [k, setK] = useState(0);
   useEffect(() => {
     if (shown.length < 2 || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const t = setInterval(() => setK((n) => n + 1), 1000);
-    return () => clearInterval(t);
+    const timer = setInterval(() => setK((n) => n + 1), 1000);
+    return () => clearInterval(timer);
   }, [shown.length]);
-  if (shown.length === 0) return null;
+
+  const hebrew = () => (
+    <p
+      lang="he"
+      dir="rtl"
+      className={cx("text-3xl font-medium leading-tight", !shown.length && "text-right sm:text-left")}
+      style={{ fontFamily: '"Frank Ruhl Libre", "David", "Times New Roman", serif' }}
+    >
+      {parsha.hebrew}
+    </p>
+  );
+  // In Hebrew the parsha is already written above, so just the date.
+  const dateLine = getLang() === "he" ? weekLabel(week) : `${parsha.local} · ${weekLabel(week)}`;
+  const backToThisWeek = (light: boolean) =>
+    week !== thisWeek && (
+      <button
+        type="button"
+        onClick={() => onChange(thisWeek)}
+        className={cx("pointer-events-auto ms-2 font-medium hover:underline", light ? "text-white underline-offset-2" : "text-accent")}
+      >
+        {t("Back to this week")}
+      </button>
+    );
+  const picker = (light: boolean) => (
+    <div className={cx("w-full sm:w-auto", light && "pointer-events-auto")}>
+      <label htmlFor="week-picker" className="sr-only">
+        {t("Week")}
+      </label>
+      <Select
+        id="week-picker"
+        value={week}
+        onChange={(e) => onChange(e.target.value)}
+        className={cx("h-11 py-2 text-sm sm:w-auto sm:min-w-72", light && "bg-black/40! text-white! ring-1 ring-white/25 backdrop-blur-md [&>option]:text-ink")}
+      >
+        {weeks.map((w) => (
+          <option key={w} value={w}>
+            {w === thisWeek ? `${t("This week")} · ` : ""}
+            {parshaOfWeek(w).local} · {weekLabel(w)}
+          </option>
+        ))}
+      </Select>
+    </div>
+  );
+
+  if (!shown.length) {
+    return (
+      <section className="flex flex-wrap items-center justify-between gap-4 rounded-[28px] bg-card px-6 py-5">
+        <div className="min-w-0">
+          {hebrew()}
+          <p className="mt-1 text-sm text-muted">
+            {dateLine}
+            {backToThisWeek(false)}
+          </p>
+        </div>
+        {picker(false)}
+      </section>
+    );
+  }
+
   const on = k % shown.length;
   return (
-    <Link href="/photos" aria-label={t("Open the Photos page")} className="relative block h-56 overflow-hidden rounded-[28px] bg-ink text-white sm:h-72">
+    <section className="relative isolate min-h-64 overflow-hidden rounded-[28px] bg-ink text-white sm:min-h-80">
       {shown.map((p, i) => (
         <img
           key={p.id}
           src={p.url}
           alt=""
-          className={cx("absolute inset-0 h-full w-full object-cover transition-opacity duration-500", i === on ? "photo-zoom opacity-100" : "opacity-0")}
+          className={cx("absolute inset-0 -z-10 h-full w-full object-cover transition-opacity duration-500", i === on ? "photo-zoom opacity-100" : "opacity-0")}
         />
       ))}
-      <span className="absolute inset-0 bg-gradient-to-b from-black/0 via-black/10 to-black/75" />
-      <span className="absolute inset-x-5 bottom-4 grid gap-0.5">
-        <span className="text-xl opacity-90" dir="rtl" lang="he" style={{ fontFamily: '"Frank Ruhl Libre", "David", "Times New Roman", serif' }}>
-          {parshaOfWeek(week).hebrew}
-        </span>
-        {total > 0 && <span className="tabular text-5xl leading-none font-medium">{total}</span>}
-        <span className="text-sm opacity-90">{total > 0 ? t("Mivtzoim this week · see the photos") : t("See this week's photos")}</span>
-      </span>
-    </Link>
-  );
-}
-
-/** The parsha of the week on top, with a small menu to look at another week. */
-function WeekPicker({ week, onChange }: { week: string; onChange(week: string): void }) {
-  const thisWeek = currentWeek();
-  const weeks = allWeeks();
-  const parsha = parshaOfWeek(week);
-  return (
-    <section className="flex flex-wrap items-center justify-between gap-4 rounded-[28px] bg-card px-6 py-5">
-      <div className="min-w-0">
-        <p lang="he" dir="rtl" className="text-right text-3xl font-medium leading-tight sm:text-left" style={{ fontFamily: '"Frank Ruhl Libre", "David", "Times New Roman", serif' }}>
-          {parsha.hebrew}
-        </p>
-        <p className="mt-1 text-sm text-muted">
-          {/* In Hebrew the line above already says the parsha, so just the date here. */}
-          {getLang() === "he" ? weekLabel(week) : `${parsha.local} · ${weekLabel(week)}`}
-          {week !== thisWeek && (
-            <button type="button" onClick={() => onChange(thisWeek)} className="ms-2 font-medium text-accent hover:underline">
-              {t("Back to this week")}
-            </button>
-          )}
-        </p>
-      </div>
-      <div className="w-full sm:w-auto">
-        <label htmlFor="week-picker" className="sr-only">
-          {t("Week")}
-        </label>
-        <Select id="week-picker" value={week} onChange={(e) => onChange(e.target.value)} className="h-11 py-2 text-sm sm:w-auto sm:min-w-72">
-          {weeks.map((w) => (
-            <option key={w} value={w}>
-              {w === thisWeek ? `${t("This week")} · ` : ""}
-              {parshaOfWeek(w).local} · {weekLabel(w)}
-            </option>
-          ))}
-        </Select>
+      <span className="absolute inset-0 -z-10 bg-gradient-to-b from-black/35 via-black/5 to-black/80" />
+      {/* The whole photo opens the Photos page; the week menu and buttons on it still work. */}
+      <Link href="/photos" className="absolute inset-0">
+        <span className="sr-only">{t("Open the Photos page")}</span>
+      </Link>
+      <div className="pointer-events-none relative flex min-h-64 flex-col justify-between gap-6 p-5 sm:min-h-80 sm:p-6">
+        <div className="flex justify-end">{picker(true)}</div>
+        <div className="grid gap-1">
+          {/* Lined up with the lines under it, in either direction. */}
+          <p className="text-3xl leading-tight font-medium">
+            <span lang="he" dir="rtl" style={{ fontFamily: '"Frank Ruhl Libre", "David", "Times New Roman", serif' }}>
+              {parsha.hebrew}
+            </span>
+          </p>
+          <p className="text-sm opacity-90">
+            {dateLine}
+            {backToThisWeek(true)}
+          </p>
+          {total > 0 && <span className="tabular mt-1 text-5xl leading-none font-medium">{total}</span>}
+          <span className="text-sm opacity-90">{total > 0 ? t("Mivtzoim this week · see the photos") : t("See this week's photos")}</span>
+        </div>
       </div>
     </section>
   );
