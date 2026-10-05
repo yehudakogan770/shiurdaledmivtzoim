@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { Check, ChevronDown, ChevronUp, MapPin, Pencil, Plus, RotateCcw, Trash2, X } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Globe, IdCard, Mail, MapPin, Pencil, Phone, Plus, RotateCcw, Trash2, User, X } from "lucide-react";
 import { useEditMode } from "@/lib/edit-mode";
 import { chavrusasOf } from "@/lib/chavrusa";
 
@@ -12,15 +12,50 @@ const englishNames = (partners: string[] | null | undefined) =>
     .join(", ");
 import { NOT_ALLOWED } from "@/lib/backend";
 import { EditSwitch } from "./dashboard";
-import { useData } from "@/lib/data";
+import { useData, type StopInput } from "@/lib/data";
+import type { LocationCard } from "@/lib/types";
+import { ScanCardButton } from "../card-scanner";
 import { AddressInput, googleMapsLink } from "../address-input";
 import { useNav } from "@/lib/nav";
-import { Button, ButtonLink, Card, CardTitle, Empty, Field, IconButton, Input, PageHeader, Select, Textarea, cx } from "../ui";
+import { Button, ButtonLink, Card, CardTitle, Empty, Field, IconButton, Input, Modal, PageHeader, Select, Textarea, cx } from "../ui";
 
 const STOP_TYPES = ["Store", "Office", "Home", "Hospital", "Campus", "Street corner", "Other"];
 
-type StopDraft = { name: string; address: string; type: string; notes: string };
-const blankStop: StopDraft = { name: "", address: "", type: "Store", notes: "" };
+type StopDraft = {
+  name: string;
+  address: string;
+  type: string;
+  notes: string;
+  contact: string;
+  phone: string;
+  email: string;
+  website: string;
+  /** The card picture: a new one just scanned, the one already saved (a link), or none. */
+  card: { blob?: Blob; url: string } | null;
+  /** The saved card picture was taken off. */
+  cardRemoved?: boolean;
+};
+const blankStop: StopDraft = { name: "", address: "", type: "Store", notes: "", contact: "", phone: "", email: "", website: "", card: null };
+
+/** What gets saved: a new card picture, removing the old one, or leaving it as is. */
+function toInput(d: StopDraft): StopInput {
+  return { ...d, card: d.card?.blob ? d.card.blob : d.cardRemoved ? null : undefined };
+}
+
+/** A saved place, ready to change in the form. */
+function draftOf(loc: { name: string; address?: string | null; type?: string | null; notes?: string | null }, card?: LocationCard): StopDraft {
+  return {
+    name: loc.name,
+    address: loc.address ?? "",
+    type: loc.type ?? "Store",
+    notes: loc.notes ?? "",
+    contact: card?.contact ?? "",
+    phone: card?.phone ?? "",
+    email: card?.email ?? "",
+    website: card?.website ?? "",
+    card: card?.imageUrl ? { url: card.imageUrl } : null,
+  };
+}
 
 /** The Owner's message when the database doesn't yet let it change other people's routes. */
 function ownerMessage(err: Error) {
@@ -77,8 +112,48 @@ export function RoutesView() {
 }
 
 function StopFields({ value, onChange, idPrefix }: { value: StopDraft; onChange(v: StopDraft): void; idPrefix: string }) {
+  const [more, setMore] = useState(!!(value.contact || value.phone || value.email || value.website || value.card));
+  const [viewing, setViewing] = useState(false);
+  const field = (key: "contact" | "phone" | "email" | "website", label: string, props: Partial<React.ComponentProps<typeof Input>>) => (
+    <Field label={label} htmlFor={`${idPrefix}-${key}`}>
+      <Input id={`${idPrefix}-${key}`} value={value[key]} onChange={(e) => onChange({ ...value, [key]: e.target.value })} {...props} />
+    </Field>
+  );
   return (
     <div className="grid gap-3 sm:grid-cols-2">
+      <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
+        <ScanCardButton
+          onScanned={({ details, picture, preview }) => {
+            // Fill in what the card shows; keep what's typed where the card had nothing.
+            const pick = (card: string, typed: string) => card || typed;
+            onChange({
+              ...value,
+              name: pick(details.name, value.name),
+              address: pick(details.address, value.address),
+              type: details.type || value.type,
+              contact: pick(details.contact, value.contact),
+              phone: pick(details.phone, value.phone),
+              email: pick(details.email, value.email),
+              website: pick(details.website, value.website),
+              card: { blob: picture, url: preview },
+              cardRemoved: false,
+            });
+            setMore(true);
+          }}
+        />
+        {value.card && (
+          <span className="flex items-center gap-2">
+            <button type="button" onClick={() => setViewing(true)} aria-label="See the business card" className="overflow-hidden rounded-lg shadow-card">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={value.card.url} alt="" className="h-12 w-auto" />
+            </button>
+            <Button variant="ghost" className="h-9 px-3" onClick={() => onChange({ ...value, card: null, cardRemoved: true })}>
+              Remove card
+            </Button>
+          </span>
+        )}
+        {!value.card && <span className="text-sm text-muted">or type the details in</span>}
+      </div>
       <Field label="Place name" htmlFor={`${idPrefix}-name`}>
         <Input id={`${idPrefix}-name`} value={value.name} onChange={(e) => onChange({ ...value, name: e.target.value })} placeholder="Goldberg's Pharmacy" />
       </Field>
@@ -103,7 +178,76 @@ function StopFields({ value, onChange, idPrefix }: { value: StopDraft; onChange(
       <Field label="Notes" htmlFor={`${idPrefix}-notes`}>
         <Input id={`${idPrefix}-notes`} value={value.notes} onChange={(e) => onChange({ ...value, notes: e.target.value })} placeholder="Ask for David at the counter" />
       </Field>
+      {more ? (
+        <>
+          {field("contact", "Contact person", { placeholder: "David Goldberg", autoComplete: "off" })}
+          {field("phone", "Phone", { type: "tel", inputMode: "tel", placeholder: "(718) 555-0123", autoComplete: "off" })}
+          {field("email", "Email", { type: "email", inputMode: "email", placeholder: "david@goldbergsrx.com", autoComplete: "off" })}
+          {field("website", "Website", { inputMode: "url", placeholder: "goldbergsrx.com", autoComplete: "off" })}
+          <p className="text-xs text-muted sm:col-span-2">Only you can see the phone, email, contact, website and card (and the site&apos;s Owner).</p>
+        </>
+      ) : (
+        <button type="button" onClick={() => setMore(true)} className="justify-self-start self-end pb-3 text-sm font-medium text-accent hover:underline">
+          + Phone, email, contact person, website
+        </button>
+      )}
+      {viewing && value.card && <CardPictureViewer url={value.card.url} onClose={() => setViewing(false)} />}
     </div>
+  );
+}
+
+/** The business card, big. */
+function CardPictureViewer({ url, onClose }: { url: string; onClose(): void }) {
+  return (
+    <Modal onClose={onClose}>
+      <figure role="dialog" aria-modal="true" aria-label="Business card" className="grid w-full max-w-xl gap-3" onClick={(e) => e.stopPropagation()}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={url} alt="Business card" className="w-full rounded-2xl bg-white shadow-pop" />
+        <Button variant="secondary" className="justify-self-center" onClick={onClose}>
+          Close
+        </Button>
+      </figure>
+    </Modal>
+  );
+}
+
+/** A place's card details under its name: tap to call, email or open the website. */
+function CardLine({ card }: { card: LocationCard }) {
+  const [viewing, setViewing] = useState(false);
+  const site = card.website ? (/^https?:\/\//i.test(card.website) ? card.website : `https://${card.website}`) : null;
+  const items = [
+    card.contact && (
+      <span key="c" className="inline-flex items-center gap-1">
+        <User size={13} aria-hidden /> {card.contact}
+      </span>
+    ),
+    card.phone && (
+      <a key="p" href={`tel:${card.phone.replace(/[^\d+]/g, "")}`} className="inline-flex items-center gap-1 font-medium text-accent hover:underline">
+        <Phone size={13} aria-hidden /> {card.phone}
+      </a>
+    ),
+    card.email && (
+      <a key="e" href={`mailto:${card.email}`} className="inline-flex items-center gap-1 font-medium text-accent hover:underline">
+        <Mail size={13} aria-hidden /> {card.email}
+      </a>
+    ),
+    site && (
+      <a key="w" href={site} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-medium text-accent hover:underline">
+        <Globe size={13} aria-hidden /> {card.website}
+      </a>
+    ),
+    card.imageUrl && (
+      <button key="i" type="button" onClick={() => setViewing(true)} className="inline-flex items-center gap-1 font-medium text-accent hover:underline">
+        <IdCard size={13} aria-hidden /> Card
+      </button>
+    ),
+  ].filter(Boolean);
+  if (!items.length) return null;
+  return (
+    <span className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-sm text-muted">
+      {items}
+      {viewing && card.imageUrl && <CardPictureViewer url={card.imageUrl} onClose={() => setViewing(false)} />}
+    </span>
   );
 }
 
@@ -127,7 +271,7 @@ export function NewRouteView() {
     setBusy(true);
     try {
       const all = draft.name.trim() ? [...stops, draft] : stops;
-      const route = await actions.createRoute({ name, description, group_id: null, stops: all });
+      const route = await actions.createRoute({ name, description, group_id: null, stops: all.map(toInput) });
       notify(`Created ${route.name}.`);
       go(`/routes/view?id=${route.id}`);
     } catch (err) {
@@ -234,12 +378,14 @@ function AllRoutesView() {
 }
 
 export function RouteDetailView() {
-  const { me, data, mine, actions, notify, isOwner, people } = useData();
+  const { me, data, mine, actions, notify, isOwner, people, cards } = useData();
   const { editing } = useEditMode();
   const { query, go } = useNav();
   // The Owner can open anyone's route; with Edit on it can change everything on it.
   const route = (isOwner ? data.routes : mine.routes).find((r) => r.id === query.id);
   const canEdit = !isOwner || editing;
+  // The route's person can always fix a stop's details; the Owner with Edit on.
+  const canEditStops = isOwner ? editing : route?.created_by === me?.id;
   const [routeDraft, setRouteDraft] = useState<{ name: string; description: string } | null>(null);
   const [stopDraft, setStopDraft] = useState<{ locationId: string; value: StopDraft } | null>(null);
   const [adding, setAdding] = useState(false);
@@ -279,7 +425,7 @@ export function RouteDetailView() {
   async function addStop(e: FormEvent) {
     e.preventDefault();
     if (!draft.name.trim()) return notify("Give the stop a name first.");
-    await wrap("add", () => actions.addStop(route!.id, draft), "Stop added.");
+    await wrap("add", () => actions.addStop(route!.id, toInput(draft)), "Stop added.");
     setDraft(blankStop);
     setAdding(false);
   }
@@ -294,7 +440,7 @@ export function RouteDetailView() {
   async function saveStop(e: FormEvent) {
     e.preventDefault();
     if (!stopDraft) return;
-    await wrap("stop", () => actions.updateStop(stopDraft.locationId, stopDraft.value), "Stop saved.");
+    await wrap("stop", () => actions.updateStop(stopDraft.locationId, toInput(stopDraft.value)), "Stop saved.");
     setStopDraft(null);
   }
 
@@ -422,18 +568,17 @@ export function RouteDetailView() {
                     )}
                     {loc?.notes && <span className="block italic">{loc.notes}</span>}
                   </span>
+                  {loc && cards[loc.id] && <CardLine card={cards[loc.id]} />}
                 </span>
                 {!isOwner && (
-                  <ButtonLink href={`/log?${logQuery}&location=${stop.location_id}`} variant="secondary" className="hidden px-3 py-1.5 sm:inline-flex">
-                    Log here
-                  </ButtonLink>
+                  <span className="hidden shrink-0 sm:block">
+                    <ButtonLink href={`/log?${logQuery}&location=${stop.location_id}`} variant="secondary" className="px-3 py-1.5">
+                      Log here
+                    </ButtonLink>
+                  </span>
                 )}
-                {isOwner && editing && loc && (
-                  <IconButton
-                    aria-label={`Edit ${loc.name}`}
-                    disabled={pending !== null}
-                    onClick={() => setStopDraft({ locationId: loc.id, value: { name: loc.name, address: loc.address ?? "", type: loc.type ?? "Store", notes: loc.notes ?? "" } })}
-                  >
+                {canEditStops && loc && (
+                  <IconButton aria-label={`Edit ${loc.name}`} disabled={pending !== null} onClick={() => setStopDraft({ locationId: loc.id, value: draftOf(loc, cards[loc.id]) })}>
                     <Pencil size={18} />
                   </IconButton>
                 )}

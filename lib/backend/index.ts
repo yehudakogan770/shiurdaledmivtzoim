@@ -1,4 +1,4 @@
-import type { PersonalCategory, Photo, Profile, SignUpInput, SiteSettings, TableName, Tables } from "../types";
+import type { LocationCard, PersonalCategory, Photo, Profile, SignUpInput, SiteSettings, TableName, Tables } from "../types";
 
 /**
  * Where the app keeps its data. The UI talks only to this interface, so the
@@ -67,6 +67,10 @@ export interface Backend {
   uploadPhoto?(full: Blob, thumb: Blob, info: { width: number; height: number; color?: string }): Promise<Photo>;
   /** The person who shared it, or an admin. */
   deletePhoto?(photo: Photo): Promise<void>;
+  /** Business card details this account may see: its own, or everyone's for the Owner. */
+  listCards?(): Promise<LocationCard[]>;
+  /** Save a place's card details; `image` replaces the card picture, `null` removes it, leaving it out keeps it. */
+  saveCard?(card: Omit<LocationCard, "image_path" | "imageUrl" | "updated_at">, image?: Blob | null): Promise<void>;
 }
 
 /** When the database doesn't let this account change something (it may have been deleted meanwhile). */

@@ -5,6 +5,7 @@ import { newId, newJoinCode, pickBackend, type Backend, type PersonPatch } from 
 import type {
   Activity,
   HiddenRange,
+  LocationCard,
   Photo,
   Group,
   GroupMember,
@@ -42,6 +43,20 @@ const EMPTY: AppData = {
   activity: [],
   names: {},
 };
+
+/** A place on a route, with the details from its business card. */
+export interface StopInput {
+  name: string;
+  address?: string;
+  type?: string;
+  notes?: string;
+  contact?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  /** A new card picture, or null to remove it; left out keeps the one there. */
+  card?: Blob | null;
+}
 
 export interface LogInput {
   category_type: Activity["category_type"];
@@ -81,6 +96,8 @@ interface DataContextValue {
   isOwner: boolean;
   /** Everyone's photos, newest first; seen by everyone, even without an account. */
   photos: Photo[];
+  /** Business card details by place, for this account's own places (all of them for the Owner). */
+  cards: Record<string, LocationCard>;
   /** Every account; filled in for admins only. */
   people: Profile[];
   toast: string | null;
@@ -114,15 +131,15 @@ interface DataContextValue {
     joinGroup(code: string): Promise<string>;
     leaveGroup(groupId: string): Promise<void>;
     deleteGroup(groupId: string): Promise<void>;
-    createRoute(input: { name: string; description?: string; group_id: string | null; stops: { name: string; address?: string; type?: string; notes?: string }[] }): Promise<Route>;
+    createRoute(input: { name: string; description?: string; group_id: string | null; stops: StopInput[] }): Promise<Route>;
     deleteRoute(routeId: string): Promise<void>;
-    addStop(routeId: string, stop: { name: string; address?: string; type?: string; notes?: string }): Promise<void>;
+    addStop(routeId: string, stop: StopInput): Promise<void>;
     removeStop(stopId: string): Promise<void>;
     toggleStop(stop: RouteLocation): Promise<void>;
     resetRoute(routeId: string): Promise<void>;
     updateRoute(routeId: string, patch: { name: string; description: string }): Promise<void>;
-    /** Change a stop's place: its name, address, type and notes. */
-    updateStop(locationId: string, stop: { name: string; address?: string; type?: string; notes?: string }): Promise<void>;
+    /** Change a stop's place: its name, address, type, notes and card details. */
+    updateStop(locationId: string, stop: StopInput): Promise<void>;
     /** Move a stop one place up or down on its route. */
     moveStop(stopId: string, by: -1 | 1): Promise<void>;
     addCategory(name: string, description?: string, shared?: boolean, icon?: string): Promise<void>;
@@ -176,6 +193,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SETTINGS);
   const [people, setPeople] = useState<Profile[]>([]);
   const [photos, setPhotos] = useState<Photo[]>([]);
+  const [cards, setCards] = useState<Record<string, LocationCard>>({});
   const [recovering, setRecovering] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -199,6 +217,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setMe(user);
     // Photos are for everyone, signed in or not.
     if (b.listPhotos) b.listPhotos().then(setPhotos, () => {});
+    if (!user) setCards({});
+    else if (b.listCards) b.listCards().then((list) => setCards(Object.fromEntries(list.map((c) => [c.location_id, c]))), () => {});
     if (!user) {
       // The sample: nothing logged, but the same mivtzoim everyone has.
       const categories = b.sharedMivtzoim ? await b.sharedMivtzoim().catch(() => []) : [];
@@ -286,6 +306,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
       await load(b);
       return result;
     };
+    /** Saves a place's business card details, when there are any (or there were before). */
+    const saveCardFor = async (locationId: string, owner: string, s: StopInput) => {
+      const fields = { contact: s.contact?.trim() || null, phone: s.phone?.trim() || null, email: s.email?.trim() || null, website: s.website?.trim() || null };
+      const hasAny = Object.values(fields).some(Boolean) || s.card;
+      if (!b.saveCard || (!hasAny && !cards[locationId])) return;
+      await b.saveCard({ location_id: locationId, user_id: owner, ...fields }, s.card);
+    };
     /** Save in the background after the screen already changed; on failure, reload what's really saved. */
     const saveLater = (job: () => Promise<void>) => {
       unsaved.current++;
@@ -340,6 +367,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       weeklyHiding: backend?.kind !== "supabase" || data.categories.some((c) => "hidden_weeks" in c),
       people,
       photos,
+      cards,
       toast,
       notify,
       refresh,
@@ -443,6 +471,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
                 created_by: uid(),
               });
               await b.insert("route_locations", { route_id: route.id, location_id: loc.id, position: position++, completed: false });
+              await saveCardFor(loc.id, uid(), s);
             }
             return route;
           }),
@@ -464,6 +493,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
             });
             const last = Math.max(-1, ...data.stops.filter((x) => x.route_id === routeId).map((x) => x.position));
             await b.insert("route_locations", { route_id: routeId, location_id: loc.id, position: last + 1, completed: false });
+            await saveCardFor(loc.id, uid(), s);
           }),
         removeStop: async (stopId) => {
           setData((d) => ({ ...d, stops: d.stops.filter((x) => x.id !== stopId) }));
@@ -483,6 +513,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           run(async () => {
             if (!s.name.trim()) throw new Error("Give the stop a name first.");
             await b.update("locations", locationId, { name: s.name.trim(), address: s.address?.trim() || null, type: s.type || null, notes: s.notes?.trim() || null });
+            await saveCardFor(locationId, data.locations.find((l) => l.id === locationId)?.created_by ?? uid(), s);
           }),
         moveStop: (stopId, by) =>
           run(async () => {
@@ -625,7 +656,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       actions: sampleOnly(value.actions),
       auth: { ...sampleOnly(value.auth), signIn, signUp, requestPasswordReset, updatePassword, finishRecovery, recovering },
     };
-  }, [backend, status, error, me, data, mine, settings, people, photos, recovering, toast, notify, refresh, load]);
+  }, [backend, status, error, me, data, mine, settings, people, photos, cards, recovering, toast, notify, refresh, load]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }

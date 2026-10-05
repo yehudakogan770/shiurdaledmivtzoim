@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { displayName, type PersonalCategory, type Photo, type Profile, type TableName, type Tables } from "../types";
+import { displayName, type LocationCard, type PersonalCategory, type Photo, type Profile, type TableName, type Tables } from "../types";
 import { NOT_ALLOWED, checkEmail, checkPassword, loginKey, normalizeUsername, type Backend, type CommunityRow } from "./index";
 
 /** Where email links (confirmation, password reset) send people back to. */
@@ -212,6 +212,36 @@ export function createSupabaseBackend(url: string, key: string): Backend {
         throw new Error(error.message.includes("photos") ? "Photos aren't set up yet: run database update 011 in Supabase first." : error.message);
       }
       return { ...(data as Photo), url: store.getPublicUrl(path).data.publicUrl, thumbUrl: store.getPublicUrl(thumbPath).data.publicUrl };
+    },
+    async listCards() {
+      const { data, error } = await sb.from("location_cards").select("*");
+      if (error) return []; // not set up yet (database update 012)
+      const cards = data as LocationCard[];
+      const paths = cards.map((c) => c.image_path).filter((p): p is string => !!p);
+      const links = new Map<string, string>();
+      if (paths.length) {
+        // The card pictures are private: links that work for a day, only for those allowed to see them.
+        const { data: signed } = await sb.storage.from("cards").createSignedUrls(paths, 86400);
+        for (const s of signed ?? []) if (s.path && s.signedUrl) links.set(s.path, s.signedUrl);
+      }
+      return cards.map((c) => ({ ...c, imageUrl: c.image_path ? links.get(c.image_path) ?? null : null }));
+    },
+    async saveCard(card, image) {
+      const store = sb.storage.from("cards");
+      const setup = "Business cards aren't set up yet: run database update 012 in Supabase first.";
+      let image_path: string | null | undefined;
+      if (image) {
+        image_path = `${card.user_id}/${card.location_id}.${image.type === "image/webp" ? "webp" : "jpg"}`;
+        const { error } = await store.upload(image_path, image, { contentType: image.type, upsert: true, cacheControl: "3600" });
+        if (error) throw new Error(/bucket not found/i.test(error.message) ? setup : `The card picture didn't save: ${error.message}`);
+      } else if (image === null) {
+        const { data: old } = await sb.from("location_cards").select("image_path").eq("location_id", card.location_id).maybeSingle();
+        if (old?.image_path) await store.remove([old.image_path]);
+        image_path = null;
+      }
+      const row = { ...card, updated_at: new Date().toISOString(), ...(image_path !== undefined ? { image_path } : {}) };
+      const { error } = await sb.from("location_cards").upsert(row, { onConflict: "location_id" });
+      if (error) throw new Error(/location_cards/.test(error.message) ? setup : error.message);
     },
     async deletePhoto(photo) {
       const { data, error } = await sb.from("photos").delete().eq("id", photo.id).select("id");

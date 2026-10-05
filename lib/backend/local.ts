@@ -1,4 +1,4 @@
-import { displayName, type Photo, type Profile, type SiteSettings, type TableName, type Tables } from "../types";
+import { displayName, type LocationCard, type Photo, type Profile, type SiteSettings, type TableName, type Tables } from "../types";
 import { isAdminIdentifier } from "../admin";
 import { checkEmail, checkPassword, loginKey, newId, normalizeUsername, type Backend } from "./index";
 
@@ -11,6 +11,8 @@ type Store = { [K in Exclude<TableName, "profiles">]: Tables[K][] } & {
   settings: Partial<SiteSettings>;
   /** Photos kept as small data URLs, only on this device. */
   photos?: (Photo & { data: string; thumbData: string })[];
+  /** Business card details, with the card picture as a data URL. */
+  cards?: (LocationCard & { data?: string | null })[];
 };
 
 /** Salted SHA-256 so passwords are never stored as plain text. */
@@ -154,6 +156,29 @@ export function createLocalBackend(): Backend {
       return { needsConfirmation: false };
     },
 
+    async listCards() {
+      const s = load();
+      const me = s.profiles.find((x) => x.id === s.session);
+      if (!me) return [];
+      const owner = isAdminIdentifier(me.email) || isAdminIdentifier(me.username);
+      return (s.cards ?? []).filter((c) => owner || c.user_id === me.id).map(({ data, ...c }) => ({ ...c, imageUrl: data ?? null }));
+    },
+    async saveCard(card, image) {
+      const s = load();
+      const me = s.profiles.find((x) => x.id === s.session);
+      const owner = !!me && (isAdminIdentifier(me.email) || isAdminIdentifier(me.username));
+      const loc = s.locations.find((l) => l.id === card.location_id);
+      if (!me || !loc || loc.created_by !== card.user_id || (card.user_id !== me.id && !owner)) throw new Error("Only the person whose route it is can change this.");
+      const asData = (b: Blob) => new Promise<string>((res) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.readAsDataURL(b); });
+      const old = (s.cards ?? []).find((c) => c.location_id === card.location_id);
+      const data = image === undefined ? old?.data ?? null : image ? await asData(image) : null;
+      const fresh = load();
+      fresh.cards = [
+        ...(fresh.cards ?? []).filter((c) => c.location_id !== card.location_id),
+        { ...card, image_path: data ? `${card.user_id}/${card.location_id}` : null, updated_at: new Date().toISOString(), data },
+      ];
+      save(fresh);
+    },
     async listPhotos() {
       return [...(load().photos ?? [])].sort((a, b) => b.created_at.localeCompare(a.created_at)).map(({ data, thumbData, ...p }) => ({ ...p, url: data, thumbUrl: thumbData }));
     },

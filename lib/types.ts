@@ -77,6 +77,23 @@ export interface Location {
   created_at: string;
 }
 
+/**
+ * Extra details for a place on a route, often from its business card. Only the person whose
+ * route it is, and the Owner, can see these and the card picture (not other admins).
+ */
+export interface LocationCard {
+  location_id: string;
+  user_id: string;
+  contact?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  website?: string | null;
+  image_path?: string | null;
+  updated_at?: string;
+  /** Filled in when loaded: a link to the card picture that works for a while. */
+  imageUrl?: string | null;
+}
+
 export interface RouteLocation {
   id: string;
   route_id: string;
