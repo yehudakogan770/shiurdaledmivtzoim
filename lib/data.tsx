@@ -1,5 +1,6 @@
 "use client";
 
+import { isLang, setLanguage, t, type Lang } from "./i18n";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { newId, newJoinCode, pickBackend, type Backend, type PersonPatch } from "./backend";
 import type {
@@ -113,6 +114,8 @@ interface DataContextValue {
     finishRecovery(): void;
     signOut(): Promise<void>;
     updateProfile(name: string, partners: string[]): Promise<void>;
+    /** Show the site in this language, and keep it with the account. */
+    setLanguage(language: Lang): Promise<void>;
     changeUsername(username: string): Promise<void>;
     changeEmail(email: string): Promise<{ needsConfirmation: boolean }>;
     /** Throws unless this is the signed-in person's current password. */
@@ -166,13 +169,16 @@ interface DataContextValue {
   };
 }
 
-/** What someone without an account sees when they tap anything that would save. */
-export const GUEST_MESSAGE = "This is a sample. Create an account to save your Mivtzoim.";
+/**
+ * What someone without an account sees when they tap anything that would save. Kept in English
+ * (it's the dictionary key): show it with t(GUEST_MESSAGE).
+ */
+export const GUEST_MESSAGE = "This is a preview. Create an account to save your Mivtzoim.";
 
 /** The same functions, except each one only says "create an account" and changes nothing. */
 function sampleOnly<T extends object>(fns: T): T {
   const blocked = {} as T;
-  for (const k of Object.keys(fns) as (keyof T)[]) (blocked as Record<keyof T, unknown>)[k] = () => Promise.reject(new Error(GUEST_MESSAGE));
+  for (const k of Object.keys(fns) as (keyof T)[]) (blocked as Record<keyof T, unknown>)[k] = () => Promise.reject(new Error(t(GUEST_MESSAGE)));
   return blocked;
 }
 
@@ -204,7 +210,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const savedIds = useRef(new Map<string, string>());
 
   const notify = useCallback((message: string) => {
-    setToast(message);
+    // Messages are translated when made; this also catches English ones passed through (like errors).
+    setToast(t(message));
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), 3200);
   }, []);
@@ -215,6 +222,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     for (const [k, v] of Object.entries(saved)) if (typeof v === "string" && (v || k === "announcement")) merged[k as keyof SiteSettings] = v;
     setSettings(merged);
     setMe(user);
+    // The account's language (chosen at sign-up or on Profile) follows it to any phone.
+    if (user && isLang(user.language)) setLanguage(user.language);
     // Photos are for everyone, signed in or not.
     if (b.listPhotos) b.listPhotos().then(setPhotos, () => {});
     if (!user) setCards({});
@@ -298,7 +307,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const value = useMemo<DataContextValue>(() => {
     const b = backend!;
     const uid = () => {
-      if (!me) throw new Error("Please sign in first.");
+      if (!me) throw new Error(t("Please sign in first."));
       return me.id;
     };
     // A card that didn't save: said after the page's own "saved" message, so it isn't covered up.
@@ -323,7 +332,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       try {
         await b.saveCard({ location_id: locationId, user_id: owner, ...fields }, s.card);
       } catch (e) {
-        cardTrouble = `Saved, but not the card details (phone, email, card picture). ${(e as Error).message}`;
+        cardTrouble = t("Saved, but not the card details (phone, email, card picture). {reason}", { reason: t((e as Error).message) });
       }
     };
     /** Save in the background after the screen already changed; on failure, reload what's really saved. */
@@ -332,7 +341,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       saveQueue.current = saveQueue.current
         .then(job)
         .catch(async (e: Error) => {
-          notify(`That didn't save: ${e.message}`);
+          notify(t("That didn't save: {reason}", { reason: t(e.message) }));
           await load(b).catch(() => {});
         })
         .finally(() => {
@@ -352,7 +361,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       return fields;
     };
     const needs009 = (e: Error) => {
-      throw new Error(e.message.includes("hidden_weeks") ? "To hide or bring back by week, run database update 009 in Supabase first." : e.message);
+      throw new Error(e.message.includes("hidden_weeks") ? t("To hide or bring back by week, run database update 009 in Supabase first.") : e.message);
     };
     /** Rows added a moment ago have a temporary id until the server gives them their real one. */
     const realId = (id: string) => savedIds.current.get(id) ?? id;
@@ -393,6 +402,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
         finishRecovery: () => setRecovering(false),
         signOut: () => run(() => b.signOut()),
         updateProfile: (name, partners) => run(() => b.updateProfile({ name, partners })),
+        setLanguage: async (language) => {
+          setLanguage(language);
+          if (b.setLanguage) await b.setLanguage(language);
+          setMe((m) => (m ? { ...m, language } : m));
+        },
         changeUsername: (username) => run(() => b.changeUsername(username)),
         changeEmail: (email) => run(() => b.changeEmail(email)),
         verifyPassword: (password) => b.verifyPassword(password),
@@ -426,7 +440,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         deleteActivity: async (id) => removeActivity(id),
         updateActivity: async (id, patch) => {
           if (patch.quantity <= 0) return removeActivity(id);
-          if (!/^\d{4}-\d{2}-\d{2}$/.test(patch.activity_date)) throw new Error("Pick a date.");
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(patch.activity_date)) throw new Error(t("Pick a date."));
           const fields = { quantity: Math.round(patch.quantity), activity_date: patch.activity_date, notes: patch.notes.trim() || null };
           patchActivity((rows) => rows.map((x) => (x.id === id ? { ...x, ...fields } : x)));
           saveLater(() => b.update("mivtzoim_activity", realId(id), fields));
@@ -519,12 +533,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
         },
         updateRoute: (routeId, patch) =>
           run(async () => {
-            if (!patch.name.trim()) throw new Error("Give the route a name.");
+            if (!patch.name.trim()) throw new Error(t("Give the route a name."));
             await b.update("routes", routeId, { name: patch.name.trim(), description: patch.description.trim() || null });
           }),
         updateStop: (locationId, s) =>
           run(async () => {
-            if (!s.name.trim()) throw new Error("Give the stop a name first.");
+            if (!s.name.trim()) throw new Error(t("Give the stop a name first."));
             await b.update("locations", locationId, { name: s.name.trim(), address: s.address?.trim() || null, type: s.type || null, notes: s.notes?.trim() || null });
             await saveCardFor(locationId, data.locations.find((l) => l.id === locationId)?.created_by ?? uid(), s);
           }),
@@ -566,7 +580,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         adminUpdatePerson: (userId, patch) => run(() => b.adminUpdatePerson(userId, patch)),
         adminDeletePerson: (userId) => run(() => b.adminDeletePerson(userId)),
         uploadPhotos: async (list, onProgress) => {
-          if (!b.uploadPhoto) throw new Error("Photos aren't available here.");
+          if (!b.uploadPhoto) throw new Error(t("Photos aren't available here."));
           uid();
           let done = 0;
           const added: Photo[] = [];
@@ -618,7 +632,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         updateBuiltin: (type, patch) =>
           run(async () => {
             const current = builtins(data.categories).find((x) => x.type === type)!;
-            if (patch.name !== undefined && !patch.name.trim()) throw new Error("Give it a name.");
+            if (patch.name !== undefined && !patch.name.trim()) throw new Error(t("Give it a name."));
             const name = patch.name?.trim() ?? current.name;
             // Renaming or removing keeps the weeks it's hidden in; `hidden` sets every week or none.
             const ranges = patch.hidden === undefined ? current.ranges : patch.hidden ? [{ from: null, to: null }] : [];
@@ -651,12 +665,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
               }
             }
           }).catch((e: Error) => {
-            throw new Error(e.message.includes("position") ? "Run the latest database update (007) in Supabase first." : e.message);
+            throw new Error(e.message.includes("position") ? t("Run the latest database update (007) in Supabase first.") : e.message);
           });
         },
         updateCategory: (id, name, description, icon) =>
           run(async () => {
-            if (!name.trim()) throw new Error("Give it a name.");
+            if (!name.trim()) throw new Error(t("Give it a name."));
             await b.update("personal_categories", id, { name: name.trim(), description: description.trim() || null, ...(icon ? { icon } : {}) });
           }),
       },

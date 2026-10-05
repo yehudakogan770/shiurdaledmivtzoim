@@ -12,6 +12,7 @@ import { weekTitle } from "@/lib/parsha";
 import { builtinHiddenIn, categoryHiddenIn, orderedMivtzoim } from "@/lib/categories";
 import type { CategoryType } from "@/lib/types";
 import { Button, Card, CardTitle, Field, Input, PageHeader, Select, cx } from "../ui";
+import { t } from "@/lib/i18n";
 
 type Choice = { key: string; type: CategoryType; personalId: string | null; label: string; hint: string; icon?: ComponentType<{ size?: number }> };
 
@@ -77,7 +78,7 @@ export function LogView() {
   async function submit(e: FormEvent) {
     e.preventDefault();
     const toLog = selected.filter((c) => (items[c.key]?.quantity || 0) > 0);
-    if (toLog.length === 0) return notify("Tap at least one Mivtza and enter how many.");
+    if (toLog.length === 0) return notify(t("Tap at least one Mivtza and enter how many."));
     setBusy(true);
     try {
       for (const c of toLog) {
@@ -91,7 +92,7 @@ export function LogView() {
           location_id: locationId || null,
         });
       }
-      notify(`Logged ${toLog.map((c) => `${items[c.key].quantity} ${c.label}`).join(", ")}`);
+      notify(t("Logged {list}", { list: toLog.map((c) => `${items[c.key].quantity} ${t(c.label)}`).join(", ") }));
       setItems({});
       if (query.route) go(`/routes/view?id=${query.route}`);
     } catch (err) {
@@ -103,12 +104,12 @@ export function LogView() {
 
   return (
     <div className="grid grid-cols-1 gap-6">
-      <PageHeader title="Log Mivtzoim" subtitle="Tap each Mivtza you did, fill in how many, then log them all at once." />
+      <PageHeader title={t("Log Mivtzoim")} subtitle={t("Tap each Mivtza you did, fill in how many, then log them all at once.")} />
 
       <form onSubmit={submit} className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_22rem]">
         <div className="grid min-w-0 content-start gap-3">
           <Card>
-            <CardTitle sub="Tap one or more">Mivtzoim</CardTitle>
+            <CardTitle sub={t("Tap one or more")}>{t("Mivtzoim")}</CardTitle>
             <div className="grid grid-cols-1 gap-2 px-4 pb-4">
               {choices.map((c) => {
                 const item = items[c.key];
@@ -120,14 +121,14 @@ export function LogView() {
                       type="button"
                       aria-pressed={!!item}
                       onClick={() => toggle(c.key)}
-                      className={cx("flex w-full min-w-0 items-center gap-3 rounded-[20px] p-3 text-left", !item && "hover:bg-sunken")}
+                      className={cx("flex w-full min-w-0 items-center gap-3 rounded-[20px] p-3 text-start", !item && "hover:bg-sunken")}
                     >
                       <span className={cx("grid h-11 w-11 shrink-0 place-items-center rounded-full", item ? tone.chip : "bg-card text-muted")}>
                         {item ? <Check size={20} /> : <Icon size={20} />}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block font-medium">{c.label}</span>
-                        <span className={cx("block truncate text-sm", item ? "opacity-80" : "text-muted")}>{c.hint}</span>
+                        <span className="block font-medium">{t(c.label)}</span>
+                        <span className={cx("block truncate text-sm", item ? "opacity-80" : "text-muted")}>{t(c.hint)}</span>
                       </span>
                       {item && <span className="tabular shrink-0 text-2xl">{item.quantity}</span>}
                     </button>
@@ -136,7 +137,7 @@ export function LogView() {
                         <div className="flex items-center justify-center gap-3">
                           <button
                             type="button"
-                            aria-label={`One less ${c.label}`}
+                            aria-label={t("One less {name}", { name: t(c.label) })}
                             onClick={() => change(c.key, { quantity: Math.max(0, item.quantity - 1) })}
                             className="grid h-12 w-12 place-items-center rounded-2xl bg-card text-ink transition hover:shadow-card"
                           >
@@ -144,7 +145,7 @@ export function LogView() {
                           </button>
                           <input
                             id={`qty-${c.key}`}
-                            aria-label={`How many ${c.label}`}
+                            aria-label={t("How many {name}", { name: t(c.label) })}
                             type="number"
                             inputMode="numeric"
                             min={0}
@@ -154,7 +155,7 @@ export function LogView() {
                           />
                           <button
                             type="button"
-                            aria-label={`One more ${c.label}`}
+                            aria-label={t("One more {name}", { name: t(c.label) })}
                             onClick={() => change(c.key, { quantity: item.quantity + 1 })}
                             className={cx("grid h-12 w-12 place-items-center rounded-2xl transition hover:shadow-card", tone.chip)}
                           >
@@ -163,10 +164,10 @@ export function LogView() {
                         </div>
                         <Input
                           id={`notes-${c.key}`}
-                          aria-label={`Notes for ${c.label}`}
+                          aria-label={t("Notes for {name}", { name: t(c.label) })}
                           value={item.notes}
                           onChange={(e) => change(c.key, { notes: e.target.value })}
-                          placeholder="Notes (optional)"
+                          placeholder={t("Notes (optional)")}
                           className="bg-card"
                         />
                       </div>
@@ -176,9 +177,9 @@ export function LogView() {
               })}
             </div>
             <p className="px-6 pb-5 text-sm text-muted">
-              Doing another mivtza?{" "}
+              {t("Doing another mivtza?")}{" "}
               <Link href="/profile" className="font-medium text-accent hover:underline">
-                Add your own category
+                {t("Add your own category")}
               </Link>
             </p>
           </Card>
@@ -186,11 +187,11 @@ export function LogView() {
 
         <div className="grid content-start gap-3">
           <Card className="grid gap-4 p-6">
-            <h2 className="text-lg font-medium">Details</h2>
-            <Field label="Date" htmlFor="log-date" hint={date ? `Counts for ${weekTitle(activityWeek({ activity_date: date }))}` : undefined}>
+            <h2 className="text-lg font-medium">{t("Details")}</h2>
+            <Field label={t("Date")} htmlFor="log-date" hint={date ? t("Counts for {week}", { week: weekTitle(activityWeek({ activity_date: date })) }) : undefined}>
               <Input id="log-date" type="date" value={date} max={today()} onChange={(e) => setDate(e.target.value)} />
             </Field>
-            <Field label="Route" htmlFor="log-route">
+            <Field label={t("Route")} htmlFor="log-route">
               <Select
                 id="log-route"
                 value={routeId}
@@ -199,7 +200,7 @@ export function LogView() {
                   setLocationId("");
                 }}
               >
-                <option value="">No route</option>
+                <option value="">{t("No route")}</option>
                 {mine.routes.map((r) => (
                   <option key={r.id} value={r.id}>
                     {r.name}
@@ -208,9 +209,9 @@ export function LogView() {
               </Select>
             </Field>
             {routeId && (
-              <Field label="Stop" htmlFor="log-location">
+              <Field label={t("Stop")} htmlFor="log-location">
                 <Select id="log-location" value={locationId} onChange={(e) => setLocationId(e.target.value)}>
-                  <option value="">Any stop</option>
+                  <option value="">{t("Any stop")}</option>
                   {routeStops.map(({ stop, loc }) => (
                     <option key={stop.id} value={loc!.id}>
                       {loc!.name}
@@ -222,10 +223,12 @@ export function LogView() {
           </Card>
           <Button type="submit" disabled={busy || totalCount === 0} className="h-14 w-full rounded-2xl text-base">
             {busy
-              ? "Saving…"
+              ? t("Saving…")
               : selected.length === 0
-                ? "Tap a Mivtza to start"
-                : `Log ${selected.length === 1 ? `${totalCount} ${selected[0].label}` : `all ${selected.length} (${totalCount} total)`}`}
+                ? t("Tap a Mivtza to start")
+                : selected.length === 1
+                  ? t("Log {n} {name}", { n: totalCount, name: t(selected[0].label) })
+                  : t("Log all {count} ({n} total)", { count: selected.length, n: totalCount })}
           </Button>
         </div>
       </form>

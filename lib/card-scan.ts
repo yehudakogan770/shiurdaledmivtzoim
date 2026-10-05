@@ -6,6 +6,8 @@
  * 4 MB, and the phone keeps it after that. Nothing is sent anywhere to be read.
  */
 
+import { t } from "@/lib/i18n";
+
 export type Point = { x: number; y: number };
 /** The card's four corners, from 0 to 1 across and down the photo: top-left, top-right, bottom-right, bottom-left. */
 export type Corners = [Point, Point, Point, Point];
@@ -27,7 +29,7 @@ export async function loadPhoto(file: Blob): Promise<HTMLCanvasElement> {
     const img = new Image();
     img.src = url;
     await img.decode().catch(() => {
-      throw new Error("That file isn't a photo this phone can open.");
+      throw new Error(t("That file isn't a photo this phone can open."));
     });
     const scale = Math.min(1, 1800 / Math.max(img.naturalWidth, img.naturalHeight));
     const c = document.createElement("canvas");
@@ -348,7 +350,7 @@ export function cardPicture(card: HTMLCanvasElement): Promise<Blob> {
     c.toBlob(
       (webp) => {
         if (webp && webp.type === "image/webp") return resolve(webp);
-        c.toBlob((jpeg) => (jpeg ? resolve(jpeg) : reject(new Error("Couldn't save the card picture."))), "image/jpeg", 0.72);
+        c.toBlob((jpeg) => (jpeg ? resolve(jpeg) : reject(new Error(t("Couldn't save the card picture.")))), "image/jpeg", 0.72);
       },
       "image/webp",
       0.68,

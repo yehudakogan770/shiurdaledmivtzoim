@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { Check, ChevronDown, ChevronUp, Globe, IdCard, Mail, MapPin, Pencil, Phone, Plus, RotateCcw, Trash2, User, X } from "lucide-react";
 import { useEditMode } from "@/lib/edit-mode";
 import { chavrusasOf } from "@/lib/chavrusa";
+import { getLang, t } from "@/lib/i18n";
 
 /** Just the Chavrusas' English names: "Mendel, Levi". */
 const englishNames = (partners: string[] | null | undefined) =>
@@ -20,6 +21,8 @@ import { useNav } from "@/lib/nav";
 import { Button, ButtonLink, Card, CardTitle, Empty, Field, IconButton, Input, Modal, PageHeader, Select, Textarea, cx } from "../ui";
 
 const STOP_TYPES = ["Store", "Office", "Home", "Hospital", "Campus", "Street corner", "Other"];
+/** A stop type in the site's language ("Home" here is a house, not the Home page). */
+const typeLabel = (type: string) => (type === "Home" ? (getLang() === "en" ? "Home" : t("Home (a house)")) : t(type));
 
 type StopDraft = {
   name: string;
@@ -59,7 +62,7 @@ function draftOf(loc: { name: string; address?: string | null; type?: string | n
 
 /** The Owner's message when the database doesn't yet let it change other people's routes. */
 function ownerMessage(err: Error) {
-  return err.message === NOT_ALLOWED ? "To change other people's routes, run database update 010 in Supabase first." : err.message;
+  return err.message === NOT_ALLOWED ? t("To change other people's routes, run database update 010 in Supabase first.") : err.message;
 }
 
 export function RoutesView() {
@@ -70,18 +73,18 @@ export function RoutesView() {
   return (
     <div className="grid grid-cols-1 gap-6">
       <PageHeader
-        title="Routes"
-        subtitle="Your regular Mivtzoim stops, in order. Check them off as you go."
+        title={t("Routes")}
+        subtitle={t("Your regular Mivtzoim stops, in order. Check them off as you go.")}
         action={
           <ButtonLink href="/routes/new">
-            <Plus size={16} aria-hidden /> New route
+            <Plus size={16} aria-hidden /> {t("New route")}
           </ButtonLink>
         }
       />
       {mine.routes.length === 0 ? (
         <Card>
-          <Empty title="No routes yet" icon={MapPin} action={<ButtonLink href="/routes/new" variant="secondary">Create your first route</ButtonLink>}>
-            A route is a list of places you visit, like the stores on Main Street every Friday.
+          <Empty title={t("No routes yet")} icon={MapPin} action={<ButtonLink href="/routes/new" variant="secondary">{t("Create your first route")}</ButtonLink>}>
+            {t("A route is a list of places you visit, like the stores on Main Street every Friday.")}
           </Empty>
         </Card>
       ) : (
@@ -100,7 +103,7 @@ export function RoutesView() {
                   <div className="h-full rounded-full bg-sage" style={{ width: `${pct}%` }} />
                 </div>
                 <p className="tabular mt-1.5 text-sm text-muted">
-                  {done} of {stops.length} stops done
+                  {t("{done} of {total} stops done", { done, total: stops.length })}
                 </p>
               </Link>
             );
@@ -143,29 +146,31 @@ function StopFields({ value, onChange, idPrefix }: { value: StopDraft; onChange(
         />
         {value.card && (
           <span className="flex items-center gap-2">
-            <button type="button" onClick={() => setViewing(true)} aria-label="See the business card" className="overflow-hidden rounded-lg shadow-card">
+            <button type="button" onClick={() => setViewing(true)} aria-label={t("See the business card")} className="overflow-hidden rounded-lg shadow-card">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={value.card.url} alt="" className="h-12 w-auto" />
             </button>
             <Button variant="ghost" className="h-9 px-3" onClick={() => onChange({ ...value, card: null, cardRemoved: true })}>
-              Remove card
+              {t("Remove card")}
             </Button>
           </span>
         )}
-        {!value.card && <span className="text-sm text-muted">or type the details in</span>}
+        {!value.card && <span className="text-sm text-muted">{t("or type the details in")}</span>}
       </div>
-      <Field label="Place name" htmlFor={`${idPrefix}-name`}>
-        <Input id={`${idPrefix}-name`} value={value.name} onChange={(e) => onChange({ ...value, name: e.target.value })} placeholder="Goldberg's Pharmacy" />
+      <Field label={t("Place name")} htmlFor={`${idPrefix}-name`}>
+        <Input id={`${idPrefix}-name`} value={value.name} onChange={(e) => onChange({ ...value, name: e.target.value })} placeholder={t("Goldberg's Pharmacy")} />
       </Field>
-      <Field label="Type" htmlFor={`${idPrefix}-type`}>
+      <Field label={t("Type")} htmlFor={`${idPrefix}-type`}>
         <Select id={`${idPrefix}-type`} value={value.type} onChange={(e) => onChange({ ...value, type: e.target.value })}>
-          {STOP_TYPES.map((t) => (
-            <option key={t}>{t}</option>
+          {STOP_TYPES.map((type) => (
+            <option key={type} value={type}>
+              {typeLabel(type)}
+            </option>
           ))}
         </Select>
       </Field>
       <div className="sm:col-span-2">
-        <Field label="Address" htmlFor={`${idPrefix}-address`} hint="Start typing and pick the address from the list.">
+        <Field label={t("Address")} htmlFor={`${idPrefix}-address`} hint={t("Start typing and pick the address from the list.")}>
           <AddressInput
             id={`${idPrefix}-address`}
             value={value.address}
@@ -175,20 +180,20 @@ function StopFields({ value, onChange, idPrefix }: { value: StopDraft; onChange(
           />
         </Field>
       </div>
-      <Field label="Notes" htmlFor={`${idPrefix}-notes`}>
-        <Input id={`${idPrefix}-notes`} value={value.notes} onChange={(e) => onChange({ ...value, notes: e.target.value })} placeholder="Ask for David at the counter" />
+      <Field label={t("Notes")} htmlFor={`${idPrefix}-notes`}>
+        <Input id={`${idPrefix}-notes`} value={value.notes} onChange={(e) => onChange({ ...value, notes: e.target.value })} placeholder={t("Ask for David at the counter")} />
       </Field>
       {more ? (
         <>
-          {field("contact", "Contact person", { placeholder: "David Goldberg", autoComplete: "off" })}
-          {field("phone", "Phone", { type: "tel", inputMode: "tel", placeholder: "(718) 555-0123", autoComplete: "off" })}
-          {field("email", "Email", { type: "email", inputMode: "email", placeholder: "david@goldbergsrx.com", autoComplete: "off" })}
-          {field("website", "Website", { inputMode: "url", placeholder: "goldbergsrx.com", autoComplete: "off" })}
-          <p className="text-xs text-muted sm:col-span-2">Only you can see the phone, email, contact, website and card (and the site&apos;s Owner).</p>
+          {field("contact", t("Contact person"), { placeholder: "David Goldberg", autoComplete: "off" })}
+          {field("phone", t("Phone"), { type: "tel", inputMode: "tel", placeholder: "(718) 555-0123", autoComplete: "off" })}
+          {field("email", t("Email"), { type: "email", inputMode: "email", placeholder: "david@goldbergsrx.com", autoComplete: "off" })}
+          {field("website", t("Website"), { inputMode: "url", placeholder: "goldbergsrx.com", autoComplete: "off" })}
+          <p className="text-xs text-muted sm:col-span-2">{t("Only you can see the phone, email, contact, website and card (and the site's Owner).")}</p>
         </>
       ) : (
         <button type="button" onClick={() => setMore(true)} className="justify-self-start self-end pb-3 text-sm font-medium text-accent hover:underline">
-          + Phone, email, contact person, website
+          {t("+ Phone, email, contact person, website")}
         </button>
       )}
       {viewing && value.card && <CardPictureViewer url={value.card.url} onClose={() => setViewing(false)} />}
@@ -200,11 +205,11 @@ function StopFields({ value, onChange, idPrefix }: { value: StopDraft; onChange(
 function CardPictureViewer({ url, onClose }: { url: string; onClose(): void }) {
   return (
     <Modal onClose={onClose}>
-      <figure role="dialog" aria-modal="true" aria-label="Business card" className="grid w-full max-w-xl gap-3" onClick={(e) => e.stopPropagation()}>
+      <figure role="dialog" aria-modal="true" aria-label={t("Business card")} className="grid w-full max-w-xl gap-3" onClick={(e) => e.stopPropagation()}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={url} alt="Business card" className="w-full rounded-2xl bg-white shadow-pop" />
+        <img src={url} alt={t("Business card")} className="w-full rounded-2xl bg-white shadow-pop" />
         <Button variant="secondary" className="justify-self-center" onClick={onClose}>
-          Close
+          {t("Close")}
         </Button>
       </figure>
     </Modal>
@@ -238,7 +243,7 @@ function CardLine({ card }: { card: LocationCard }) {
     ),
     card.imageUrl && (
       <button key="i" type="button" onClick={() => setViewing(true)} className="inline-flex items-center gap-1 font-medium text-accent hover:underline">
-        <IdCard size={13} aria-hidden /> Card
+        <IdCard size={13} aria-hidden /> {t("Card")}
       </button>
     ),
   ].filter(Boolean);
@@ -261,7 +266,7 @@ export function NewRouteView() {
   const [busy, setBusy] = useState(false);
 
   function addDraft() {
-    if (!draft.name.trim()) return notify("Give the stop a name first.");
+    if (!draft.name.trim()) return notify(t("Give the stop a name first."));
     setStops([...stops, draft]);
     setDraft(blankStop);
   }
@@ -272,7 +277,7 @@ export function NewRouteView() {
     try {
       const all = draft.name.trim() ? [...stops, draft] : stops;
       const route = await actions.createRoute({ name, description, group_id: null, stops: all.map(toInput) });
-      notify(`Created ${route.name}.`);
+      notify(t("Created {name}.", { name: route.name }));
       go(`/routes/view?id=${route.id}`);
     } catch (err) {
       notify((err as Error).message);
@@ -282,19 +287,19 @@ export function NewRouteView() {
 
   return (
     <div className="grid grid-cols-1 gap-6">
-      <PageHeader back={{ href: "/routes", label: "Routes" }} title="New route" subtitle="List the places you visit, in the order you visit them." />
+      <PageHeader back={{ href: "/routes", label: t("Routes") }} title={t("New route")} subtitle={t("List the places you visit, in the order you visit them.")} />
       <form onSubmit={submit} className="grid max-w-3xl grid-cols-1 gap-3">
         <Card className="grid gap-4 p-6">
-          <Field label="Route name" htmlFor="route-name">
-            <Input id="route-name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="(general location)" />
+          <Field label={t("Route name")} htmlFor="route-name">
+            <Input id="route-name" required value={name} onChange={(e) => setName(e.target.value)} placeholder={t("(general location)")} />
           </Field>
-          <Field label="Description" htmlFor="route-description" hint="Optional.">
-            <Textarea id="route-description" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Start at the bakery and work down to the post office." />
+          <Field label={t("Description")} htmlFor="route-description" hint={t("Optional.")}>
+            <Textarea id="route-description" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t("Start at the bakery and work down to the post office.")} />
           </Field>
         </Card>
 
         <Card>
-          <CardTitle>Stops ({stops.length})</CardTitle>
+          <CardTitle>{t("Stops ({n})", { n: stops.length })}</CardTitle>
           {stops.length > 0 && (
             <ol className="divide-y divide-line/60">
               {stops.map((s, i) => (
@@ -302,9 +307,9 @@ export function NewRouteView() {
                   <span className="tabular grid h-8 w-8 shrink-0 place-items-center rounded-full bg-secondary-soft text-sm text-secondary-on-soft font-medium">{i + 1}</span>
                   <span className="min-w-0 flex-1">
                     <span className="block font-medium">{s.name}</span>
-                    <span className="block truncate text-sm text-muted">{[s.type, s.address].filter(Boolean).join(" · ")}</span>
+                    <span className="block truncate text-sm text-muted">{[s.type && typeLabel(s.type), s.address].filter(Boolean).join(" · ")}</span>
                   </span>
-                  <IconButton aria-label={`Remove ${s.name}`} onClick={() => setStops(stops.filter((_, j) => j !== i))}>
+                  <IconButton aria-label={t("Remove {name}", { name: s.name })} onClick={() => setStops(stops.filter((_, j) => j !== i))}>
                     <X size={18} />
                   </IconButton>
                 </li>
@@ -314,17 +319,17 @@ export function NewRouteView() {
           <div className="grid gap-3 px-6 pt-2 pb-6">
             <StopFields value={draft} onChange={setDraft} idPrefix="new-stop" />
             <Button variant="tonal" onClick={addDraft} className="justify-self-start">
-              <Plus size={16} aria-hidden /> Add stop
+              <Plus size={16} aria-hidden /> {t("Add stop")}
             </Button>
           </div>
         </Card>
 
         <div className="flex gap-3">
           <Button type="submit" disabled={busy}>
-            {busy ? "Creating…" : "Create route"}
+            {busy ? t("Creating…") : t("Create route")}
           </Button>
           <ButtonLink href="/routes" variant="ghost">
-            Cancel
+            {t("Cancel")}
           </ButtonLink>
         </div>
       </form>
@@ -336,16 +341,16 @@ export function NewRouteView() {
 function AllRoutesView() {
   const { data, people } = useData();
   const { Link } = useNav();
-  const owner = (r: { created_by: string }) => data.names[r.created_by] || "Someone";
+  const owner = (r: { created_by: string }) => data.names[r.created_by] || t("Someone");
   const partners = (r: { created_by: string }) => people.find((p) => p.id === r.created_by)?.partners;
   const routes = [...data.routes].sort((a, b) => owner(a).localeCompare(owner(b)) || a.name.localeCompare(b.name));
   return (
     <div className="grid grid-cols-1 gap-6">
-      <PageHeader title="Routes" subtitle="Everyone's routes. Open one to see all its stops; turn on Edit there to change it." action={<EditSwitch />} />
+      <PageHeader title={t("Routes")} subtitle={t("Everyone's routes. Open one to see all its stops; turn on Edit there to change it.")} action={<EditSwitch />} />
       {routes.length === 0 ? (
         <Card>
-          <Empty title="No routes yet" icon={MapPin}>
-            When people make routes, they show up here.
+          <Empty title={t("No routes yet")} icon={MapPin}>
+            {t("When people make routes, they show up here.")}
           </Empty>
         </Card>
       ) : (
@@ -366,7 +371,7 @@ function AllRoutesView() {
                   <div className="h-full rounded-full bg-sage" style={{ width: `${pct}%` }} />
                 </div>
                 <p className="tabular mt-1.5 text-sm text-muted">
-                  {done} of {stops.length} stops done
+                  {t("{done} of {total} stops done", { done, total: stops.length })}
                 </p>
               </Link>
             );
@@ -396,8 +401,8 @@ export function RouteDetailView() {
   if (!route) {
     return (
       <Card>
-        <Empty title="Route not found" action={<ButtonLink href="/routes" variant="secondary">Back to routes</ButtonLink>}>
-          It may have been deleted.
+        <Empty title={t("Route not found")} action={<ButtonLink href="/routes" variant="secondary">{t("Back to routes")}</ButtonLink>}>
+          {t("It may have been deleted.")}
         </Empty>
       </Card>
     );
@@ -424,8 +429,8 @@ export function RouteDetailView() {
 
   async function addStop(e: FormEvent) {
     e.preventDefault();
-    if (!draft.name.trim()) return notify("Give the stop a name first.");
-    await wrap("add", () => actions.addStop(route!.id, toInput(draft)), "Stop added.");
+    if (!draft.name.trim()) return notify(t("Give the stop a name first."));
+    await wrap("add", () => actions.addStop(route!.id, toInput(draft)), t("Stop added."));
     setDraft(blankStop);
     setAdding(false);
   }
@@ -433,25 +438,25 @@ export function RouteDetailView() {
   async function saveRoute(e: FormEvent) {
     e.preventDefault();
     if (!routeDraft) return;
-    await wrap("route", () => actions.updateRoute(route!.id, routeDraft), "Route saved.");
+    await wrap("route", () => actions.updateRoute(route!.id, routeDraft), t("Route saved."));
     setRouteDraft(null);
   }
 
   async function saveStop(e: FormEvent) {
     e.preventDefault();
     if (!stopDraft) return;
-    await wrap("stop", () => actions.updateStop(stopDraft.locationId, toInput(stopDraft.value)), "Stop saved.");
+    await wrap("stop", () => actions.updateStop(stopDraft.locationId, toInput(stopDraft.value)), t("Stop saved."));
     setStopDraft(null);
   }
 
   return (
     <div className="grid grid-cols-1 gap-6">
       <PageHeader
-        back={{ href: "/routes", label: "Routes" }}
+        back={{ href: "/routes", label: t("Routes") }}
         eyebrow={
           isOwner ? (
             <>
-              {data.names[route.created_by] || "Someone"}&apos;s route
+              {t("{name}'s route", { name: data.names[route.created_by] || t("Someone") })}
               {englishNames(people.find((p) => p.id === route.created_by)?.partners) && (
                 <span className="text-xs font-normal text-muted"> · {englishNames(people.find((p) => p.id === route.created_by)?.partners)}</span>
               )}
@@ -461,39 +466,39 @@ export function RouteDetailView() {
         title={route.name}
         subtitle={
           <>
-            <span className="tabular">{done} of {stops.length} stops done</span>
+            <span className="tabular">{t("{done} of {total} stops done", { done, total: stops.length })}</span>
           </>
         }
-        action={isOwner ? <EditSwitch /> : <ButtonLink href={`/log?${logQuery}`}>Log on this route</ButtonLink>}
+        action={isOwner ? <EditSwitch /> : <ButtonLink href={`/log?${logQuery}`}>{t("Log on this route")}</ButtonLink>}
       />
       {isOwner && editing && (
         <Card>
           {routeDraft ? (
             <form onSubmit={saveRoute} className="grid gap-3 p-6">
-              <Field label="Route name" htmlFor="route-name">
+              <Field label={t("Route name")} htmlFor="route-name">
                 <Input id="route-name" required autoFocus value={routeDraft.name} onChange={(e) => setRouteDraft({ ...routeDraft, name: e.target.value })} />
               </Field>
-              <Field label="Description" htmlFor="route-description">
+              <Field label={t("Description")} htmlFor="route-description">
                 <Textarea id="route-description" rows={2} value={routeDraft.description} onChange={(e) => setRouteDraft({ ...routeDraft, description: e.target.value })} />
               </Field>
               <div className="flex gap-2">
                 <Button type="submit" disabled={pending !== null} className="h-9 px-4">
-                  Save
+                  {t("Save")}
                 </Button>
                 <Button type="button" variant="ghost" className="h-9 px-3" onClick={() => setRouteDraft(null)}>
-                  Cancel
+                  {t("Cancel")}
                 </Button>
               </div>
             </form>
           ) : (
             <div className="flex flex-wrap items-center gap-3 p-6">
               <span className="min-w-0 flex-1">
-                <span className="block text-sm text-muted">Route name and description</span>
+                <span className="block text-sm text-muted">{t("Route name and description")}</span>
                 <span className="block font-medium">{route.name}</span>
                 {route.description && <span className="block text-sm text-muted">{route.description}</span>}
               </span>
               <Button variant="tonal" className="h-9 px-4" onClick={() => setRouteDraft({ name: route.name, description: route.description ?? "" })}>
-                <Pencil size={16} aria-hidden /> Edit
+                <Pencil size={16} aria-hidden /> {t("Edit")}
               </Button>
             </div>
           )}
@@ -505,16 +510,16 @@ export function RouteDetailView() {
         <CardTitle
           action={
             done > 0 && canEdit ? (
-              <Button variant="ghost" className="h-9 px-3" disabled={pending !== null} onClick={() => wrap("reset", () => actions.resetRoute(route.id), "All stops unchecked.")}>
-                <RotateCcw size={14} aria-hidden /> Start over
+              <Button variant="ghost" className="h-9 px-3" disabled={pending !== null} onClick={() => wrap("reset", () => actions.resetRoute(route.id), t("All stops unchecked."))}>
+                <RotateCcw size={14} aria-hidden /> {t("Start over")}
               </Button>
             ) : undefined
           }
         >
-          Stops
+          {t("Stops")}
         </CardTitle>
         {stops.length === 0 ? (
-          <Empty title="No stops yet" icon={MapPin}>Add the first place on this route below.</Empty>
+          <Empty title={t("No stops yet")} icon={MapPin}>{t("Add the first place on this route below.")}</Empty>
         ) : (
           <ol className="divide-y divide-line/60">
             {stops.map(({ stop, loc }, i) =>
@@ -524,10 +529,10 @@ export function RouteDetailView() {
                     <StopFields value={stopDraft.value} onChange={(value) => setStopDraft({ ...stopDraft, value })} idPrefix={`edit-stop-${stop.id}`} />
                     <div className="flex gap-2">
                       <Button type="submit" disabled={pending !== null} className="h-9 px-4">
-                        Save stop
+                        {t("Save stop")}
                       </Button>
                       <Button type="button" variant="ghost" className="h-9 px-3" onClick={() => setStopDraft(null)}>
-                        Cancel
+                        {t("Cancel")}
                       </Button>
                     </div>
                   </form>
@@ -535,11 +540,11 @@ export function RouteDetailView() {
               ) : (
               <li key={stop.id} className="flex items-center gap-3 px-6 py-3.5">
                 {isOwner && editing && (
-                  <span className="-ml-3 flex shrink-0 flex-col">
-                    <IconButton aria-label={`Move ${loc?.name} up`} disabled={i === 0 || pending !== null} onClick={() => wrap(stop.id, () => actions.moveStop(stop.id, -1))} className="h-7 w-9 disabled:opacity-25">
+                  <span className="-ms-3 flex shrink-0 flex-col">
+                    <IconButton aria-label={t("Move {name} up", { name: loc?.name ?? "" })} disabled={i === 0 || pending !== null} onClick={() => wrap(stop.id, () => actions.moveStop(stop.id, -1))} className="h-7 w-9 disabled:opacity-25">
                       <ChevronUp size={18} />
                     </IconButton>
-                    <IconButton aria-label={`Move ${loc?.name} down`} disabled={i === stops.length - 1 || pending !== null} onClick={() => wrap(stop.id, () => actions.moveStop(stop.id, 1))} className="h-7 w-9 disabled:opacity-25">
+                    <IconButton aria-label={t("Move {name} down", { name: loc?.name ?? "" })} disabled={i === stops.length - 1 || pending !== null} onClick={() => wrap(stop.id, () => actions.moveStop(stop.id, 1))} className="h-7 w-9 disabled:opacity-25">
                       <ChevronDown size={18} />
                     </IconButton>
                   </span>
@@ -547,7 +552,7 @@ export function RouteDetailView() {
                 <button
                   type="button"
                   aria-pressed={stop.completed}
-                  aria-label={stop.completed ? `Mark ${loc?.name} not done` : `Mark ${loc?.name} done`}
+                  aria-label={stop.completed ? t("Mark {name} not done", { name: loc?.name ?? "" }) : t("Mark {name} done", { name: loc?.name ?? "" })}
                   disabled={pending !== null || !canEdit}
                   onClick={() => wrap(stop.id, () => actions.toggleStop(stop))}
                   className={cx(
@@ -558,12 +563,12 @@ export function RouteDetailView() {
                   {stop.completed ? <Check size={16} strokeWidth={3} /> : <span className="tabular text-xs font-medium">{i + 1}</span>}
                 </button>
                 <span className="min-w-0 flex-1">
-                  <span className={cx("block font-medium", stop.completed && "text-muted line-through")}>{loc?.name ?? "Unknown place"}</span>
+                  <span className={cx("block font-medium", stop.completed && "text-muted line-through")}>{loc?.name ?? t("Unknown place")}</span>
                   <span className="block text-sm text-muted">
-                    {[loc?.type, loc?.address].filter(Boolean).join(" · ")}
+                    {[loc?.type && typeLabel(loc.type), loc?.address].filter(Boolean).join(" · ")}
                     {loc?.address && (
-                      <a href={googleMapsLink(loc.address)} target="_blank" rel="noopener noreferrer" className="ml-2 inline-flex items-center gap-1 font-medium text-accent hover:underline">
-                        <MapPin size={13} aria-hidden /> Open in Google Maps
+                      <a href={googleMapsLink(loc.address)} target="_blank" rel="noopener noreferrer" className="ms-2 inline-flex items-center gap-1 font-medium text-accent hover:underline">
+                        <MapPin size={13} aria-hidden /> {t("Open in Google Maps")}
                       </a>
                     )}
                     {loc?.notes && <span className="block italic">{loc.notes}</span>}
@@ -573,17 +578,17 @@ export function RouteDetailView() {
                 {!isOwner && (
                   <span className="hidden shrink-0 sm:block">
                     <ButtonLink href={`/log?${logQuery}&location=${stop.location_id}`} variant="secondary" className="px-3 py-1.5">
-                      Log here
+                      {t("Log here")}
                     </ButtonLink>
                   </span>
                 )}
                 {canEditStops && loc && (
-                  <IconButton aria-label={`Edit ${loc.name}`} disabled={pending !== null} onClick={() => setStopDraft({ locationId: loc.id, value: draftOf(loc, cards[loc.id]) })}>
+                  <IconButton aria-label={t("Edit {name}", { name: loc.name })} disabled={pending !== null} onClick={() => setStopDraft({ locationId: loc.id, value: draftOf(loc, cards[loc.id]) })}>
                     <Pencil size={18} />
                   </IconButton>
                 )}
                 {canEdit && (
-                  <IconButton aria-label={`Remove ${loc?.name}`} disabled={pending !== null} onClick={() => wrap(stop.id, () => actions.removeStop(stop.id), "Stop removed.")}>
+                  <IconButton aria-label={t("Remove {name}", { name: loc?.name ?? "" })} disabled={pending !== null} onClick={() => wrap(stop.id, () => actions.removeStop(stop.id), t("Stop removed."))}>
                     <Trash2 size={18} />
                   </IconButton>
                 )}
@@ -599,16 +604,16 @@ export function RouteDetailView() {
               <StopFields value={draft} onChange={setDraft} idPrefix="add-stop" />
               <div className="flex gap-2">
                 <Button type="submit" disabled={pending !== null}>
-                  <MapPin size={16} aria-hidden /> Add stop
+                  <MapPin size={16} aria-hidden /> {t("Add stop")}
                 </Button>
                 <Button variant="ghost" onClick={() => setAdding(false)}>
-                  Cancel
+                  {t("Cancel")}
                 </Button>
               </div>
             </form>
           ) : (
             <Button variant="tonal" onClick={() => setAdding(true)}>
-              <Plus size={16} aria-hidden /> Add a stop
+              <Plus size={16} aria-hidden /> {t("Add a stop")}
             </Button>
           )}
         </div>
@@ -620,17 +625,17 @@ export function RouteDetailView() {
         <div className="flex flex-wrap items-center gap-3">
           {confirmDelete ? (
             <>
-              <span className="text-sm font-medium">Delete this route and its stops?</span>
-              <Button variant="danger" onClick={() => wrap("delete", async () => { await actions.deleteRoute(route.id); go("/routes"); }, "Route deleted.")}>
-                Yes, delete
+              <span className="text-sm font-medium">{t("Delete this route and its stops?")}</span>
+              <Button variant="danger" onClick={() => wrap("delete", async () => { await actions.deleteRoute(route.id); go("/routes"); }, t("Route deleted."))}>
+                {t("Yes, delete")}
               </Button>
               <Button variant="ghost" onClick={() => setConfirmDelete(false)}>
-                Cancel
+                {t("Cancel")}
               </Button>
             </>
           ) : (
             <Button variant="danger" onClick={() => setConfirmDelete(true)}>
-              Delete route
+              {t("Delete route")}
             </Button>
           )}
         </div>

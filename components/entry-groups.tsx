@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import type { Activity } from "@/lib/types";
+import { tn } from "@/lib/i18n";
 
 /** Same person, same mivtza, same day, same route and stop: these are one group. */
 function groupKey(a: Activity) {
@@ -45,13 +46,13 @@ export function EntryGroups({
             <details className="group/entries">
               <summary className="flex cursor-pointer list-none items-center gap-3 px-6 py-3.5 hover:bg-ink/5 [&::-webkit-details-marker]:hidden">
                 {summary(group[0], group)}
-                <span className="text-right">
+                <span className="text-end">
                   <span className="tabular block text-2xl">{group.reduce((n, a) => n + a.quantity, 0)}</span>
-                  <span className="block text-xs text-muted">{group.length} entries</span>
+                  <span className="block text-xs text-muted">{tn(group.length, "{n} entry", "{n} entries")}</span>
                 </span>
                 <ChevronDown size={20} aria-hidden className="shrink-0 text-muted transition-transform group-open/entries:rotate-180" />
               </summary>
-              <ul className="divide-y divide-line/60 border-t border-line/60 bg-paper/60 pl-4">{group.map((a) => row(a))}</ul>
+              <ul className="divide-y divide-line/60 border-t border-line/60 bg-paper/60 ps-4">{group.map((a) => row(a))}</ul>
             </details>
           </li>
         ),

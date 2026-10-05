@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import type { LocationCard, PersonalCategory, Photo, Profile, SignUpInput, SiteSettings, TableName, Tables } from "../types";
 
 /**
@@ -67,13 +68,19 @@ export interface Backend {
   uploadPhoto?(full: Blob, thumb: Blob, info: { width: number; height: number; color?: string }): Promise<Photo>;
   /** The person who shared it, or an admin. */
   deletePhoto?(photo: Photo): Promise<void>;
+  /** Save the language this account sees the site in. */
+  setLanguage?(language: string): Promise<void>;
   /** Business card details this account may see: its own, or everyone's for the Owner. */
   listCards?(): Promise<LocationCard[]>;
   /** Save a place's card details; `image` replaces the card picture, `null` removes it, leaving it out keeps it. */
   saveCard?(card: Omit<LocationCard, "image_path" | "imageUrl" | "updated_at">, image?: Blob | null): Promise<void>;
 }
 
-/** When the database doesn't let this account change something (it may have been deleted meanwhile). */
+/**
+ * When the database doesn't let this account change something (it may have been deleted meanwhile).
+ * Thrown in English on purpose, so `err.message === NOT_ALLOWED` keeps working in every language;
+ * it's a dictionary key, so show it with t(err.message).
+ */
 export const NOT_ALLOWED = "That didn't save: this account isn't allowed to change it, or it was already deleted.";
 
 export interface CommunityRow {
@@ -104,7 +111,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export function normalizeUsername(raw: string) {
   const u = raw.trim().toLowerCase().replace(/^@/, "");
   if (!/^[a-z0-9._-]{3,20}$/.test(u)) {
-    throw new Error("Usernames are 3 to 20 characters: letters, numbers, dots, dashes or underscores.");
+    throw new Error(t("Usernames are 3 to 20 characters: letters, numbers, dots, dashes or underscores."));
   }
   return u;
 }
@@ -116,12 +123,12 @@ export function loginKey(raw: string) {
 
 export function checkEmail(raw: string) {
   const e = raw.trim().toLowerCase();
-  if (!EMAIL_RE.test(e)) throw new Error("Enter a real email address. We send a confirmation link to it.");
+  if (!EMAIL_RE.test(e)) throw new Error(t("Enter a real email address. We send a confirmation link to it."));
   return e;
 }
 
 export function checkPassword(password: string) {
-  if (password.length < 6) throw new Error("Passwords need at least 6 characters.");
+  if (password.length < 6) throw new Error(t("Passwords need at least 6 characters."));
 }
 
 export function newJoinCode() {

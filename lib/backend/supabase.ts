@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { displayName, type LocationCard, type PersonalCategory, type Photo, type Profile, type TableName, type Tables } from "../types";
+import { t } from "../i18n";
 import { NOT_ALLOWED, checkEmail, checkPassword, loginKey, normalizeUsername, type Backend, type CommunityRow } from "./index";
 
 /** Where email links (confirmation, password reset) send people back to. */
@@ -21,13 +22,15 @@ export function createSupabaseBackend(url: string, key: string): Backend {
 
   async function uid() {
     const { data } = await sb.auth.getUser();
-    if (!data.user) throw new Error("Please sign in again.");
+    if (!data.user) throw new Error(t("Please sign in again."));
     return data.user.id;
   }
 
   return {
     kind: "supabase",
-    storageLabel: "Saved to your account. Sign in on any device to see it.",
+    get storageLabel() {
+      return t("Saved to your account. Sign in on any device to see it.");
+    },
     hasAuth: true,
 
     async currentUser() {
@@ -42,34 +45,40 @@ export function createSupabaseBackend(url: string, key: string): Backend {
         email: data.user.email ?? null,
         partners: p?.partners ?? [],
         role: p?.role === "admin" ? "admin" : "user",
+        language: data.user.user_metadata?.language ?? null,
       };
     },
     async signIn(rawUsername, password) {
       // People sign in with their username; look up the email it belongs to.
       const { data: email } = await sb.rpc("login_email", { p_username: loginKey(rawUsername) });
-      if (!email) throw new Error("That username and password don't match.");
+      if (!email) throw new Error(t("That username and password don't match."));
       const { error } = await sb.auth.signInWithPassword({ email, password });
       if (!error) return;
-      if (error.message.includes("not confirmed")) throw new Error("Confirm your email first: open the link we sent you, then sign in. Don't see it? Check your Spam or Promotions folder.");
-      throw new Error(error.message.includes("Invalid login") ? "That username and password don't match." : error.message);
+      if (error.message.includes("not confirmed")) throw new Error(t("Confirm your email first: open the link we sent you, then sign in. Don't see it? Check your Spam or Promotions folder."));
+      throw new Error(error.message.includes("Invalid login") ? t("That username and password don't match.") : error.message);
     },
-    async signUp({ name, partners, username: rawUsername, email: rawEmail, password }) {
+    async signUp({ name, partners, username: rawUsername, email: rawEmail, password, language }) {
       const username = normalizeUsername(rawUsername);
       const email = checkEmail(rawEmail);
       checkPassword(password);
       const { data: free } = await sb.rpc("username_available", { p_username: username });
-      if (free === false) throw new Error("That username is taken. Try another.");
+      if (free === false) throw new Error(t("That username is taken. Try another."));
       const { data, error } = await sb.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: siteUrl(), data: { name, username, partners } },
+        options: { emailRedirectTo: siteUrl(), data: { name, username, partners, language: language || "en" } },
       });
-      if (error) throw new Error(error.message.includes("already registered") ? "That email already has an account." : error.message);
+      if (error) throw new Error(error.message.includes("already registered") ? t("That email already has an account.") : error.message);
       return { needsConfirmation: !data.session };
     },
     async signOut() {
       // Only this device. Supabase's default ("global") would sign the account out on every phone and computer.
       await sb.auth.signOut({ scope: "local" });
+    },
+    async setLanguage(language) {
+      // Kept with the account's sign-in details, so it follows the person to any phone.
+      const { error } = await sb.auth.updateUser({ data: { language } });
+      fail(error);
     },
     async updateProfile({ name, partners }) {
       const { error } = await sb.from("profiles").update({ name, partners }).eq("id", await uid());
@@ -86,9 +95,9 @@ export function createSupabaseBackend(url: string, key: string): Backend {
     },
     async verifyPassword(password) {
       const { data } = await sb.auth.getUser();
-      if (!data.user?.email) throw new Error("Please sign in again.");
+      if (!data.user?.email) throw new Error(t("Please sign in again."));
       const { error } = await sb.auth.signInWithPassword({ email: data.user.email, password });
-      if (error) throw new Error("Your current password isn't right.");
+      if (error) throw new Error(t("Your current password isn't right."));
     },
     async changeUsername(raw) {
       const username = normalizeUsername(raw);
@@ -96,15 +105,15 @@ export function createSupabaseBackend(url: string, key: string): Backend {
       const { data: mine } = await sb.from("profiles").select("username").eq("id", id).maybeSingle();
       if (mine?.username?.toLowerCase() === username) return;
       const { data: free } = await sb.rpc("username_available", { p_username: username });
-      if (free === false) throw new Error("That username is taken. Try another.");
+      if (free === false) throw new Error(t("That username is taken. Try another."));
       const { error } = await sb.from("profiles").update({ username }).eq("id", id);
-      if (error?.message.includes("duplicate")) throw new Error("That username is taken. Try another.");
+      if (error?.message.includes("duplicate")) throw new Error(t("That username is taken. Try another."));
       fail(error);
     },
     async changeEmail(raw) {
       const email = checkEmail(raw);
       const { data, error } = await sb.auth.updateUser({ email }, { emailRedirectTo: siteUrl() });
-      if (error) throw new Error(error.message.includes("already") ? "That email already has an account." : error.message);
+      if (error) throw new Error(error.message.includes("already") ? t("That email already has an account.") : error.message);
       return { needsConfirmation: data.user?.email?.toLowerCase() !== email };
     },
     onPasswordRecovery(cb) {
@@ -176,12 +185,12 @@ export function createSupabaseBackend(url: string, key: string): Backend {
         p_email: checkEmail(email),
         p_partners: partners,
       });
-      if (error?.message.includes("admin_update_person")) throw new Error("Run the latest setup file in Supabase first.");
+      if (error?.message.includes("admin_update_person")) throw new Error(t("Run the latest setup file in Supabase first."));
       fail(error);
     },
     async adminDeletePerson(userId) {
       const { error } = await sb.rpc("admin_delete_person", { p_user: userId });
-      if (error?.message.includes("admin_delete_person")) throw new Error("Run the latest setup file in Supabase first.");
+      if (error?.message.includes("admin_delete_person")) throw new Error(t("Run the latest setup file in Supabase first."));
       fail(error);
     },
     async listPhotos() {
@@ -203,13 +212,13 @@ export function createSupabaseBackend(url: string, key: string): Backend {
       if (a.error || b.error) {
         await store.remove([path, thumbPath]).catch(() => {});
         const msg = (a.error ?? b.error)!.message;
-        throw new Error(/bucket not found/i.test(msg) ? "Photos aren't set up yet: run database update 011 in Supabase first." : `The photo didn't upload: ${msg}`);
+        throw new Error(/bucket not found/i.test(msg) ? t("Photos aren't set up yet: run database update 011 in Supabase first.") : t("The photo didn't upload: {reason}", { reason: msg }));
       }
       const row = { id, user_id: me, path, thumb_path: thumbPath, width: info.width, height: info.height, color: info.color ?? null, bytes: full.size + thumb.size };
       const { data, error } = await sb.from("photos").insert(row).select().single();
       if (error) {
         await store.remove([path, thumbPath]).catch(() => {});
-        throw new Error(error.message.includes("photos") ? "Photos aren't set up yet: run database update 011 in Supabase first." : error.message);
+        throw new Error(error.message.includes("photos") ? t("Photos aren't set up yet: run database update 011 in Supabase first.") : error.message);
       }
       return { ...(data as Photo), url: store.getPublicUrl(path).data.publicUrl, thumbUrl: store.getPublicUrl(thumbPath).data.publicUrl };
     },
@@ -228,12 +237,12 @@ export function createSupabaseBackend(url: string, key: string): Backend {
     },
     async saveCard(card, image) {
       const store = sb.storage.from("cards");
-      const setup = "Business cards aren't set up yet: run database update 012 in Supabase first.";
+      const setup = t("Business cards aren't set up yet: run database update 012 in Supabase first.");
       let image_path: string | null | undefined;
       if (image) {
         image_path = `${card.user_id}/${card.location_id}.${image.type === "image/webp" ? "webp" : "jpg"}`;
         const { error } = await store.upload(image_path, image, { contentType: image.type, upsert: true, cacheControl: "3600" });
-        if (error) throw new Error(/bucket not found/i.test(error.message) ? setup : `The card picture didn't save: ${error.message}`);
+        if (error) throw new Error(/bucket not found/i.test(error.message) ? setup : t("The card picture didn't save: {reason}", { reason: error.message }));
       } else if (image === null) {
         const { data: old } = await sb.from("location_cards").select("image_path").eq("location_id", card.location_id).maybeSingle();
         if (old?.image_path) await store.remove([old.image_path]);

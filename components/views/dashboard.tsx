@@ -18,6 +18,7 @@ import { builtinHiddenIn, categoryHiddenIn, orderedMivtzoim, type BuiltinType } 
 import { parshaName, parshaOfWeek, weekTitle } from "@/lib/parsha";
 import type { Activity } from "@/lib/types";
 import { Card, CardTitle, CategoryIcon, Empty, IconButton, PageHeader, Select, Stat, cx, listClass } from "../ui";
+import { getLang, t } from "@/lib/i18n";
 
 export function sum(rows: Activity[]) {
   return rows.reduce((n, a) => n + a.quantity, 0);
@@ -125,15 +126,15 @@ export function EditSwitch() {
       aria-checked={editing}
       onClick={() => setEditing(!editing)}
       className={cx(
-        "inline-flex h-11 items-center gap-2.5 rounded-full pr-4 pl-1.5 text-sm font-medium transition",
+        "inline-flex h-11 items-center gap-2.5 rounded-full pe-4 ps-1.5 text-sm font-medium transition",
         editing ? "bg-accent text-accent-ink" : "bg-card text-ink shadow-card hover:bg-ink/5",
       )}
     >
       <span className={cx("relative h-7 w-12 rounded-full transition", editing ? "bg-accent-ink/30" : "bg-ink/15")}>
-        <span className={cx("absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all", editing ? "left-6" : "left-1")} />
+        <span className={cx("absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all", editing ? "start-6" : "start-1")} />
       </span>
       <Pencil size={16} aria-hidden />
-      {editing ? "Editing" : "Edit"}
+      {editing ? t("Editing") : t("Edit")}
     </button>
   );
 }
@@ -149,13 +150,13 @@ function OwnerHome() {
   const hd = hebrewDate();
   return (
     <div className="grid grid-cols-1 gap-6">
-      <PageHeader eyebrow={`${longDate()}${hd ? ` · ${hd}` : ""} · ${parshaOfWeek(currentWeek()).english}`} title="Dashboard" action={<EditSwitch />} />
+      <PageHeader eyebrow={`${longDate()}${hd ? ` · ${hd}` : ""} · ${parshaOfWeek(currentWeek()).local}`} title={t("Dashboard")} action={<EditSwitch />} />
 
       {editing && (
         <Card>
-          <CardTitle sub="Turn off Edit when you're done.">Editing the site</CardTitle>
+          <CardTitle sub={t("Turn off Edit when you're done.")}>{t("Editing the site")}</CardTitle>
           <div className="px-6 pb-6">
-            <SettingField field="site_name" label="Site name" hint="Shown at the top of every page." maxLength={40} required />
+            <SettingField field="site_name" label={t("Site name")} hint={t("Shown at the top of every page.")} maxLength={40} required />
           </div>
         </Card>
       )}
@@ -173,12 +174,12 @@ function OwnerHome() {
           <div className="px-6 py-6">
             <SettingField
               field="announcement"
-              label="Announcement"
-              hint="Shown at the top of everyone's Home page. Leave empty to hide it."
+              label={t("Announcement")}
+              hint={t("Shown at the top of everyone's Home page. Leave empty to hide it.")}
               rows={3}
               maxLength={500}
-              placeholder="Mivtzoim this Friday at 2:00. Meet outside the shul."
-              empty="No announcement right now."
+              placeholder={t("Mivtzoim this Friday at 2:00. Meet outside the shul.")}
+              empty={t("No announcement right now.")}
             />
           </div>
         </Card>
@@ -193,8 +194,8 @@ function OwnerHome() {
 
       <SharedCategoriesCard
         controls={editing}
-        title="Mivtzoim"
-        sub={editing ? "Everyone's buttons, in this order. Use the arrows to move them." : "The buttons everyone has, in this order. Turn on Edit to change them."}
+        title={t("Mivtzoim")}
+        sub={editing ? t("Everyone's buttons, in this order. Use the arrows to move them.") : t("The buttons everyone has, in this order. Turn on Edit to change them.")}
       />
     </div>
   );
@@ -215,7 +216,7 @@ function PersonalHome() {
 
   return (
     <div className="grid grid-cols-1 gap-6">
-      <PageHeader eyebrow={`${longDate()}${hd ? ` · ${hd}` : ""} · ${parshaOfWeek(currentWeek()).english}`} title={me?.name || "Dashboard"} />
+      <PageHeader eyebrow={`${longDate()}${hd ? ` · ${hd}` : ""} · ${parshaOfWeek(currentWeek()).local}`} title={me?.name || t("Dashboard")} />
 
       <WeekPicker week={week} onChange={setWeek} />
 
@@ -239,11 +240,11 @@ function PersonalHome() {
             return (
               <Stat
                 key={c.key}
-                label={c.short}
+                label={t(c.short)}
                 icon={c.icon}
                 value={now}
                 delta={now - sum(lastRows.filter(c.matches))}
-                note="vs last week"
+                note={t("vs last week")}
                 tone={c.tone}
                 color={c.custom ? c.color : undefined}
               />
@@ -254,7 +255,7 @@ function PersonalHome() {
 
       {week !== thisWeek && (
         <p role="status" className="rounded-[20px] bg-candle-soft px-5 py-3 text-sm text-candle-on-soft">
-          You&apos;re looking at the week of {weekTitle(week)}. Anything you add, remove or change here counts for that week.
+          {t("You're looking at the week of {week}. Anything you add, remove or change here counts for that week.", { week: weekTitle(week) })}
         </p>
       )}
 
@@ -262,7 +263,7 @@ function PersonalHome() {
 
       <div className="grid grid-cols-1 gap-6">
         <Card>
-          <CardTitle sub="Everything you logged, by week">Activity</CardTitle>
+          <CardTitle sub={t("Everything you logged, by week")}>{t("Activity")}</CardTitle>
           <WeeklyChart rows={mine.activity} last={week} />
         </Card>
       </div>
@@ -320,7 +321,7 @@ function QuickLog({ week }: { week: string }) {
   async function add(c: Counter) {
     try {
       await actions.log({ ...c.log, activity_date: dateForWeek(week) });
-      notify(past ? `Added ${c.title} to the week of ${weekTitle(week)}` : `Added ${c.title}`);
+      notify(past ? t("Added {name} to the week of {week}", { name: t(c.title), week: weekTitle(week) }) : t("Added {name}", { name: t(c.title) }));
     } catch (e) {
       notify((e as Error).message);
     }
@@ -331,7 +332,7 @@ function QuickLog({ week }: { week: string }) {
     if (!last) return;
     try {
       await actions.setActivityQuantity(last.id, last.quantity - 1);
-      notify(`Removed ${c.title}${past ? ` from the week of ${weekTitle(week)}` : ""}`);
+      notify(past ? t("Removed {name} from the week of {week}", { name: t(c.title), week: weekTitle(week) }) : t("Removed {name}", { name: t(c.title) }));
     } catch (e) {
       notify((e as Error).message);
     }
@@ -344,7 +345,7 @@ function QuickLog({ week }: { week: string }) {
           key={c.key}
           c={c}
           count={sum(mine.activity.filter((a) => activityWeek(a) === week && c.matches(a)))}
-          hint={touch ? "Tap here to add" : "Click here to add"}
+          hint={touch ? t("Tap here to add") : t("Click here to add")}
           sample={guest}
           onAdd={() => add(c)}
           onSubtract={() => subtract(c)}
@@ -416,7 +417,7 @@ function QuickButton({ c, count, hint, sample, onAdd, onSubtract }: { c: Counter
   return (
     <div
       ref={box}
-      className={cx("flex items-center gap-2 rounded-[28px] p-3 pr-4", c.soft)}
+      className={cx("flex items-center gap-2 rounded-[28px] p-3 pe-4", c.soft)}
       style={c.custom ? { background: `color-mix(in srgb, ${c.color} 18%, var(--card))` } : undefined}
     >
       <button
@@ -426,13 +427,13 @@ function QuickButton({ c, count, hint, sample, onAdd, onSubtract }: { c: Counter
           if (!sample) plus.tap();
           onAdd();
         }}
-        aria-label={`Add 1 ${c.title}`}
-        className="flex min-w-0 flex-1 items-center gap-4 rounded-[22px] p-2 text-left transition hover:bg-ink/5 active:scale-[0.99] disabled:opacity-60"
+        aria-label={t("Add 1 {name}", { name: t(c.title) })}
+        className="flex min-w-0 flex-1 items-center gap-4 rounded-[22px] p-2 text-start transition hover:bg-ink/5 active:scale-[0.99] disabled:opacity-60"
       >
         <span className={cx("relative grid h-14 w-14 shrink-0 place-items-center rounded-2xl", c.chip)} style={c.custom ? { background: c.color } : undefined}>
           <c.icon size={26} />
           {plus.n > 0 && (
-            <span aria-live="polite" aria-label={`Adding ${plus.n}`} className={cx("absolute -top-4 -right-6 transition-opacity duration-300", plus.fading && "opacity-0")}>
+            <span aria-live="polite" aria-label={t("Adding {n}", { n: plus.n })} className={cx("absolute -top-4 -end-6 transition-opacity duration-300", plus.fading && "opacity-0")}>
               <span key={plus.n} className="tally-pop block text-sage tabular pointer-events-none text-lg font-bold leading-none [text-shadow:0_0_4px_var(--card),0_0_2px_var(--card)]">
                 +{plus.n}
               </span>
@@ -440,7 +441,7 @@ function QuickButton({ c, count, hint, sample, onAdd, onSubtract }: { c: Counter
           )}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-xl font-medium">{c.title}</span>
+          <span className="block text-xl font-medium">{t(c.title)}</span>
           <span className="block truncate text-sm opacity-80">{hint}</span>
         </span>
       </button>
@@ -452,14 +453,14 @@ function QuickButton({ c, count, hint, sample, onAdd, onSubtract }: { c: Counter
             minus.tap();
             onSubtract();
           }}
-          aria-label={`Remove 1 ${c.title}`}
-          title={`Remove 1 ${c.title}`}
+          aria-label={t("Remove 1 {name}", { name: t(c.title) })}
+          title={t("Remove 1 {name}", { name: t(c.title) })}
           className="grid h-11 w-11 place-items-center rounded-full bg-minus text-minus-ink transition hover:brightness-95 disabled:opacity-30"
         >
           <Minus size={20} strokeWidth={2.5} />
         </button>
         {minus.n > 0 && (
-          <span aria-live="polite" aria-label={`Removing ${minus.n}`} className={cx("absolute -top-4 -right-2 transition-opacity duration-300", minus.fading && "opacity-0")}>
+          <span aria-live="polite" aria-label={t("Removing {n}", { n: minus.n })} className={cx("absolute -top-4 -end-2 transition-opacity duration-300", minus.fading && "opacity-0")}>
             <span key={minus.n} className="tally-pop block text-danger tabular pointer-events-none text-lg font-bold leading-none [text-shadow:0_0_4px_var(--card),0_0_2px_var(--card)]">
               −{minus.n}
             </span>
@@ -478,7 +479,7 @@ function WeekEntries({ week, rows, counters }: { week: string; rows: Activity[];
   async function setQty(a: Activity, quantity: number) {
     try {
       await actions.setActivityQuantity(a.id, quantity);
-      if (quantity <= 0) notify("Entry deleted.");
+      if (quantity <= 0) notify(t("Entry deleted."));
     } catch (e) {
       notify((e as Error).message);
     }
@@ -487,14 +488,14 @@ function WeekEntries({ week, rows, counters }: { week: string; rows: Activity[];
   return (
     <Card>
       <CardTitle
-        sub={week === currentWeek() ? "Change an amount or delete an entry" : `Week of ${weekTitle(week)} · change an amount or delete an entry`}
-        action={<Link href="/history" className="inline-flex h-9 items-center rounded-full px-3 text-sm font-medium text-accent hover:bg-accent/8">Full history</Link>}
+        sub={week === currentWeek() ? t("Change an amount or delete an entry") : t("Week of {week} · change an amount or delete an entry", { week: weekTitle(week) })}
+        action={<Link href="/history" className="inline-flex h-9 items-center rounded-full px-3 text-sm font-medium text-accent hover:bg-accent/8">{t("Full history")}</Link>}
       >
-        {week === currentWeek() ? "This week's entries" : `Entries · ${parshaOfWeek(week).english}`}
+        {week === currentWeek() ? t("This week's entries") : t("Entries · {parsha}", { parsha: parshaOfWeek(week).local })}
       </CardTitle>
       {rows.length === 0 ? (
-        <Empty title="Nothing logged this week" icon={ClipboardList}>
-          Tap a Mivtza above to add one.
+        <Empty title={t("Nothing logged this week")} icon={ClipboardList}>
+          {t("Tap a Mivtza above to add one.")}
         </Empty>
       ) : (
         <ul className={listClass}>
@@ -504,7 +505,7 @@ function WeekEntries({ week, rows, counters }: { week: string; rows: Activity[];
               <>
                 <RowIcon a={a} counters={counters} />
                 <span className="min-w-0 flex-1">
-                  <span className="block font-medium">{categoryName(a, data.categories)}</span>
+                  <span className="block font-medium">{t(categoryName(a, data.categories))}</span>
                   <span className="block truncate text-sm text-muted">{formatDay(a.activity_date)}</span>
                 </span>
               </>
@@ -513,21 +514,21 @@ function WeekEntries({ week, rows, counters }: { week: string; rows: Activity[];
             <li key={a.id} className="flex flex-wrap items-center gap-3 px-6 py-3">
               <RowIcon a={a} counters={counters} />
               <span className="min-w-0 flex-1">
-                <span className="block font-medium">{categoryName(a, data.categories)}</span>
+                <span className="block font-medium">{t(categoryName(a, data.categories))}</span>
                 <span className="block truncate text-sm text-muted">
                   {formatDay(a.activity_date)}
                   {a.notes ? ` · ${a.notes}` : ""}
                 </span>
               </span>
               <span className="flex items-center gap-1">
-                <IconButton aria-label="One less" disabled={a.quantity <= 1} onClick={() => setQty(a, a.quantity - 1)}>
+                <IconButton aria-label={t("One less")} disabled={a.quantity <= 1} onClick={() => setQty(a, a.quantity - 1)}>
                   <Minus size={18} />
                 </IconButton>
                 <span className="tabular w-8 text-center text-xl">{a.quantity}</span>
-                <IconButton aria-label="One more" onClick={() => setQty(a, a.quantity + 1)}>
+                <IconButton aria-label={t("One more")} onClick={() => setQty(a, a.quantity + 1)}>
                   <Plus size={18} />
                 </IconButton>
-                <IconButton aria-label="Delete entry" onClick={() => setQty(a, 0)}>
+                <IconButton aria-label={t("Delete entry")} onClick={() => setQty(a, 0)}>
                   <Trash2 size={18} />
                 </IconButton>
               </span>
@@ -583,18 +584,18 @@ function EveryoneStrip({ week }: { week: string }) {
   // Only mivtzoim someone actually did this week.
   const items = counters.map((c) => ({ c, total: sum(rows.filter(c.matches)) })).filter((x) => x.total > 0);
   if (items.length === 0) return null;
-  const title = week === currentWeek() ? "Everyone this week" : `Everyone · ${parshaOfWeek(week).english}`;
+  const title = week === currentWeek() ? t("Everyone this week") : t("Everyone · {parsha}", { parsha: parshaOfWeek(week).local });
 
   const chip = ({ c, total }: (typeof items)[number], key: string) => (
     <div
       key={key}
-      className={cx("flex items-center gap-3 rounded-2xl py-2 pr-5 pl-2", c.soft)}
+      className={cx("flex items-center gap-3 rounded-2xl py-2 pe-5 ps-2", c.soft)}
       style={c.custom ? { background: `color-mix(in srgb, ${c.color} 18%, var(--card))` } : undefined}
     >
       <span className={cx("grid h-10 w-10 shrink-0 place-items-center rounded-xl", c.chip)} style={c.custom ? { background: c.color } : undefined}>
         <c.icon size={20} />
       </span>
-      <span className="whitespace-nowrap font-medium">{c.title}</span>
+      <span className="whitespace-nowrap font-medium">{t(c.title)}</span>
       <span className="tabular text-2xl">{total}</span>
     </div>
   );
@@ -616,7 +617,7 @@ function EveryoneStrip({ week }: { week: string }) {
       <ul className="sr-only">
         {items.map(({ c, total }) => (
           <li key={c.key}>
-            {c.title}: {total}
+            {t(c.title)}: {total}
           </li>
         ))}
       </ul>
@@ -630,7 +631,7 @@ function EveryoneStrip({ week }: { week: string }) {
       >
         <div className="marquee-track flex w-max" style={{ animationDuration: `${copy.length * 3}s` }}>
           {[0, 1].map((n) => (
-            <div key={n} className="flex shrink-0 gap-3 pr-3">
+            <div key={n} className="flex shrink-0 gap-3 pe-3">
               {copy.map((item, i) => chip(item, `${item.c.key}-${i}`))}
             </div>
           ))}
@@ -660,7 +661,7 @@ function PhotoHero({ week }: { week: string }) {
   if (shown.length === 0) return null;
   const on = k % shown.length;
   return (
-    <Link href="/photos" aria-label="Open the Photos page" className="relative block h-56 overflow-hidden rounded-[28px] bg-ink text-white sm:h-72">
+    <Link href="/photos" aria-label={t("Open the Photos page")} className="relative block h-56 overflow-hidden rounded-[28px] bg-ink text-white sm:h-72">
       {shown.map((p, i) => (
         <img
           key={p.id}
@@ -675,7 +676,7 @@ function PhotoHero({ week }: { week: string }) {
           {parshaOfWeek(week).hebrew}
         </span>
         {total > 0 && <span className="tabular text-5xl leading-none font-medium">{total}</span>}
-        <span className="text-sm opacity-90">{total > 0 ? "Mivtzoim this week · see the photos" : "See this week's photos"}</span>
+        <span className="text-sm opacity-90">{total > 0 ? t("Mivtzoim this week · see the photos") : t("See this week's photos")}</span>
       </span>
     </Link>
   );
@@ -693,23 +694,24 @@ function WeekPicker({ week, onChange }: { week: string; onChange(week: string): 
           {parsha.hebrew}
         </p>
         <p className="mt-1 text-sm text-muted">
-          {parsha.english} · {weekLabel(week)}
+          {/* In Hebrew the line above already says the parsha, so just the date here. */}
+          {getLang() === "he" ? weekLabel(week) : `${parsha.local} · ${weekLabel(week)}`}
           {week !== thisWeek && (
-            <button type="button" onClick={() => onChange(thisWeek)} className="ml-2 font-medium text-accent hover:underline">
-              Back to this week
+            <button type="button" onClick={() => onChange(thisWeek)} className="ms-2 font-medium text-accent hover:underline">
+              {t("Back to this week")}
             </button>
           )}
         </p>
       </div>
       <div className="w-full sm:w-auto">
         <label htmlFor="week-picker" className="sr-only">
-          Week
+          {t("Week")}
         </label>
         <Select id="week-picker" value={week} onChange={(e) => onChange(e.target.value)} className="h-11 py-2 text-sm sm:w-auto sm:min-w-72">
           {weeks.map((w) => (
             <option key={w} value={w}>
-              {w === thisWeek ? "This week · " : ""}
-              {parshaOfWeek(w).english} · {weekLabel(w)}
+              {w === thisWeek ? `${t("This week")} · ` : ""}
+              {parshaOfWeek(w).local} · {weekLabel(w)}
             </option>
           ))}
         </Select>
@@ -723,8 +725,8 @@ function WeeklyChart({ rows, last }: { rows: Activity[]; last: string }) {
   const counters = useCounters();
   // One colored part per front-page mivtza, plus "Other" for people's own categories.
   const series: { key: string; label: string; color: string; matches: (a: Activity) => boolean }[] = [
-    ...counters.map((c) => ({ key: c.key, label: c.short, color: c.color, matches: c.matches })),
-    { key: "other", label: "Other", color: "var(--outline)", matches: (a: Activity) => !counters.some((c) => c.matches(a)) },
+    ...counters.map((c) => ({ key: c.key, label: t(c.short), color: c.color, matches: c.matches })),
+    { key: "other", label: t("Other"), color: "var(--outline)", matches: (a: Activity) => !counters.some((c) => c.matches(a)) },
   ];
   const totals = weeks.map((w) => {
     const inWeek = rows.filter((a) => activityWeek(a) === w);
@@ -737,9 +739,9 @@ function WeeklyChart({ rows, last }: { rows: Activity[]; last: string }) {
   return (
     <div className="px-6 pt-4 pb-6">
       <div className="flex gap-3">
-        <div className="tabular relative h-52 w-7 shrink-0 text-right text-[11px] text-muted" aria-hidden>
+        <div className="tabular relative h-52 w-7 shrink-0 text-end text-[11px] text-muted" aria-hidden>
           {ticks.map((t, i) => (
-            <span key={t} className="absolute right-0 -translate-y-1/2 leading-none" style={{ top: `${(i / (ticks.length - 1)) * 100}%` }}>
+            <span key={t} className="absolute end-0 -translate-y-1/2 leading-none" style={{ top: `${(i / (ticks.length - 1)) * 100}%` }}>
               {Number.isInteger(t) ? t : t.toFixed(1)}
             </span>
           ))}
@@ -777,16 +779,16 @@ function WeeklyChart({ rows, last }: { rows: Activity[]; last: string }) {
           </div>
         </div>
       </div>
-      <div className="mt-2 flex gap-2 pl-10 sm:gap-3">
-        {totals.map((t, i) => (
-          <span key={t.week} className={cx("flex-1 text-center text-[11px]", i === totals.length - 1 ? "font-bold text-ink" : "text-muted")}>
-            {t.week === currentWeek() ? (
-              "Now"
+      <div className="mt-2 flex gap-2 ps-10 sm:gap-3">
+        {totals.map((wk, i) => (
+          <span key={wk.week} className={cx("flex-1 text-center text-[11px]", i === totals.length - 1 ? "font-bold text-ink" : "text-muted")}>
+            {wk.week === currentWeek() ? (
+              t("Now")
             ) : (
               <>
-                <span className="hidden sm:block">{formatShort(t.week)}</span>
-                <span className="hidden truncate text-[10px] sm:block">{parshaName(t.week)}</span>
-                <span className="sm:hidden">{Number(t.week.slice(5, 7))}/{Number(t.week.slice(8))}</span>
+                <span className="hidden sm:block">{formatShort(wk.week)}</span>
+                <span className="hidden truncate text-[10px] sm:block">{parshaName(wk.week)}</span>
+                <span className="sm:hidden">{getLang() === "en" ? `${Number(wk.week.slice(5, 7))}/${Number(wk.week.slice(8))}` : `${Number(wk.week.slice(8))}/${Number(wk.week.slice(5, 7))}`}</span>
               </>
             )}
           </span>

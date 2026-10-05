@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } f
 import { Camera, ImageUp, ScanLine, X } from "lucide-react";
 import { cardPicture, detectCard, findCard, loadPhoto, parseCard, readText, straighten, type CardDetails, type Corners } from "@/lib/card-scan";
 import { Button, IconButton, Modal, cx } from "./ui";
+import { t } from "@/lib/i18n";
 
 export interface ScannedCard {
   details: CardDetails;
@@ -18,7 +19,7 @@ export function ScanCardButton({ onScanned, className }: { onScanned(card: Scann
   return (
     <>
       <Button variant="secondary" onClick={() => setOpen(true)} className={className}>
-        <ScanLine size={18} aria-hidden /> Scan a business card
+        <ScanLine size={18} aria-hidden /> {t("Scan a business card")}
       </Button>
       {open && (
         <CardScanner
@@ -48,15 +49,15 @@ function CardScanner({ onClose, onDone }: { onClose(): void; onDone(card: Scanne
       const picture = await cardPicture(flat);
       const preview = URL.createObjectURL(picture);
       setStage({ kind: "reading", preview });
-      setStatus("Getting the reader ready…");
+      setStatus(t("Getting the reader ready…"));
       const lines = await readText(flat, (step, share) =>
-        setStatus(step === "download" ? `Getting the reader ready… ${Math.round(share * 100)}%` : `Reading the card… ${Math.round(share * 100)}%`),
+        setStatus(step === "download" ? t("Getting the reader ready… {pct}%", { pct: Math.round(share * 100) }) : t("Reading the card… {pct}%", { pct: Math.round(share * 100) })),
       );
       onDone({ details: parseCard(lines), picture, preview });
     } catch (e) {
       setStatus(null);
       setStage({ kind: "adjust", photo, corners });
-      setError(navigator.onLine ? `Couldn't read the card: ${(e as Error).message}` : "The first scan needs internet to get the reader. Try again when you're online.");
+      setError(navigator.onLine ? t("Couldn't read the card: {error}", { error: (e as Error).message }) : t("The first scan needs internet to get the reader. Try again when you're online."));
     }
   }
 
@@ -73,10 +74,10 @@ function CardScanner({ onClose, onDone }: { onClose(): void; onDone(card: Scanne
   const busy = stage.kind === "reading";
   const subtitle =
     stage.kind === "camera"
-      ? "Place the card inside the frame. It takes the picture by itself."
+      ? t("Place the card inside the frame. It takes the picture by itself.")
       : stage.kind === "adjust"
-        ? "Drag the four dots onto the card's corners, then tap Read card."
-        : "Reading the details off the card…";
+        ? t("Drag the four dots onto the card's corners, then tap Read card.")
+        : t("Reading the details off the card…");
 
   return (
     <Modal onClose={() => !busy && onClose()} blur>
@@ -84,11 +85,11 @@ function CardScanner({ onClose, onDone }: { onClose(): void; onDone(card: Scanne
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
             <h2 id="scan-title" className="text-xl font-medium">
-              Scan a business card
+              {t("Scan a business card")}
             </h2>
             <p className="text-sm text-muted">{subtitle}</p>
           </div>
-          <IconButton aria-label="Cancel" onClick={onClose} disabled={busy}>
+          <IconButton aria-label={t("Cancel")} onClick={onClose} disabled={busy}>
             <X size={20} />
           </IconButton>
         </div>
@@ -105,7 +106,7 @@ function CardScanner({ onClose, onDone }: { onClose(): void; onDone(card: Scanne
         {stage.kind === "adjust" && <CornerEditor photo={stage.photo} corners={stage.corners} onChange={(corners) => setStage({ ...stage, corners })} />}
         {stage.kind === "reading" && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={stage.preview} alt="The card" className="w-full rounded-2xl bg-white shadow-card" />
+          <img src={stage.preview} alt={t("The card")} className="w-full rounded-2xl bg-white shadow-card" />
         )}
 
         {status && <p className="text-sm text-muted">{status}</p>}
@@ -114,7 +115,7 @@ function CardScanner({ onClose, onDone }: { onClose(): void; onDone(card: Scanne
         <div className="flex flex-wrap items-center justify-between gap-2">
           {stage.kind !== "reading" ? (
             <Button variant="ghost" className="h-10 px-3" onClick={() => fileInput.current?.click()}>
-              <ImageUp size={18} aria-hidden /> Choose a photo instead
+              <ImageUp size={18} aria-hidden /> {t("Choose a photo instead")}
             </Button>
           ) : (
             <span />
@@ -122,9 +123,9 @@ function CardScanner({ onClose, onDone }: { onClose(): void; onDone(card: Scanne
           {stage.kind === "adjust" && (
             <span className="flex gap-2">
               <Button variant="ghost" onClick={() => setStage({ kind: "camera" })}>
-                <Camera size={18} aria-hidden /> Retake
+                <Camera size={18} aria-hidden /> {t("Retake")}
               </Button>
-              <Button onClick={() => read(stage.photo, stage.corners)}>Read card</Button>
+              <Button onClick={() => read(stage.photo, stage.corners)}>{t("Read card")}</Button>
             </span>
           )}
         </div>
@@ -178,18 +179,18 @@ function CameraFrame({ onCapture, onUnavailable }: { onCapture(photo: HTMLCanvas
       try {
         if (!navigator.mediaDevices?.getUserMedia) throw new Error("no camera");
         stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
-        if (cancelled) return stream.getTracks().forEach((t) => t.stop());
+        if (cancelled) return stream.getTracks().forEach((track) => track.stop());
         const v = video.current!;
         v.srcObject = stream;
         v.onloadedmetadata = () => setSize({ w: v.videoWidth, h: v.videoHeight });
         await v.play().catch(() => {});
       } catch {
-        if (!cancelled) onUnavailable("The camera isn't available here, so pick a photo of the card instead.");
+        if (!cancelled) onUnavailable(t("The camera isn't available here, so pick a photo of the card instead."));
       }
     })();
     return () => {
       cancelled = true;
-      stream?.getTracks().forEach((t) => t.stop());
+      stream?.getTracks().forEach((track) => track.stop());
     };
   }, [onUnavailable]);
 
@@ -269,17 +270,17 @@ function CameraFrame({ onCapture, onUnavailable }: { onCapture(photo: HTMLCanvas
             style={{ left: `${guide.x * 100}%`, top: `${guide.y * 100}%`, width: `${guide.w * 100}%`, height: `${guide.h * 100}%`, boxShadow: "0 0 0 9999px rgba(0,0,0,.5)" }}
           >
             <span className={cx("absolute inset-x-0 -top-9 text-center text-sm font-medium text-white drop-shadow", ok && "text-sage")}>
-              {ok ? "Hold still…" : "Place the card here"}
+              {ok ? t("Hold still…") : t("Place the card here")}
             </span>
             {ok && <span className="absolute inset-x-0 bottom-0 h-1 origin-left bg-sage transition-transform duration-150" style={{ transform: `scaleX(${Math.min(1, steady / STEADY)})` }} />}
           </div>
         )}
         <div className={cx("pointer-events-none absolute inset-0 bg-white transition-opacity duration-200", flash ? "opacity-80" : "opacity-0")} />
-        {!size && <p className="absolute inset-0 grid place-items-center text-sm text-white/80">Opening the camera…</p>}
+        {!size && <p className="absolute inset-0 grid place-items-center text-sm text-white/80">{t("Opening the camera…")}</p>}
       </div>
       <button
         type="button"
-        aria-label="Take the picture"
+        aria-label={t("Take the picture")}
         disabled={!size}
         onClick={() => take((last.current && guideCornersFromLast(last.current, guide)) || guideCorners()!, false)}
         className="mx-auto grid h-16 w-16 place-items-center rounded-full border-4 border-ink/15 bg-card shadow-card disabled:opacity-40"
@@ -335,7 +336,7 @@ function CornerEditor({ photo, corners, onChange }: { photo: HTMLCanvasElement; 
   return (
     <div ref={box} className="relative mx-auto w-full overflow-hidden rounded-2xl bg-black" style={{ aspectRatio: ratio, maxHeight: "55dvh", maxWidth: `calc(55dvh * ${ratio})` }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt="The photo of the card" className="absolute inset-0 h-full w-full" />
+      <img src={src} alt={t("The photo of the card")} className="absolute inset-0 h-full w-full" />
       <svg viewBox="0 0 1 1" preserveAspectRatio="none" className="pointer-events-none absolute inset-0 h-full w-full">
         <path fillRule="evenodd" fill="rgba(0,0,0,.55)" d={`M0 0H1V1H0Z M${corners.map((p) => `${p.x} ${p.y}`).join(" L")} Z`} />
         <polygon points={corners.map((p) => `${p.x},${p.y}`).join(" ")} fill="none" stroke="white" strokeWidth={2} vectorEffect="non-scaling-stroke" />
@@ -344,7 +345,7 @@ function CornerEditor({ photo, corners, onChange }: { photo: HTMLCanvasElement; 
         <button
           key={i}
           type="button"
-          aria-label={["Top-left corner", "Top-right corner", "Bottom-right corner", "Bottom-left corner"][i]}
+          aria-label={t(["Top-left corner", "Top-right corner", "Bottom-right corner", "Bottom-left corner"][i])}
           onPointerDown={(e: ReactPointerEvent) => {
             e.preventDefault();
             dragging.current = i;

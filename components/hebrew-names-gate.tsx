@@ -6,6 +6,7 @@ import { useData } from "@/lib/data";
 import { chavrusasOf, encodeChavrusa, type Chavrusa } from "@/lib/chavrusa";
 import { ChavrusaFields } from "./chavrusa-fields";
 import { Button, Modal } from "./ui";
+import { t } from "@/lib/i18n";
 
 /** Chavrusas with an English name but no Hebrew name or mother's name yet. */
 export function missingHebrewNames(partners: string[] | null | undefined) {
@@ -26,11 +27,11 @@ export function HebrewNamesGate() {
     e.preventDefault();
     setError("");
     const filled = list.filter((c) => c.name.trim() || c.hebrew.trim());
-    if (filled.some((c) => !c.hebrew.trim() || !c.mother.trim())) return setError("Fill in the Hebrew name and the mother's name for each Chavrusa.");
+    if (filled.some((c) => !c.hebrew.trim() || !c.mother.trim())) return setError(t("Fill in the Hebrew name and the mother's name for each Chavrusa."));
     setBusy(true);
     try {
       await auth.updateProfile(me?.name ?? "", filled.map(encodeChavrusa));
-      notify("Thank you! The Hebrew names are saved.");
+      notify(t("Thank you! The Hebrew names are saved."));
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -53,10 +54,10 @@ export function HebrewNamesGate() {
         </span>
         <div className="grid gap-1">
           <h2 id="hebrew-title" className="text-xl font-medium">
-            Add your Chavrusas&apos; Hebrew names
+            {t("Add your Chavrusas' Hebrew names")}
           </h2>
           <p className="text-sm text-muted">
-            Your account is missing the Hebrew name and the mother&apos;s name of your Chavrusas. Please fill them in to continue.
+            {t("Your account is missing the Hebrew name and the mother's name of your Chavrusas. Please fill them in to continue.")}
           </p>
         </div>
         <ChavrusaFields value={list} onChange={setList} idPrefix="gate-partner" requireHebrew />
@@ -67,10 +68,10 @@ export function HebrewNamesGate() {
         )}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Button type="button" variant="ghost" className="h-10 px-3" onClick={() => auth.signOut()}>
-            <LogOut size={16} aria-hidden /> Sign out
+            <LogOut size={16} aria-hidden /> {t("Sign out")}
           </Button>
           <Button type="submit" disabled={busy}>
-            {busy ? "Saving…" : "Save and continue"}
+            {busy ? t("Saving…") : t("Save and continue")}
           </Button>
         </div>
       </form>

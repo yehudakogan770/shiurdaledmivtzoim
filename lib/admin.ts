@@ -7,5 +7,6 @@ export function isAdminIdentifier(login: string | null | undefined) {
 
 /** How a sign-in name is shown: "@mendel", or an email address as it is. */
 export function handle(login: string) {
-  return login.includes("@") ? login : `@${login}`;
+  // Kept left-to-right even on the Hebrew site, so it reads "@mendel", not "mendel@".
+  return `\u2066${login.includes("@") ? login : `@${login}`}\u2069`;
 }

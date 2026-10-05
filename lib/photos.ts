@@ -3,6 +3,8 @@
  * side for the full photo and 480 for the preview on the scrolling wall. A 4 MB phone photo
  * becomes roughly 100 KB and still looks sharp on screen.
  */
+import { t } from "@/lib/i18n";
+
 const FULL = 1280;
 const THUMB = 480;
 
@@ -22,7 +24,7 @@ function loadImage(file: Blob): Promise<HTMLImageElement> {
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => resolve(img); // browsers turn photos upright from their EXIF data
-    img.onerror = () => reject(new Error("That file isn't a photo this phone can open."));
+    img.onerror = () => reject(new Error(t("That file isn't a photo this phone can open.")));
     img.src = url;
   });
 }
@@ -33,7 +35,7 @@ function encode(canvas: HTMLCanvasElement, quality: number): Promise<Blob> {
     canvas.toBlob(
       (webp) => {
         if (webp && webp.type === "image/webp") return resolve(webp);
-        canvas.toBlob((jpeg) => (jpeg ? resolve(jpeg) : reject(new Error("Couldn't prepare the photo."))), "image/jpeg", quality + 0.04);
+        canvas.toBlob((jpeg) => (jpeg ? resolve(jpeg) : reject(new Error(t("Couldn't prepare the photo.")))), "image/jpeg", quality + 0.04);
       },
       "image/webp",
       quality,

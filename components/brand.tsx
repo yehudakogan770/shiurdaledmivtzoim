@@ -1,4 +1,5 @@
 import { cx } from "./ui";
+import { t } from "@/lib/i18n";
 
 /** The brand mark: the letter daled (ד), for Shiur Daled, drawn as shapes so it renders without fonts. */
 export function LogoMark({ className }: { className?: string }) {
@@ -15,8 +16,8 @@ export function Wordmark({ name = "Shiur Daled", tagline = "Mivtzoim" }: { name?
     <span className="flex items-center gap-3">
       <LogoMark className="h-10 w-10" />
       <span className="leading-tight">
-        <span className="block text-lg font-medium text-ink">{name}</span>
-        <span className="block text-sm text-muted">{tagline}</span>
+        <span className="block text-lg font-medium text-ink">{t(name)}</span>
+        <span className="block text-sm text-muted">{t(tagline)}</span>
       </span>
     </span>
   );

@@ -8,6 +8,8 @@ export interface Profile {
   /** Mivtzoim chavrusas (partners) who go out with this person. */
   partners?: string[] | null;
   role?: "user" | "admin";
+  /** The site's language for this account: "en", "he", "fr" or "es". */
+  language?: string | null;
 }
 
 /** "Mendel Cohen & Yossi Levi" */
@@ -40,6 +42,8 @@ export interface SignUpInput {
   username: string;
   email: string;
   password: string;
+  /** Chosen on the sign-up form; English unless they pick another. */
+  language?: string;
 }
 
 export interface Group {

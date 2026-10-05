@@ -3,6 +3,7 @@
 import { Plus, X } from "lucide-react";
 import { BLANK_CHAVRUSA, chavrusasOf, hebrewName, type Chavrusa } from "@/lib/chavrusa";
 import { Button, IconButton, Input, cx } from "./ui";
+import { t } from "@/lib/i18n";
 
 /**
  * The Chavrusas on a route: each one's English name, and under it the Hebrew name and the
@@ -33,14 +34,14 @@ export function ChavrusaFields({
             <div className="flex items-center gap-2">
               <Input
                 id={`${idPrefix}-${i}`}
-                aria-label={`Chavrusa ${i + 1}, English name`}
+                aria-label={t("Chavrusa {n}, English name", { n: i + 1 })}
                 value={c.name}
                 onChange={(e) => set(i, { name: e.target.value })}
-                placeholder="Chavrusa's name"
+                placeholder={t("Chavrusa's name")}
                 autoComplete="off"
               />
               {list.length > 1 && (
-                <IconButton aria-label={`Remove Chavrusa ${i + 1}`} onClick={() => onChange(list.filter((_, j) => j !== i))}>
+                <IconButton aria-label={t("Remove Chavrusa {n}", { n: i + 1 })} onClick={() => onChange(list.filter((_, j) => j !== i))}>
                   <X size={18} />
                 </IconButton>
               )}
@@ -51,7 +52,7 @@ export function ChavrusaFields({
                 id={`${idPrefix}-${i}-hebrew`}
                 dir="rtl"
                 lang="he"
-                aria-label={`Chavrusa ${i + 1}, Hebrew name`}
+                aria-label={t("Chavrusa {n}, Hebrew name", { n: i + 1 })}
                 value={c.hebrew}
                 required={needHebrew}
                 onChange={(e) => set(i, { hebrew: e.target.value })}
@@ -68,7 +69,7 @@ export function ChavrusaFields({
                 id={`${idPrefix}-${i}-mother`}
                 dir="rtl"
                 lang="he"
-                aria-label={`Chavrusa ${i + 1}, mother's Hebrew name`}
+                aria-label={t("Chavrusa {n}, mother's Hebrew name", { n: i + 1 })}
                 value={c.mother}
                 required={needHebrew}
                 onChange={(e) => set(i, { mother: e.target.value })}
@@ -83,10 +84,10 @@ export function ChavrusaFields({
         );
       })}
       <div className="flex items-center justify-between gap-2">
-        <p className="px-1 text-xs text-muted">English name, then the Hebrew name and the mother&apos;s Hebrew name.</p>
+        <p className="px-1 text-xs text-muted">{t("English name, then the Hebrew name and the mother's Hebrew name.")}</p>
         {list.length < max && (
           <Button variant="ghost" className="h-9 shrink-0 px-3" onClick={() => onChange([...list, BLANK_CHAVRUSA])}>
-            <Plus size={16} aria-hidden /> Add another
+            <Plus size={16} aria-hidden /> {t("Add another")}
           </Button>
         )}
       </div>

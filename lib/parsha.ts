@@ -1,5 +1,6 @@
 import { HDate, Locale, Sedra } from "@hebcal/core";
 import { activityWeek, addDays, formatDay, parseDate, weekLabel } from "./dates";
+import { getLang, hebcalName, t } from "./i18n";
 
 const sedras = new Map<number, Sedra>();
 /** Remove vowels and cantillation; the maqaf that joins words becomes a space: "לך לך". */
@@ -15,6 +16,10 @@ export interface Parsha {
   hebrew: string;
   /** Parshas Bereishis, or Sukkos */
   english: string;
+  /** In the site's language: Parshas Bereishis, פרשת בראשית, Paracha Berechit, Parashá Bereshit. */
+  local: string;
+  /** Just the name in the site's language, without "Parshas". */
+  name: string;
 }
 
 /** The parsha read on the Shabbos of the mivtzoim week starting on this Friday (diaspora). */
@@ -30,17 +35,20 @@ export function parshaOfWeek(fridayISO: string): Parsha {
   // Double parshiyos get a space between them too: "ויקהל פקודי".
   const he = parsha.map((p) => stripNikud(Locale.gettext(p, "he"))).join(" ");
   const en = parsha.map((p) => Locale.gettext(p, "ashkenazi")).join("-");
-  return chag ? { hebrew: he, english: en } : { hebrew: `פרשת ${he}`, english: `Parshas ${en}` };
+  const name = getLang() === "he" ? he : getLang() === "en" ? en : parsha.map(hebcalName).join("-");
+  return chag
+    ? { hebrew: he, english: en, local: name, name }
+    : { hebrew: `פרשת ${he}`, english: `Parshas ${en}`, local: `${t("Parshas")} ${name}`, name };
 }
 
 /** Just the name, without "Parshas": "Ki Savo", or the Yom Tov name. */
 export function parshaName(fridayISO: string) {
-  return parshaOfWeek(fridayISO).english.replace(/^Parshas /, "");
+  return parshaOfWeek(fridayISO).name;
 }
 
 /** "Parshas Ki Savo · Fri Sep 18": the week's parsha with the Friday it starts. */
 export function weekTitle(fridayISO: string) {
-  return `${parshaOfWeek(fridayISO).english} · ${weekLabel(fridayISO)}`;
+  return `${parshaOfWeek(fridayISO).local} · ${weekLabel(fridayISO)}`;
 }
 
 /** "Tue Sep 22 (Ha'azinu)": an entry's day with the parsha of its week. */

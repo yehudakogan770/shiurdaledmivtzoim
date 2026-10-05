@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { MapPin } from "lucide-react";
 import { Input, cx } from "./ui";
+import { t } from "@/lib/i18n";
 
 /**
  * Address box with suggestions as you type. Free by default: OpenStreetMap's address search
@@ -348,7 +349,7 @@ export function AddressInput({
             ))}
           </ul>
           {/* Each service asks to be credited next to its suggestions. */}
-          <p className="border-t border-line/60 px-4 py-1.5 text-right text-[11px] text-muted">{source === "google" ? "powered by Google" : "Suggestions © OpenStreetMap"}</p>
+          <p className="border-t border-line/60 px-4 py-1.5 text-end text-[11px] text-muted">{source === "google" ? t("powered by Google") : t("Suggestions © OpenStreetMap")}</p>
         </div>
       )}
     </div>

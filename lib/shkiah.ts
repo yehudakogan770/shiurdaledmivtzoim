@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { GeoLocation, Zmanim } from "@hebcal/core";
 import { addDays, parseDate, toISODate, today } from "./dates";
+import { locale } from "./i18n";
 
 interface Place {
   lat: number;
@@ -32,8 +33,8 @@ function fridayShkiah(place: Place, tz: string) {
     let sunset = new Zmanim(gloc, friday, false).shkiah();
     if (sunset.getTime() < now.getTime()) sunset = new Zmanim(gloc, parseDate(addDays(toISODate(friday), 7)), false).shkiah();
     if (Number.isNaN(sunset.getTime())) return null;
-    const time = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: tz }).format(sunset);
-    const date = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: tz }).format(sunset);
+    const time = new Intl.DateTimeFormat(locale(), { hour: "numeric", minute: "2-digit", timeZone: tz }).format(sunset);
+    const date = new Intl.DateTimeFormat(locale(), { month: "short", day: "numeric", timeZone: tz }).format(sunset);
     return { time, date };
   } catch {
     return null;

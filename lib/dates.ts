@@ -1,3 +1,6 @@
+import { HDate } from "@hebcal/core";
+import { getLang, locale, t } from "./i18n";
+
 /**
  * Dates are stored as local YYYY-MM-DD strings. A mivtzoim week runs from
  * Friday 5:00am to the next Friday 5:00am, and is named by the date of its
@@ -74,22 +77,29 @@ export function allWeeks() {
   return out;
 }
 
-const short = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
-const long = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric" });
+// Date formats in the site's language, made once per language.
+const formats = new Map<string, Intl.DateTimeFormat>();
+function format(options: Intl.DateTimeFormatOptions, calendar = "") {
+  const key = locale() + calendar + JSON.stringify(options);
+  let f = formats.get(key);
+  if (!f) formats.set(key, (f = new Intl.DateTimeFormat(locale() + calendar, options)));
+  return f;
+}
 
+/** "Sep 25" */
 export function formatShort(s: string) {
-  return short.format(parseDate(s));
+  return format({ month: "short", day: "numeric" }).format(parseDate(s));
 }
 
 export function formatDay(s: string) {
-  if (s === today()) return "Today";
-  if (s === addDays(today(), -1)) return "Yesterday";
-  return long.format(parseDate(s));
+  if (s === today()) return t("Today");
+  if (s === addDays(today(), -1)) return t("Yesterday");
+  return format({ weekday: "short", month: "short", day: "numeric" }).format(parseDate(s));
 }
 
 /** "Fri Sep 25" (the Friday the week starts) */
 export function weekLabel(start: string) {
-  return `Fri ${formatShort(start)}`;
+  return format({ weekday: "short", month: "short", day: "numeric" }).format(parseDate(start));
 }
 
 const HEBREW_MONTHS: Record<string, string> = {
@@ -101,9 +111,15 @@ const HEBREW_MONTHS: Record<string, string> = {
   Av: "Menachem Av",
 };
 
-/** Today's Hebrew date, e.g. "13 Tishrei 5787". */
+/** Today's Hebrew date, e.g. "13 Tishrei 5787" (in Hebrew: "י״ג תשרי תשפ״ז"). */
 export function hebrewDate(d = new Date()) {
   try {
+    if (getLang() === "he") return new HDate(d).renderGematriya(true);
+    if (getLang() !== "en") {
+      // Without the era ("A. M.") that French and Spanish add after the year.
+      const parts = format({ day: "numeric", month: "long", year: "numeric" }, "-u-ca-hebrew").formatToParts(d);
+      return parts.filter((p) => p.type !== "era").map((p) => p.value).join("").replace(/\s+$/, "").replace(/\s{2,}/g, " ");
+    }
     const parts = new Intl.DateTimeFormat("en-u-ca-hebrew", { day: "numeric", month: "long", year: "numeric" }).formatToParts(d);
     const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
     const month = get("month");
@@ -114,5 +130,5 @@ export function hebrewDate(d = new Date()) {
 }
 
 export function longDate(d = new Date()) {
-  return new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(d);
+  return format({ weekday: "long", month: "long", day: "numeric" }).format(d);
 }

@@ -1,4 +1,5 @@
 import { displayName, type LocationCard, type Photo, type Profile, type SiteSettings, type TableName, type Tables } from "../types";
+import { t } from "../i18n";
 import { isAdminIdentifier } from "../admin";
 import { checkEmail, checkPassword, loginKey, newId, normalizeUsername, type Backend } from "./index";
 
@@ -59,12 +60,12 @@ function roleOf(p: LocalProfile): "user" | "admin" {
 }
 
 function publicProfile(p: LocalProfile): Profile {
-  return { id: p.id, name: p.name, username: p.username, email: p.email ?? null, partners: p.partners ?? [], role: roleOf(p) };
+  return { id: p.id, name: p.name, username: p.username, email: p.email ?? null, partners: p.partners ?? [], role: roleOf(p), language: p.language ?? null };
 }
 
 function requireAdmin(s: Store) {
   const me = s.profiles.find((x) => x.id === s.session);
-  if (!me || roleOf(me) !== "admin") throw new Error("Only an admin can do that.");
+  if (!me || roleOf(me) !== "admin") throw new Error(t("Only an admin can do that."));
 }
 
 function save(store: Store) {
@@ -80,7 +81,9 @@ function save(store: Store) {
 export function createLocalBackend(): Backend {
   return {
     kind: "local",
-    storageLabel: "Saved in this browser on this device only.",
+    get storageLabel() {
+      return t("Saved in this browser on this device only.");
+    },
     hasAuth: true,
 
     async currentUser() {
@@ -93,20 +96,20 @@ export function createLocalBackend(): Backend {
       const s = load();
       const p = s.profiles.find((x) => x.username === username);
       if (!p || !p.password_hash || p.password_hash !== (await hashPassword(password, p.id))) {
-        throw new Error("That username and password don't match.");
+        throw new Error(t("That username and password don't match."));
       }
       s.session = p.id;
       save(s);
     },
-    async signUp({ name, partners, username: rawUsername, email: rawEmail, password }) {
+    async signUp({ name, partners, username: rawUsername, email: rawEmail, password, language }) {
       const username = normalizeUsername(rawUsername);
       const email = checkEmail(rawEmail);
       checkPassword(password);
       const s = load();
-      if (s.profiles.some((x) => x.username === username)) throw new Error("That username is taken. Try another.");
-      if (s.profiles.some((x) => x.email === email)) throw new Error("That email already has an account.");
+      if (s.profiles.some((x) => x.username === username)) throw new Error(t("That username is taken. Try another."));
+      if (s.profiles.some((x) => x.email === email)) throw new Error(t("That email already has an account."));
       const id = newId();
-      s.profiles.push({ id, name: name.trim(), partners, username, email, password_hash: await hashPassword(password, id) });
+      s.profiles.push({ id, name: name.trim(), partners, username, email, language: language || "en", password_hash: await hashPassword(password, id) });
       s.session = id;
       save(s);
       return { needsConfirmation: false };
@@ -116,6 +119,12 @@ export function createLocalBackend(): Backend {
       s.session = null;
       save(s);
     },
+    async setLanguage(language) {
+      const s = load();
+      const p = s.profiles.find((x) => x.id === s.session);
+      if (p) p.language = language;
+      save(s);
+    },
     async updateProfile({ name, partners }) {
       const s = load();
       const p = s.profiles.find((x) => x.id === s.session);
@@ -123,7 +132,7 @@ export function createLocalBackend(): Backend {
       save(s);
     },
     async requestPasswordReset() {
-      throw new Error("Password reset by email works once the site is connected to its online database. Until then, ask the admin for help.");
+      throw new Error(t("Password reset by email works once the site is connected to its online database. Until then, ask the admin for help."));
     },
     async updatePassword(password) {
       checkPassword(password);
@@ -136,12 +145,12 @@ export function createLocalBackend(): Backend {
     async verifyPassword(password) {
       const s = load();
       const p = s.profiles.find((x) => x.id === s.session);
-      if (!p || p.password_hash !== (await hashPassword(password, p.id))) throw new Error("Your current password isn't right.");
+      if (!p || p.password_hash !== (await hashPassword(password, p.id))) throw new Error(t("Your current password isn't right."));
     },
     async changeUsername(raw) {
       const username = normalizeUsername(raw);
       const s = load();
-      if (s.profiles.some((x) => x.id !== s.session && x.username === username)) throw new Error("That username is taken. Try another.");
+      if (s.profiles.some((x) => x.id !== s.session && x.username === username)) throw new Error(t("That username is taken. Try another."));
       const p = s.profiles.find((x) => x.id === s.session);
       if (p) p.username = username;
       save(s);
@@ -149,7 +158,7 @@ export function createLocalBackend(): Backend {
     async changeEmail(raw) {
       const email = checkEmail(raw);
       const s = load();
-      if (s.profiles.some((x) => x.id !== s.session && x.email === email)) throw new Error("That email already has an account.");
+      if (s.profiles.some((x) => x.id !== s.session && x.email === email)) throw new Error(t("That email already has an account."));
       const p = s.profiles.find((x) => x.id === s.session);
       if (p) p.email = email;
       save(s);
@@ -168,7 +177,7 @@ export function createLocalBackend(): Backend {
       const me = s.profiles.find((x) => x.id === s.session);
       const owner = !!me && (isAdminIdentifier(me.email) || isAdminIdentifier(me.username));
       const loc = s.locations.find((l) => l.id === card.location_id);
-      if (!me || !loc || loc.created_by !== card.user_id || (card.user_id !== me.id && !owner)) throw new Error("Only the person whose route it is can change this.");
+      if (!me || !loc || loc.created_by !== card.user_id || (card.user_id !== me.id && !owner)) throw new Error(t("Only the person whose route it is can change this."));
       const asData = (b: Blob) => new Promise<string>((res) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.readAsDataURL(b); });
       const old = (s.cards ?? []).find((c) => c.location_id === card.location_id);
       const data = image === undefined ? old?.data ?? null : image ? await asData(image) : null;
@@ -184,7 +193,7 @@ export function createLocalBackend(): Backend {
     },
     async uploadPhoto(full, thumb, info) {
       const s = load();
-      if (!s.session) throw new Error("Please sign in first.");
+      if (!s.session) throw new Error(t("Please sign in first."));
       const asData = (b: Blob) => new Promise<string>((res) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.readAsDataURL(b); });
       const id = newId();
       const photo = { id, user_id: s.session, path: `${id}`, thumb_path: `${id}-thumb`, width: info.width, height: info.height, color: info.color ?? null, bytes: full.size + thumb.size, created_at: new Date().toISOString() };
@@ -197,7 +206,7 @@ export function createLocalBackend(): Backend {
     async deletePhoto(photo) {
       const s = load();
       const me = s.profiles.find((x) => x.id === s.session);
-      if (!me || (photo.user_id !== me.id && roleOf(me) !== "admin")) throw new Error("Only the person who shared it, or an admin, can delete it.");
+      if (!me || (photo.user_id !== me.id && roleOf(me) !== "admin")) throw new Error(t("Only the person who shared it, or an admin, can delete it."));
       s.photos = (s.photos ?? []).filter((p) => p.id !== photo.id);
       save(s);
     },
@@ -231,7 +240,7 @@ export function createLocalBackend(): Backend {
     async joinGroup(code) {
       const s = load();
       const g = s.groups.find((x) => x.join_code === code.trim().toUpperCase());
-      if (!g) throw new Error("No group has that code.");
+      if (!g) throw new Error(t("No group has that code."));
       if (!s.group_members.some((m) => m.group_id === g.id && m.user_id === s.session)) {
         s.group_members.push({
           id: newId(),
@@ -275,7 +284,7 @@ export function createLocalBackend(): Backend {
       const s = load();
       requireAdmin(s);
       const p = s.profiles.find((x) => x.id === userId);
-      if (!p) throw new Error("No account found.");
+      if (!p) throw new Error(t("No account found."));
       p.password_hash = await hashPassword(password, p.id);
       save(s);
     },
@@ -284,19 +293,19 @@ export function createLocalBackend(): Backend {
       requireAdmin(s);
       const username = normalizeUsername(rawUsername);
       const email = checkEmail(rawEmail);
-      if (!name.trim()) throw new Error("Enter their name.");
-      if (s.profiles.some((x) => x.id !== userId && x.username === username)) throw new Error("That username is taken.");
-      if (s.profiles.some((x) => x.id !== userId && x.email === email)) throw new Error("That email already has an account.");
+      if (!name.trim()) throw new Error(t("Enter their name."));
+      if (s.profiles.some((x) => x.id !== userId && x.username === username)) throw new Error(t("That username is taken."));
+      if (s.profiles.some((x) => x.id !== userId && x.email === email)) throw new Error(t("That email already has an account."));
       const p = s.profiles.find((x) => x.id === userId);
-      if (!p) throw new Error("No account found.");
+      if (!p) throw new Error(t("No account found."));
       Object.assign(p, { name: name.trim(), username, email, partners });
       save(s);
     },
     async adminDeletePerson(userId) {
       const s = load();
       requireAdmin(s);
-      if (userId === s.session) throw new Error("You can't delete your own account from here.");
-      if (!s.profiles.some((x) => x.id === userId)) throw new Error("No account found.");
+      if (userId === s.session) throw new Error(t("You can't delete your own account from here."));
+      if (!s.profiles.some((x) => x.id === userId)) throw new Error(t("No account found."));
       s.profiles = s.profiles.filter((x) => x.id !== userId);
       s.mivtzoim_activity = s.mivtzoim_activity.filter((x) => x.user_id !== userId);
       s.personal_categories = s.personal_categories.filter((x) => x.user_id !== userId || x.shared);

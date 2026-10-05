@@ -1,4 +1,5 @@
 import type { TableName, Tables } from "../types";
+import { t } from "../i18n";
 import { newId, type Backend } from "./index";
 
 /* Minimal shapes of the Claude artifact runtime used here. */
@@ -24,9 +25,9 @@ function clean(row: object) {
 
 function explain(e: unknown): Error {
   const code = (e as { code?: string })?.code;
-  if (code === "invalid_argument") return new Error("You can view this page but not change it. Ask the owner for access to add entries.");
-  if (code === "quota_exceeded") return new Error("The shared storage is full. Delete old entries and try again.");
-  return new Error((e as { message?: string })?.message || "Could not save. Try again.");
+  if (code === "invalid_argument") return new Error(t("You can view this page but not change it. Ask the owner for access to add entries."));
+  if (code === "quota_exceeded") return new Error(t("The shared storage is full. Delete old entries and try again."));
+  return new Error((e as { message?: string })?.message || t("Could not save. Try again."));
 }
 
 /** Shared storage inside a Claude artifact. Identity comes from the viewer's Claude account. */
@@ -40,7 +41,9 @@ export async function createClaudeBackend(): Promise<Backend | null> {
 
   return {
     kind: "claude",
-    storageLabel: "Shared with everyone this page is shared with. You're signed in with your Claude account.",
+    get storageLabel() {
+      return t("Shared with everyone this page is shared with. You're signed in with your Claude account.");
+    },
     hasAuth: false,
 
     async currentUser() {
@@ -60,10 +63,10 @@ export async function createClaudeBackend(): Promise<Backend | null> {
     onPasswordRecovery() {},
     async verifyPassword() {},
     async changeUsername() {
-      throw new Error("People here sign in with their Claude account.");
+      throw new Error(t("People here sign in with their Claude account."));
     },
     async changeEmail() {
-      throw new Error("People here sign in with their Claude account.");
+      throw new Error(t("People here sign in with their Claude account."));
     },
 
     async list(table) {
@@ -103,7 +106,7 @@ export async function createClaudeBackend(): Promise<Backend | null> {
     async joinGroup(code) {
       const snap = await db.collection("groups").where("join_code", "==", code.trim().toUpperCase()).get();
       const g = snap.docs[0];
-      if (!g) throw new Error("No group has that code.");
+      if (!g) throw new Error(t("No group has that code."));
       const memberId = `${g.id}__${myId}`;
       try {
         await db.collection("group_members").doc(memberId).set({
@@ -144,13 +147,13 @@ export async function createClaudeBackend(): Promise<Backend | null> {
       }
     },
     async adminSetPassword() {
-      throw new Error("People here sign in with their Claude account, so there's no password to set.");
+      throw new Error(t("People here sign in with their Claude account, so there's no password to set."));
     },
     async adminUpdatePerson() {
-      throw new Error("People here sign in with their Claude account, so their account can't be edited here.");
+      throw new Error(t("People here sign in with their Claude account, so their account can't be edited here."));
     },
     async adminDeletePerson() {
-      throw new Error("People here sign in with their Claude account, so their account can't be deleted here.");
+      throw new Error(t("People here sign in with their Claude account, so their account can't be deleted here."));
     },
     async listPeople() {
       const [members, activity, roles] = await Promise.all([

@@ -10,6 +10,7 @@ import type { Photo } from "@/lib/types";
 import { Button, Card, Empty, IconButton, Modal, PageHeader, cx } from "../ui";
 import { useEditMode } from "@/lib/edit-mode";
 import { EditSwitch } from "./dashboard";
+import { locale, t, tn } from "@/lib/i18n";
 
 /** How fast the wall scrolls on its own, in pixels per second. */
 const SPEED = 28;
@@ -44,7 +45,7 @@ export function PhotosView() {
   }, [photos]);
 
   function choose() {
-    if (guest || !me) return notify(GUEST_MESSAGE);
+    if (guest || !me) return notify(t(GUEST_MESSAGE));
     input.current?.click();
   }
 
@@ -52,19 +53,19 @@ export function PhotosView() {
     const files = Array.from(e.target.files ?? []).filter((f) => f.type.startsWith("image/") || /\.(heic|heif|jpe?g|png|webp)$/i.test(f.name));
     e.target.value = "";
     if (!files.length) return;
-    if (files.length > MAX_PICK) notify(`Up to ${MAX_PICK} photos at a time: the first ${MAX_PICK} are ready to send.`);
+    if (files.length > MAX_PICK) notify(t("Up to {max} photos at a time: the first {max} are ready to send.", { max: MAX_PICK }));
     setPicked(files.slice(0, MAX_PICK));
   }
 
   const editView = isAdmin && editing;
   return (
     <div className="grid grid-cols-1 gap-6">
-      {editView && <PageHeader title="Photos" subtitle="Edit mode: each week's photos by who shared them. Delete any that shouldn't be here." />}
+      {editView && <PageHeader title={t("Photos")} subtitle={t("Edit mode: each week's photos by who shared them. Delete any that shouldn't be here.")} />}
       <input ref={input} type="file" accept="image/*" multiple hidden onChange={onFiles} />
       {photos.length === 0 ? (
         <div className="grid min-h-[calc(100dvh-10rem)] content-center">
-          <Empty title="No photos yet" icon={Images}>
-            Photos people share from Mivtzoim show up here for everyone. Tap Add photos to share the first ones.
+          <Empty title={t("No photos yet")} icon={Images}>
+            {t("Photos people share from Mivtzoim show up here for everyone. Tap Add photos to share the first ones.")}
           </Empty>
         </div>
       ) : editView ? (
@@ -76,11 +77,11 @@ export function PhotosView() {
       )}
 
       {/* A small frosted bar floating just above the bottom of the screen: the photos show through it. */}
-      <div className="pointer-events-none fixed inset-x-0 bottom-[calc(1.25rem+env(safe-area-inset-bottom,0px))] z-30 flex justify-center px-4 lg:left-20">
+      <div className="pointer-events-none fixed inset-x-0 bottom-[calc(1.25rem+env(safe-area-inset-bottom,0px))] z-30 flex justify-center px-4 lg:start-20">
         <div className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-card/55 p-1.5 shadow-pop ring-1 ring-white/30 backdrop-blur-xl backdrop-saturate-150 dark:ring-white/10">
           {isAdmin && <EditSwitch />}
           <Button onClick={choose} className="h-11">
-            <ImagePlus size={18} aria-hidden /> Add photos
+            <ImagePlus size={18} aria-hidden /> {t("Add photos")}
           </Button>
         </div>
       </div>
@@ -175,9 +176,9 @@ function PhotoWall({ weeks, onOpen }: { weeks: [string, Photo[]][]; onOpen(p: Ph
       {weeks.map(([week, list]) => (
         <section key={week} className="grid gap-2">
           <h2 className="flex items-baseline justify-between px-1 pt-3 text-sm font-medium">
-            <span>{parshaOfWeek(week).english}</span>
+            <span>{parshaOfWeek(week).local}</span>
             <span className="text-xs text-muted">
-              {list.length} {list.length === 1 ? "photo" : "photos"} · {formatShort(week)}
+              {tn(list.length, "{n} photo", "{n} photos")} · {formatShort(week)}
             </span>
           </h2>
           <div className="grid grid-flow-dense auto-rows-[96px] grid-cols-3 gap-1.5 sm:auto-rows-[150px] sm:grid-cols-4 lg:grid-cols-5">
@@ -189,7 +190,7 @@ function PhotoWall({ weeks, onOpen }: { weeks: [string, Photo[]][]; onOpen(p: Ph
                   type="button"
                   tabIndex={copy ? -1 : 0}
                   onClick={() => onOpen(p)}
-                  aria-label="Open photo"
+                  aria-label={t("Open photo")}
                   className={cx("overflow-hidden rounded-2xl bg-sunken", size === "w2" && "col-span-2 row-span-2", size === "h2" && "row-span-2")}
                 >
                   <img src={size === "w2" ? p.url : p.thumbUrl} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover transition duration-300 hover:scale-[1.03]" />
@@ -221,7 +222,7 @@ function PhotoWall({ weeks, onOpen }: { weeks: [string, Photo[]][]; onOpen(p: Ph
 function PhotosByAccount({ onOpen }: { onOpen(p: Photo): void }) {
   const { photos, data, people, actions, notify } = useData();
   const [asking, setAsking] = useState<string | null>(null);
-  const nameOf = (id: string) => data.names[id] || people.find((p) => p.id === id)?.name || "Someone";
+  const nameOf = (id: string) => data.names[id] || people.find((p) => p.id === id)?.name || t("Someone");
 
   const weeks = useMemo(() => {
     const byWeek = new Map<string, Map<string, Photo[]>>();
@@ -238,7 +239,7 @@ function PhotosByAccount({ onOpen }: { onOpen(p: Photo): void }) {
     setAsking(null);
     try {
       await actions.deletePhoto(id);
-      notify("Photo deleted.");
+      notify(t("Photo deleted."));
     } catch (err) {
       notify((err as Error).message);
     }
@@ -249,7 +250,7 @@ function PhotosByAccount({ onOpen }: { onOpen(p: Photo): void }) {
       {weeks.map(([week, accounts]) => (
         <section key={week} className="grid gap-3">
           <h2 className="px-1 text-lg font-medium">
-            {parshaOfWeek(week).english} <span className="text-sm font-normal text-muted">· {formatShort(week)}</span>
+            {parshaOfWeek(week).local} <span className="text-sm font-normal text-muted">· {formatShort(week)}</span>
           </h2>
           {[...accounts.entries()]
             .sort((a, b) => nameOf(a[0]).localeCompare(nameOf(b[0])))
@@ -258,30 +259,30 @@ function PhotosByAccount({ onOpen }: { onOpen(p: Photo): void }) {
                 <p className="flex items-baseline justify-between gap-2 px-1">
                   <span className="font-medium">{nameOf(userId)}</span>
                   <span className="text-sm text-muted">
-                    {list.length} {list.length === 1 ? "photo" : "photos"}
+                    {tn(list.length, "{n} photo", "{n} photos")}
                   </span>
                 </p>
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-6">
                   {list.map((p) => (
                     <div key={p.id} className="relative aspect-square overflow-hidden rounded-xl bg-sunken">
-                      <button type="button" className="h-full w-full" aria-label={`Open ${nameOf(userId)}'s photo`} onClick={() => onOpen(p)}>
+                      <button type="button" className="h-full w-full" aria-label={t("Open {name}'s photo", { name: nameOf(userId) })} onClick={() => onOpen(p)}>
                         <img src={p.thumbUrl} alt="" loading="lazy" className="h-full w-full object-cover" />
                       </button>
                       {asking === p.id ? (
                         <span className="absolute inset-x-1 bottom-1 flex gap-1">
                           <button type="button" onClick={() => remove(p.id)} className="flex-1 rounded-lg bg-danger py-1.5 text-xs font-medium text-white">
-                            Delete
+                            {t("Delete")}
                           </button>
                           <button type="button" onClick={() => setAsking(null)} className="flex-1 rounded-lg bg-black/60 py-1.5 text-xs font-medium text-white">
-                            Keep
+                            {t("Keep")}
                           </button>
                         </span>
                       ) : (
                         <button
                           type="button"
-                          aria-label={`Delete ${nameOf(userId)}'s photo`}
+                          aria-label={t("Delete {name}'s photo", { name: nameOf(userId) })}
                           onClick={() => setAsking(p.id)}
-                          className="absolute top-1 right-1 grid h-8 w-8 place-items-center rounded-full bg-black/60 text-white"
+                          className="absolute top-1 end-1 grid h-8 w-8 place-items-center rounded-full bg-black/60 text-white"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -331,7 +332,7 @@ function SendPhotos({ files, onDone }: { files: File[]; onDone(): void }) {
     setSending(0);
     try {
       await actions.uploadPhotos(ready, setSending);
-      notify(ready.length === 1 ? "Your photo is shared." : `Your ${ready.length} photos are shared.`);
+      notify(tn(ready.length, "Your photo is shared.", "Your {n} photos are shared."));
       onDone();
     } catch (err) {
       notify((err as Error).message);
@@ -346,28 +347,30 @@ function SendPhotos({ files, onDone }: { files: File[]; onDone(): void }) {
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
             <h2 id="send-title" className="text-xl font-medium">
-              {preparing ? `Preparing ${ready.length + failed + removed + 1} of ${files.length}…` : `Share ${ready.length} ${ready.length === 1 ? "photo" : "photos"}`}
+              {preparing
+                ? t("Preparing {current} of {total}…", { current: ready.length + failed + removed + 1, total: files.length })
+                : tn(ready.length, "Share {n} photo", "Share {n} photos")}
             </h2>
-            <p className="text-sm text-muted">Everyone will see them on the Photos page. Tap × to take one out.</p>
+            <p className="text-sm text-muted">{t("Everyone will see them on the Photos page. Tap × to take one out.")}</p>
           </div>
-          <IconButton aria-label="Cancel" onClick={close} disabled={sending !== null}>
+          <IconButton aria-label={t("Cancel")} onClick={close} disabled={sending !== null}>
             <X size={20} />
           </IconButton>
         </div>
         <div className="grid max-h-[50dvh] grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-4">
           {ready.map((r, i) => (
             <div key={r.preview} className="relative aspect-square overflow-hidden rounded-xl bg-sunken">
-              <img src={r.preview} alt={`Photo ${i + 1}`} className="h-full w-full object-cover" />
+              <img src={r.preview} alt={t("Photo {n}", { n: i + 1 })} className="h-full w-full object-cover" />
               {sending === null && (
                 <button
                   type="button"
-                  aria-label={`Take out photo ${i + 1}`}
+                  aria-label={t("Take out photo {n}", { n: i + 1 })}
                   onClick={() => {
                     setReady((list) => list.filter((x) => x !== r));
                     setRemoved((n) => n + 1);
                     URL.revokeObjectURL(r.preview);
                   }}
-                  className="absolute top-1 right-1 grid h-7 w-7 place-items-center rounded-full bg-black/60 text-white"
+                  className="absolute top-1 end-1 grid h-7 w-7 place-items-center rounded-full bg-black/60 text-white"
                 >
                   <X size={16} />
                 </button>
@@ -376,23 +379,23 @@ function SendPhotos({ files, onDone }: { files: File[]; onDone(): void }) {
           ))}
           {preparing && <div className="aspect-square animate-pulse rounded-xl bg-sunken" />}
         </div>
-        {failed > 0 && <p className="text-sm text-danger">{failed === 1 ? "1 file couldn't be opened" : `${failed} files couldn't be opened`} and was left out.</p>}
+        {failed > 0 && <p className="text-sm text-danger">{tn(failed, "{n} file couldn't be opened and was left out.", "{n} files couldn't be opened and were left out.")}</p>}
         {sending !== null && (
           <div className="grid gap-1.5">
             <div className="h-2 overflow-hidden rounded-full bg-sunken">
               <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${(sending / Math.max(1, ready.length)) * 100}%` }} />
             </div>
             <p className="text-sm text-muted">
-              Sending {Math.min(sending + 1, ready.length)} of {ready.length}…
+              {t("Sending {current} of {total}…", { current: Math.min(sending + 1, ready.length), total: ready.length })}
             </p>
           </div>
         )}
         <div className="flex justify-end gap-2">
           <Button variant="ghost" onClick={close} disabled={sending !== null}>
-            Cancel
+            {t("Cancel")}
           </Button>
           <Button onClick={send} disabled={preparing || sending !== null || ready.length === 0}>
-            {sending !== null ? "Sending…" : `Send ${ready.length || ""}`.trim()}
+            {sending !== null ? t("Sending…") : ready.length ? t("Send {n}", { n: ready.length }) : t("Send")}
           </Button>
         </div>
       </div>
@@ -411,7 +414,7 @@ function PhotoViewer({ photo, onClose }: { photo: Photo; onClose(): void }) {
   async function remove() {
     try {
       await actions.deletePhoto(photo.id);
-      notify("Photo deleted.");
+      notify(t("Photo deleted."));
       onClose();
     } catch (err) {
       notify((err as Error).message);
@@ -420,33 +423,33 @@ function PhotoViewer({ photo, onClose }: { photo: Photo; onClose(): void }) {
 
   return (
     <Modal onClose={onClose}>
-      <figure role="dialog" aria-modal="true" aria-label="Photo" className="grid w-full max-w-3xl gap-3" onClick={(e) => e.stopPropagation()}>
+      <figure role="dialog" aria-modal="true" aria-label={t("Photo")} className="grid w-full max-w-3xl gap-3" onClick={(e) => e.stopPropagation()}>
         <img src={photo.url} alt="" className="max-h-[75dvh] w-full rounded-[24px] bg-black object-contain" />
         <figcaption className="flex flex-wrap items-center gap-2 rounded-2xl bg-card px-4 py-3">
           <span className="min-w-0 flex-1 text-sm">
             {who && <span className="block font-medium">{who}</span>}
             <span className="text-muted">
-              {parshaOfWeek(week).english} · {new Date(photo.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+              {parshaOfWeek(week).local} · {new Date(photo.created_at).toLocaleDateString(locale(), { month: "short", day: "numeric" })}
             </span>
           </span>
           {canDelete &&
             (asking ? (
               <span className="flex items-center gap-2">
-                <span className="text-sm">Delete this photo?</span>
+                <span className="text-sm">{t("Delete this photo?")}</span>
                 <Button variant="danger" className="h-9 px-3" onClick={remove}>
-                  Delete
+                  {t("Delete")}
                 </Button>
                 <Button variant="ghost" className="h-9 px-3" onClick={() => setAsking(false)}>
-                  Keep
+                  {t("Keep")}
                 </Button>
               </span>
             ) : (
-              <IconButton aria-label="Delete photo" onClick={() => setAsking(true)}>
+              <IconButton aria-label={t("Delete photo")} onClick={() => setAsking(true)}>
                 <Trash2 size={18} />
               </IconButton>
             ))}
           <Button variant="secondary" className="h-9 px-4" onClick={onClose}>
-            Close
+            {t("Close")}
           </Button>
         </figcaption>
       </figure>
@@ -481,7 +484,7 @@ export function MyPhotos() {
     setAsking(null);
     try {
       await actions.deletePhoto(id);
-      notify("Photo deleted.");
+      notify(t("Photo deleted."));
     } catch (err) {
       notify((err as Error).message);
     }
@@ -496,15 +499,15 @@ export function MyPhotos() {
           setOpen((o) => !o);
           setAsking(null);
         }}
-        className="flex w-full items-center gap-3 px-6 py-5 text-left"
+        className="flex w-full items-center gap-3 px-6 py-5 text-start"
       >
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-sunken">
           <Images size={20} aria-hidden />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-lg font-medium">My photos</span>
+          <span className="block text-lg font-medium">{t("My photos")}</span>
           <span className="block text-sm text-muted">
-            {count === 0 ? "You haven't shared any photos yet" : `${count} ${count === 1 ? "photo" : "photos"} you shared · tap to see or delete`}
+            {count === 0 ? t("You haven't shared any photos yet") : tn(count, "{n} photo you shared · tap to see or delete", "{n} photos you shared · tap to see or delete")}
           </span>
         </span>
         <ChevronDown size={22} aria-hidden className={cx("shrink-0 text-muted transition-transform", open && "rotate-180")} />
@@ -512,14 +515,14 @@ export function MyPhotos() {
       {open && (
         <div className="grid gap-5 px-6 pb-6">
           {count === 0 ? (
-            <p className="text-sm text-muted">Photos you add on the Photos page will show up here.</p>
+            <p className="text-sm text-muted">{t("Photos you add on the Photos page will show up here.")}</p>
           ) : (
             weeks.map(([week, list]) => (
               <section key={week} className="grid gap-2">
                 <h3 className="flex items-baseline justify-between px-1 text-sm font-medium">
-                  <span>{parshaOfWeek(week).english}</span>
+                  <span>{parshaOfWeek(week).local}</span>
                   <span className="text-xs font-normal text-muted">
-                    {list.length} {list.length === 1 ? "photo" : "photos"} · {formatShort(week)}
+                    {tn(list.length, "{n} photo", "{n} photos")} · {formatShort(week)}
                   </span>
                 </h3>
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-6">
@@ -527,30 +530,30 @@ export function MyPhotos() {
                     const step = asking?.id === p.id ? asking.step : 0;
                     return (
                       <div key={p.id} className="relative aspect-square overflow-hidden rounded-xl bg-sunken">
-                        <button type="button" className="h-full w-full" aria-label="Open photo" onClick={() => setViewing(p)}>
+                        <button type="button" className="h-full w-full" aria-label={t("Open photo")} onClick={() => setViewing(p)}>
                           <img src={p.thumbUrl} alt="" loading="lazy" className={cx("h-full w-full object-cover transition", step > 0 && "scale-105 blur-[2px] brightness-50")} />
                         </button>
                         {step === 0 ? (
                           <button
                             type="button"
-                            aria-label="Delete photo"
+                            aria-label={t("Delete photo")}
                             onClick={() => setAsking({ id: p.id, step: 1 })}
-                            className="absolute top-1 right-1 grid h-8 w-8 place-items-center rounded-full bg-black/60 text-white"
+                            className="absolute top-1 end-1 grid h-8 w-8 place-items-center rounded-full bg-black/60 text-white"
                           >
                             <Trash2 size={16} />
                           </button>
                         ) : (
                           <div className="absolute inset-0 grid content-center gap-1.5 p-1.5 text-center text-white">
-                            <p className="text-xs font-medium">{step === 1 ? "Delete this photo?" : "Sure? It can't be undone."}</p>
+                            <p className="text-xs font-medium">{step === 1 ? t("Delete this photo?") : t("Sure? It can't be undone.")}</p>
                             <button
                               type="button"
                               onClick={() => (step === 1 ? setAsking({ id: p.id, step: 2 }) : remove(p.id))}
                               className="rounded-lg bg-danger py-1.5 text-xs font-medium text-white"
                             >
-                              {step === 1 ? "Delete" : "Yes, delete"}
+                              {step === 1 ? t("Delete") : t("Yes, delete")}
                             </button>
                             <button type="button" onClick={() => setAsking(null)} className="rounded-lg bg-white/20 py-1.5 text-xs font-medium text-white">
-                              Keep
+                              {t("Keep")}
                             </button>
                           </div>
                         )}

@@ -15,6 +15,7 @@ import { LoginView } from "./views/login";
 import { SiteFooter } from "./site-footer";
 import { EditModeProvider } from "@/lib/edit-mode";
 import { HebrewNamesGate, missingHebrewNames } from "./hebrew-names-gate";
+import { t } from "@/lib/i18n";
 
 const links = [
   { href: "/", label: "Dashboard", short: "Home", icon: LayoutDashboard, match: ["/", "/dashboard"] },
@@ -45,12 +46,12 @@ function PanelContent({ expanded, onNavigate }: { expanded: boolean; onNavigate?
           <span className="flex items-center gap-3">
             <LogoMark className="h-10 w-10" />
             <span className={cx("leading-tight", label)}>
-              <span className="block text-lg font-medium text-ink">{settings.site_name}</span>
+              <span className="block text-lg font-medium text-ink">{t(settings.site_name)}</span>
             </span>
           </span>
         </Link>
       </div>
-      <nav aria-label="Main" className="grid gap-0.5">
+      <nav aria-label={t("Main")} className="grid gap-0.5">
         {items.map(({ href, label: text, icon: Icon, match }) => {
           const active = isActive(path, match);
           return (
@@ -64,36 +65,36 @@ function PanelContent({ expanded, onNavigate }: { expanded: boolean; onNavigate?
               )}
             >
               <Icon size={22} strokeWidth={active ? 2.2 : 1.8} aria-hidden className="shrink-0" />
-              <span className={label}>{text}</span>
+              <span className={label}>{t(text)}</span>
             </Link>
           );
         })}
       </nav>
       <div className="mt-auto grid gap-3">
-        <p className={cx("px-4 text-sm text-muted", label)}>{hebrewDate()} · {parshaOfWeek(currentWeek()).english}</p>
+        <p className={cx("px-4 text-sm text-muted", label)}>{hebrewDate()} · {parshaOfWeek(currentWeek()).local}</p>
         {guest && (
           <div className={cx("grid gap-2 overflow-hidden rounded-[28px] p-2", expanded ? "bg-card" : "bg-transparent")}>
             <Link href="/login?mode=signup" className="flex h-12 items-center gap-3 rounded-full bg-accent px-3.5 text-sm font-medium text-accent-ink">
               <UserRoundPlus size={20} aria-hidden className="shrink-0" />
-              <span className={label}>Create account</span>
+              <span className={label}>{t("Create account")}</span>
             </Link>
             <Link href="/login" className="flex h-12 items-center gap-3 rounded-full px-3.5 text-sm font-medium text-accent hover:bg-accent/8">
               <LogIn size={20} aria-hidden className="shrink-0" />
-              <span className={label}>Sign in</span>
+              <span className={label}>{t("Sign in")}</span>
             </Link>
           </div>
         )}
         {me && (
           <div className={cx("flex items-center gap-2 overflow-hidden rounded-[28px] p-2 transition-colors", expanded ? "bg-card" : "bg-transparent")}>
-            <Link href={isOwner ? "/" : "/profile"} className="flex min-w-0 flex-1 items-center gap-3 rounded-full p-1 pr-3 hover:bg-ink/5">
+            <Link href={isOwner ? "/" : "/profile"} className="flex min-w-0 flex-1 items-center gap-3 rounded-full p-1 pe-3 hover:bg-ink/5">
               <Avatar name={me.name} id={me.id} size={40} />
               <span className={cx("min-w-0", label)}>
                 <span className="block truncate text-sm font-medium">{displayName(me)}</span>
-                <span className="block truncate text-xs text-muted">{me.username ? handle(me.username) : "View profile"}</span>
+                <span className="block truncate text-xs text-muted">{me.username ? handle(me.username) : t("View profile")}</span>
               </span>
             </Link>
             {backend?.hasAuth && expanded && (
-              <IconButton onClick={() => auth.signOut()} aria-label="Sign out">
+              <IconButton onClick={() => auth.signOut()} aria-label={t("Sign out")}>
                 <LogOut size={18} />
               </IconButton>
             )}
@@ -119,14 +120,14 @@ function HoverRail() {
   return (
     <div className="hidden w-20 shrink-0 lg:block">
       <aside
-        aria-label="Side panel"
+        aria-label={t("Side panel")}
         onMouseEnter={show}
         onMouseLeave={hide}
         onFocus={show}
         onBlur={(e) => !e.currentTarget.contains(e.relatedTarget as Node) && hide()}
         className={cx(
-          "fixed inset-y-0 left-0 z-40 overflow-hidden bg-paper transition-[width,box-shadow] duration-200 ease-out",
-          open ? "w-72 rounded-r-[28px] shadow-pop" : "w-20",
+          "fixed inset-y-0 start-0 z-40 overflow-hidden bg-paper transition-[width,box-shadow] duration-200 ease-out",
+          open ? "w-72 rounded-e-[28px] shadow-pop" : "w-20",
         )}
       >
         <PanelContent expanded={open} />
@@ -161,11 +162,11 @@ function ModalDrawer({ open, onClose }: { open: boolean; onClose: () => void }) 
         className={cx("fixed inset-0 z-40 bg-black/40 transition-opacity duration-200", open ? "opacity-100" : "pointer-events-none opacity-0")}
       />
       <aside
-        aria-label="Side panel"
+        aria-label={t("Side panel")}
         inert={!open}
         className={cx(
-          "fixed inset-y-0 left-0 z-50 w-[85%] max-w-80 rounded-r-[28px] bg-paper pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] transition-transform duration-250 ease-out",
-          open ? "translate-x-0 shadow-pop" : "-translate-x-full",
+          "fixed inset-y-0 start-0 z-50 w-[85%] max-w-80 rounded-e-[28px] bg-paper pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] transition-transform duration-250 ease-out",
+          open ? "translate-x-0 shadow-pop" : "-translate-x-full rtl:translate-x-full",
         )}
       >
         <PanelContent expanded onNavigate={onClose} />
@@ -189,23 +190,23 @@ function TopAppBar({ onMenu }: { onMenu: () => void }) {
           WebkitMaskImage: "linear-gradient(to bottom, #000 calc(100% - 2.5rem), transparent)",
         }}
       />
-      <IconButton onClick={onMenu} aria-label="Open menu" className="h-12 w-12 text-ink">
+      <IconButton onClick={onMenu} aria-label={t("Open menu")} className="h-12 w-12 text-ink">
         <Menu size={24} />
       </IconButton>
       <Link href="/" className="flex min-w-0 items-center gap-2.5">
         <LogoMark className="h-8 w-8 shrink-0" />
         <span className="min-w-0 leading-tight">
-          <span className="block truncate text-lg font-medium">{settings.site_name}</span>
+          <span className="block truncate text-lg font-medium">{t(settings.site_name)}</span>
           <ShkiahLine short className="block truncate text-xs text-muted" />
         </span>
       </Link>
       {me && (
-        <Link href={isOwner ? "/" : "/profile"} aria-label={isOwner ? "Home" : "Profile"} className="ml-auto mr-2 rounded-full">
+        <Link href={isOwner ? "/" : "/profile"} aria-label={isOwner ? t("Home") : t("Profile")} className="ms-auto me-2 rounded-full">
           <Avatar name={me.name} id={me.id} size={36} />
         </Link>
       )}
       {guest && (
-        <Link href="/login" aria-label="Sign in or create an account" className="ml-auto mr-2 grid h-10 w-10 place-items-center rounded-full bg-accent-soft text-accent-on-soft">
+        <Link href="/login" aria-label={t("Sign in or create an account")} className="ms-auto me-2 grid h-10 w-10 place-items-center rounded-full bg-accent-soft text-accent-on-soft">
           <UserRound size={22} />
         </Link>
       )}
@@ -236,14 +237,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (status === "loading") {
     return (
       // Pinned to the visible screen so the logo sits dead center, also on phones.
-      <div className="fixed inset-0 grid place-items-center bg-paper" role="status" aria-label="Loading">
+      <div className="fixed inset-0 grid place-items-center bg-paper" role="status" aria-label={t("Loading")}>
         <LogoMark className="logo-breathe h-14 w-14" />
       </div>
     );
   } else if (status === "error") {
     body = (
       <div className="mx-auto max-w-md py-20 text-center">
-        <p className="text-2xl">We couldn&apos;t load your data</p>
+        <p className="text-2xl">{t("We couldn't load your data")}</p>
         <p className="mt-2 text-muted">{error}</p>
       </div>
     );
@@ -267,8 +268,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         <SampleBanner />
         {path === "/profile" || path === "/admin" ? (
           <div className="mt-6">
-            <Empty title="Sign in to see this page" icon={UserRound}>
-              Your profile and settings are here once you have an account.
+            <Empty title={t("Sign in to see this page")} icon={UserRound}>
+              {t("Your profile and settings are here once you have an account.")}
             </Empty>
           </div>
         ) : (
@@ -279,8 +280,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   } else if (!me) {
     body = (
       <div className="mx-auto max-w-md py-20 text-center">
-        <p className="text-2xl">Sign in to Claude to continue</p>
-        <p className="mt-2 text-muted">This page needs to know who you are so it can save your Mivtzoim.</p>
+        <p className="text-2xl">{t("Sign in to Claude to continue")}</p>
+        <p className="mt-2 text-muted">{t("This page needs to know who you are so it can save your Mivtzoim.")}</p>
       </div>
     );
   } else {
@@ -320,16 +321,16 @@ function SampleBanner() {
       <span className="flex min-w-0 flex-1 items-start gap-3">
         <Eye size={20} aria-hidden className="mt-0.5 shrink-0" />
         <span className="min-w-0">
-          <span className="block font-medium">You&apos;re looking at a sample</span>
-          <span className="block text-sm opacity-85">Look around and tap anything. Nothing is saved until you create an account.</span>
+          <span className="block font-medium">{t("You're looking at a preview")}</span>
+          <span className="block text-sm opacity-85">{t("Look around and tap anything. Nothing is saved until you create an account.")}</span>
         </span>
       </span>
-      <span className="flex flex-wrap gap-2 pl-8 sm:pl-0">
+      <span className="flex flex-wrap gap-2 ps-8 sm:ps-0">
         <ButtonLink href="/login?mode=signup" className="h-10 px-4">
-          Create account
+          {t("Create account")}
         </ButtonLink>
         <ButtonLink href="/login" variant="ghost" className="h-10 px-4">
-          Sign in
+          {t("Sign in")}
         </ButtonLink>
       </span>
     </div>
@@ -342,14 +343,14 @@ function ShkiahLine({ className, short }: { className?: string; short?: boolean 
   if (!shkiah) return null;
   const text = (
     <>
-      Shkiah Fri{short ? " " : ` ${shkiah.date} · `}<span className="font-medium text-ink">{shkiah.time}</span>
-      {!shkiah.located && (short ? " · Crown Hts" : " (Crown Heights)")}
+      {t("Shkiah Fri")}{short ? " " : ` ${shkiah.date} · `}<span className="font-medium text-ink">{shkiah.time}</span>
+      {!shkiah.located && (short ? ` · ${t("Crown Hts")}` : ` (${t("Crown Heights")})`)}
     </>
   );
-  if (shkiah.located) return <span className={className} title="Sundown at your location">{text}</span>;
+  if (shkiah.located) return <span className={className} title={t("Sundown at your location")}>{text}</span>;
   // Not shared yet: tapping it asks for the location (it isn't asked over and over by itself).
   return (
-    <button type="button" onClick={shkiah.locate} className={cx(className, "text-left")} title="Sundown in Crown Heights. Tap to use your location.">
+    <button type="button" onClick={shkiah.locate} className={cx(className, "text-start")} title={t("Sundown in Crown Heights. Tap to use your location.")}>
       {text}
     </button>
   );
