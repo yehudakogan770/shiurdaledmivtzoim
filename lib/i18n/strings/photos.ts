@@ -3,6 +3,10 @@ import type { Area } from "./types";
 /** The Photos page, the sending dialog, the photo viewer, the admin edit view and My photos. */
 const photos: Area = {
   he: {
+    "New on the site": "חדש באתר",
+    "Bring the week to life.": "השבוע שלך, בתמונות.",
+    "Share your photos from Mivtzoim. Upload as many as you want, all at once.": "שתף את התמונות שלך מהמבצעים. העלה כמה שתרצה, כולן בבת אחת.",
+    "Maybe later": "אולי אחר כך",
     "Up to {max} photos at a time: the first {max} are ready to send.": "עד {max} תמונות בכל פעם: {max} הראשונות מוכנות לשליחה.",
     Photos: "תמונות",
     "Edit mode: each week's photos by who shared them. Delete any that shouldn't be here.": "מצב עריכה: התמונות של כל שבוע לפי מי ששיתף אותן. מחק כל תמונה שלא אמורה להיות כאן.",
@@ -49,6 +53,10 @@ const photos: Area = {
     "Couldn't prepare the photo.": "לא ניתן היה להכין את התמונה.",
   },
   fr: {
+    "New on the site": "Nouveau sur le site",
+    "Bring the week to life.": "Donnez vie à la semaine.",
+    "Share your photos from Mivtzoim. Upload as many as you want, all at once.": "Partagez vos photos des Mivtsaïm. Envoyez-en autant que vous voulez, toutes en une fois.",
+    "Maybe later": "Plus tard",
     "Up to {max} photos at a time: the first {max} are ready to send.": "{max} photos maximum à la fois : les {max} premières sont prêtes à être envoyées.",
     Photos: "Photos",
     "Edit mode: each week's photos by who shared them. Delete any that shouldn't be here.":
@@ -96,6 +104,10 @@ const photos: Area = {
     "Couldn't prepare the photo.": "Impossible de préparer la photo.",
   },
   es: {
+    "New on the site": "Nuevo en el sitio",
+    "Bring the week to life.": "Dale vida a la semana.",
+    "Share your photos from Mivtzoim. Upload as many as you want, all at once.": "Comparte tus fotos de Mivtzoim. Sube todas las que quieras, de una sola vez.",
+    "Maybe later": "Quizás más tarde",
     "Up to {max} photos at a time: the first {max} are ready to send.": "Hasta {max} fotos a la vez: las primeras {max} están listas para enviar.",
     Photos: "Fotos",
     "Edit mode: each week's photos by who shared them. Delete any that shouldn't be here.":

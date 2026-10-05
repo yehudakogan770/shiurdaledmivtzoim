@@ -239,3 +239,18 @@ h3 {
 .photo-zoom {
   animation: photo-zoom 1.4s ease-out forwards;
 }
+
+/* The photos pop-up: a strip of photos gliding past, looping. */
+@keyframes promo-slide {
+  to {
+    transform: translateX(-50%);
+  }
+}
+.promo-slide {
+  animation: promo-slide 16s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .promo-slide {
+    animation: none;
+  }
+}

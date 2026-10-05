@@ -178,6 +178,9 @@ export function fitToSpots<T extends { width: number; height: number; color?: st
   return out;
 }
 
+/** Photos picked from the pop-up on another page, waiting for the Photos page to open them. */
+export const pendingPhotos: { files: File[] | null } = { files: null };
+
 export const extensionOf = (blob: Blob) => (blob.type === "image/webp" ? "webp" : "jpg");
 
 /** "120 KB", "3.4 MB". */

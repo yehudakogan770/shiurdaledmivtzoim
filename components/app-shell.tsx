@@ -15,6 +15,7 @@ import { LoginView } from "./views/login";
 import { SiteFooter } from "./site-footer";
 import { EditModeProvider } from "@/lib/edit-mode";
 import { HebrewNamesGate, missingHebrewNames } from "./hebrew-names-gate";
+import { PhotosPromo } from "./photos-promo";
 import { t } from "@/lib/i18n";
 
 const links = [
@@ -308,6 +309,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
       {/* Everyone but the Owner fills in their Chavrusas' Hebrew names before using the site. */}
       {me && !isOwner && backend?.hasAuth && missingHebrewNames(me.partners) && <HebrewNamesGate key={me.id} />}
+      {/* Tells people they can add photos: the first three visits, not for the Owner, after the Hebrew names. */}
+      {me && !guest && !isOwner && !(backend?.hasAuth && missingHebrewNames(me.partners)) && <PhotosPromo key={me.id} />}
       <Snackbar message={toast} />
     </div>
     </EditModeProvider>

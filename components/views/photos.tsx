@@ -5,7 +5,7 @@ import { ChevronDown, ImagePlus, Images, Trash2, X } from "lucide-react";
 import { useData, GUEST_MESSAGE } from "@/lib/data";
 import { formatShort, weekOf } from "@/lib/dates";
 import { parshaOfWeek } from "@/lib/parsha";
-import { arrange, fitToSpots, shrinkPhoto, type ShrunkPhoto } from "@/lib/photos";
+import { arrange, fitToSpots, pendingPhotos, shrinkPhoto, type ShrunkPhoto } from "@/lib/photos";
 import type { Photo } from "@/lib/types";
 import { Button, Card, Empty, IconButton, Modal, PageHeader, cx } from "../ui";
 import { useEditMode } from "@/lib/edit-mode";
@@ -50,12 +50,26 @@ export function PhotosView() {
   }
 
   function onFiles(e: ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? []).filter((f) => f.type.startsWith("image/") || /\.(heic|heif|jpe?g|png|webp)$/i.test(f.name));
+    const list = Array.from(e.target.files ?? []);
     e.target.value = "";
+    take(list);
+  }
+
+  function take(list: File[]) {
+    const files = list.filter((f) => f.type.startsWith("image/") || /\.(heic|heif|jpe?g|png|webp)$/i.test(f.name));
     if (!files.length) return;
     if (files.length > MAX_PICK) notify(t("Up to {max} photos at a time: the first {max} are ready to send.", { max: MAX_PICK }));
     setPicked(files.slice(0, MAX_PICK));
   }
+
+  // Photos chosen in the "Bring the week to life" pop-up: ready to send as soon as this page opens.
+  useEffect(() => {
+    if (!pendingPhotos.files) return;
+    const files = pendingPhotos.files;
+    pendingPhotos.files = null;
+    take(files);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const editView = isAdmin && editing;
   return (
