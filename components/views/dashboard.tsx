@@ -645,13 +645,12 @@ function EveryoneStrip({ week }: { week: string }) {
  */
 /**
  * The week's card: the parsha, with a menu to look at another week. When there are photos it
- * becomes a photo that changes about every second (this week's photos, else the latest), with
- * everyone's total for the week on it; tapping it opens the Photos page.
+ * becomes a photo that changes about every second (this week's photos, else the latest);
+ * tapping it opens the Photos page.
  */
 function WeekPicker({ week, onChange }: { week: string; onChange(week: string): void }) {
   const { photos } = useData();
   const { Link } = useNav();
-  const total = sum(useEveryoneRows(week));
   const thisWeek = currentWeek();
   const weeks = allWeeks();
   const parsha = parshaOfWeek(week);
@@ -751,8 +750,7 @@ function WeekPicker({ week, onChange }: { week: string; onChange(week: string): 
             {dateLine}
             {backToThisWeek(true)}
           </p>
-          {total > 0 && <span className="tabular mt-1 text-5xl leading-none font-medium">{total}</span>}
-          <span className="text-sm opacity-90">{total > 0 ? t("Mivtzoim this week · see the photos") : t("See this week's photos")}</span>
+          <span className="mt-1 text-sm opacity-90">{t("See this week's photos")}</span>
         </div>
       </div>
     </section>
