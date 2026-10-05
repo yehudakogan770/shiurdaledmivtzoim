@@ -340,11 +340,18 @@ function SampleBanner() {
 function ShkiahLine({ className, short }: { className?: string; short?: boolean }) {
   const shkiah = useShkiah();
   if (!shkiah) return null;
-  return (
-    <span className={className} title={shkiah.located ? "Sundown at your location" : "Sundown in Crown Heights. Allow location to see yours."}>
+  const text = (
+    <>
       Shkiah Fri{short ? " " : ` ${shkiah.date} · `}<span className="font-medium text-ink">{shkiah.time}</span>
       {!shkiah.located && (short ? " · Crown Hts" : " (Crown Heights)")}
-    </span>
+    </>
+  );
+  if (shkiah.located) return <span className={className} title="Sundown at your location">{text}</span>;
+  // Not shared yet: tapping it asks for the location (it isn't asked over and over by itself).
+  return (
+    <button type="button" onClick={shkiah.locate} className={cx(className, "text-left")} title="Sundown in Crown Heights. Tap to use your location.">
+      {text}
+    </button>
   );
 }
 
