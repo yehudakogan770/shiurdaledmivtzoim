@@ -254,3 +254,23 @@ h3 {
     animation: none;
   }
 }
+
+/*
+ * Corners: softly squared rather than fully round (cards 10px, smaller pieces and buttons 8px).
+ * Colors, lines and shadows are unchanged. Small round icon buttons and avatars stay round.
+ */
+.rounded-\[28px\],
+.rounded-\[24px\] {
+  border-radius: 10px !important;
+}
+.rounded-2xl,
+.rounded-xl {
+  border-radius: 8px !important;
+}
+button.rounded-full:not(.w-8):not(.w-9):not(.w-10):not(.w-11):not(.w-12):not(.w-16),
+a.rounded-full:not(.w-8):not(.w-9):not(.w-10):not(.w-11):not(.w-12),
+input.rounded-full,
+select.rounded-full,
+textarea {
+  border-radius: 8px !important;
+}
