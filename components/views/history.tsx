@@ -61,7 +61,7 @@ function EveryonesHistory() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6">
+    <div className="grid grid-cols-1 gap-3">
       <PageHeader title={t("History")} subtitle={tn(rows.length, "Everyone's Mivtzoim: {total} across {n} entry", "Everyone's Mivtzoim: {total} across {n} entries", { total: sum(rows) })} action={<EditSwitch />} />
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label={t("Person")} htmlFor="history-person">
@@ -157,7 +157,7 @@ function EveryonesHistory() {
                   );
                 }
                 return (
-                  <li key={a.id} className="flex items-center gap-3 px-6 py-3.5">
+                  <li key={a.id} className="flex items-center gap-3 px-6 py-3">
                     <CategoryIcon type={a.category_type} icon={iconForActivity(a, data.categories)} />
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-medium text-accent">{nameOf(a.user_id)}</span>
@@ -217,7 +217,7 @@ function MyHistory() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6">
+    <div className="grid grid-cols-1 gap-3">
       <PageHeader
         title={t("History")}
         subtitle={tn(rows.length, "{total} Mivtzoim across {n} entry", "{total} Mivtzoim across {n} entries", { total: sum(rows) })}
@@ -283,7 +283,7 @@ function MyHistory() {
                 row={(a) => {
                 const meta = metaOf(a);
                 return (
-                  <li key={a.id} className="flex items-center gap-3 px-6 py-3.5">
+                  <li key={a.id} className="flex items-center gap-3 px-6 py-3">
                     <CategoryIcon type={a.category_type} icon={iconForActivity(a, data.categories)} />
                     <span className="min-w-0 flex-1">
                       <span className="block font-medium">{t(categoryName(a, data.categories))}</span>

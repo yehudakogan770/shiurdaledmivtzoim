@@ -83,7 +83,7 @@ export function Card({ className, children }: { className?: string; children: Re
 
 export function CardTitle({ children, sub, action }: { children: ReactNode; sub?: ReactNode; action?: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 px-6 pt-5 pb-3">
+    <div className="flex flex-wrap items-center justify-between gap-3 px-6 pt-4 pb-2.5">
       <div className="min-w-0">
         <h2 className="text-lg font-medium">{children}</h2>
         {sub && <p className="text-sm text-muted">{sub}</p>}

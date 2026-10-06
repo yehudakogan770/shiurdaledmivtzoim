@@ -37,7 +37,7 @@ export function SiteFooter({ className }: { className?: string }) {
     "inline-flex w-full min-w-0 items-center gap-3 rounded-full py-1.5 ps-1.5 pe-4 text-start text-sm transition hover:brightness-[0.97] hover:shadow-card sm:w-auto";
 
   return (
-    <footer className={cx("mt-10 grid gap-6", className)}>
+    <footer className={cx("mt-6 grid gap-3", className)}>
       {showPartner && isOwner && editing && <DonationEditor />}
       {showPartner && !(isOwner && editing) && (
         <section className="grid min-w-0 grid-cols-1 gap-4 rounded-[28px] bg-card p-6 lg:grid-cols-[1fr_auto] lg:items-center">

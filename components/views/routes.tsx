@@ -71,7 +71,7 @@ export function RoutesView() {
   if (isOwner) return <AllRoutesView />;
 
   return (
-    <div className="grid grid-cols-1 gap-6">
+    <div className="grid grid-cols-1 gap-3">
       <PageHeader
         title={t("Routes")}
         subtitle={t("Your regular Mivtzoim stops, in order. Check them off as you go.")}
@@ -286,7 +286,7 @@ export function NewRouteView() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6">
+    <div className="grid grid-cols-1 gap-3">
       <PageHeader back={{ href: "/routes", label: t("Routes") }} title={t("New route")} subtitle={t("List the places you visit, in the order you visit them.")} />
       <form onSubmit={submit} className="grid max-w-3xl grid-cols-1 gap-3">
         <Card className="grid gap-4 p-6">
@@ -303,7 +303,7 @@ export function NewRouteView() {
           {stops.length > 0 && (
             <ol className="divide-y divide-line/60">
               {stops.map((s, i) => (
-                <li key={i} className="flex items-center gap-3 px-6 py-3.5">
+                <li key={i} className="flex items-center gap-3 px-6 py-3">
                   <span className="tabular grid h-8 w-8 shrink-0 place-items-center rounded-full bg-secondary-soft text-sm text-secondary-on-soft font-medium">{i + 1}</span>
                   <span className="min-w-0 flex-1">
                     <span className="block font-medium">{s.name}</span>
@@ -345,7 +345,7 @@ function AllRoutesView() {
   const partners = (r: { created_by: string }) => people.find((p) => p.id === r.created_by)?.partners;
   const routes = [...data.routes].sort((a, b) => owner(a).localeCompare(owner(b)) || a.name.localeCompare(b.name));
   return (
-    <div className="grid grid-cols-1 gap-6">
+    <div className="grid grid-cols-1 gap-3">
       <PageHeader title={t("Routes")} subtitle={t("Everyone's routes. Open one to see all its stops; turn on Edit there to change it.")} action={<EditSwitch />} />
       {routes.length === 0 ? (
         <Card>
@@ -450,7 +450,7 @@ export function RouteDetailView() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6">
+    <div className="grid grid-cols-1 gap-3">
       <PageHeader
         back={{ href: "/routes", label: t("Routes") }}
         eyebrow={
@@ -538,7 +538,7 @@ export function RouteDetailView() {
                   </form>
                 </li>
               ) : (
-              <li key={stop.id} className="flex items-center gap-3 px-6 py-3.5">
+              <li key={stop.id} className="flex items-center gap-3 px-6 py-3">
                 {isOwner && editing && (
                   <span className="-ms-3 flex shrink-0 flex-col">
                     <IconButton aria-label={t("Move {name} up", { name: loc?.name ?? "" })} disabled={i === 0 || pending !== null} onClick={() => wrap(stop.id, () => actions.moveStop(stop.id, -1))} className="h-7 w-9 disabled:opacity-25">

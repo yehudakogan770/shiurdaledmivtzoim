@@ -149,7 +149,7 @@ function OwnerHome() {
   const [week, setWeek] = useState(currentWeek());
   const hd = hebrewDate();
   return (
-    <div className="grid grid-cols-1 gap-6">
+    <div className="grid grid-cols-1 gap-3">
       <PageHeader eyebrow={`${longDate()}${hd ? ` · ${hd}` : ""} · ${parshaOfWeek(currentWeek()).local}`} title={t("Dashboard")} action={<EditSwitch />} />
 
       {editing && (
@@ -214,7 +214,7 @@ function PersonalHome() {
   const hd = hebrewDate();
 
   return (
-    <div className="grid grid-cols-1 gap-6">
+    <div className="grid grid-cols-1 gap-3">
       <PageHeader eyebrow={`${longDate()}${hd ? ` · ${hd}` : ""} · ${parshaOfWeek(currentWeek()).local}`} title={me?.name || t("Dashboard")} />
 
       <WeekPicker week={week} onChange={setWeek} />
@@ -259,7 +259,7 @@ function PersonalHome() {
 
       <QuickLog week={week} />
 
-      <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 gap-3">
         <Card>
           <CardTitle sub={t("Everything you logged, by week")}>{t("Activity")}</CardTitle>
           <WeeklyChart rows={mine.activity} last={week} />

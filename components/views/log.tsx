@@ -103,7 +103,7 @@ export function LogView() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6">
+    <div className="grid grid-cols-1 gap-3">
       <PageHeader title={t("Log Mivtzoim")} subtitle={t("Tap each Mivtza you did, fill in how many, then log them all at once.")} />
 
       <form onSubmit={submit} className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_22rem]">

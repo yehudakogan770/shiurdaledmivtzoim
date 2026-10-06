@@ -44,7 +44,7 @@ export function EntryGroups({
         ) : (
           <li key={group[0].id}>
             <details className="group/entries">
-              <summary className="flex cursor-pointer list-none items-center gap-3 px-6 py-3.5 hover:bg-ink/5 [&::-webkit-details-marker]:hidden">
+              <summary className="flex cursor-pointer list-none items-center gap-3 px-6 py-3 hover:bg-ink/5 [&::-webkit-details-marker]:hidden">
                 {summary(group[0], group)}
                 <span className="text-end">
                   <span className="tabular block text-2xl">{group.reduce((n, a) => n + a.quantity, 0)}</span>

@@ -29,7 +29,7 @@ export function AdminView() {
     );
   }
   return (
-    <div className="grid grid-cols-1 gap-6">
+    <div className="grid grid-cols-1 gap-3">
       <PageHeader title={t("Admin")} subtitle={t("Edit the website and manage everyone who uses it.")} />
       {isOwner ? (
         // The Owner edits the site name, announcement and mivtzoim right on the Home page.
@@ -55,7 +55,7 @@ function SiteSettingsCard({ welcomeOnly }: { welcomeOnly?: boolean }) {
     return (
       <Card>
         <CardTitle sub={t("The site name, announcement and Mivtzoim are edited on the Home page: turn on Edit there.")}>{t("Website")}</CardTitle>
-        <div className="grid gap-5 px-6 pb-6">
+        <div className="grid gap-4 px-6 pb-5">
           <SettingField field="welcome" label="Welcome text" hint="Shown on the sign-up screen." rows={2} maxLength={200} />
         </div>
       </Card>
@@ -64,7 +64,7 @@ function SiteSettingsCard({ welcomeOnly }: { welcomeOnly?: boolean }) {
   return (
     <Card>
       <CardTitle sub={t("Shown to everyone who opens the site")}>{t("Website")}</CardTitle>
-      <div className="grid gap-5 px-6 pb-6">
+      <div className="grid gap-4 px-6 pb-5">
         <SettingField field="site_name" label="Site name" maxLength={40} required />
         <SettingField field="welcome" label="Welcome text" hint="Shown on the sign-up screen." rows={2} maxLength={200} />
         <SettingField

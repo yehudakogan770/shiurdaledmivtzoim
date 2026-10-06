@@ -47,7 +47,7 @@ export function ProfileView() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6">
+    <div className="grid grid-cols-1 gap-3">
       <PageHeader title={t("Profile")} subtitle={t("Your account and the Mivtzoim you track.")} />
 
       <div className="grid gap-3 lg:grid-cols-2">
@@ -55,7 +55,7 @@ export function ProfileView() {
 
         <Card>
           <CardTitle>{t("My categories")}</CardTitle>
-          <div className="grid gap-5 px-6 pb-6">
+          <div className="grid gap-4 px-6 pb-5">
             <p className="text-sm text-muted">
               {t("The Mivtzoim on the front page are always there. Add any other Mivtza you do and it appears on the Log page.")}
             </p>

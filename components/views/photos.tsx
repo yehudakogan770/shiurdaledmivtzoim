@@ -73,7 +73,7 @@ export function PhotosView() {
 
   const editView = isAdmin && editing;
   return (
-    <div className="grid grid-cols-1 gap-6">
+    <div className="grid grid-cols-1 gap-3">
       {editView && <PageHeader title={t("Photos")} subtitle={t("Edit mode: each week's photos by who shared them. Delete any that shouldn't be here.")} />}
       <input ref={input} type="file" accept="image/*" multiple hidden onChange={onFiles} />
       {photos.length === 0 ? (
@@ -260,7 +260,7 @@ function PhotosByAccount({ onOpen }: { onOpen(p: Photo): void }) {
   }
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-4">
       {weeks.map(([week, accounts]) => (
         <section key={week} className="grid gap-3">
           <h2 className="px-1 text-lg font-medium">
@@ -527,7 +527,7 @@ export function MyPhotos() {
         <ChevronDown size={22} aria-hidden className={cx("shrink-0 text-muted transition-transform", open && "rotate-180")} />
       </button>
       {open && (
-        <div className="grid gap-5 px-6 pb-6">
+        <div className="grid gap-4 px-6 pb-5">
           {count === 0 ? (
             <p className="text-sm text-muted">{t("Photos you add on the Photos page will show up here.")}</p>
           ) : (

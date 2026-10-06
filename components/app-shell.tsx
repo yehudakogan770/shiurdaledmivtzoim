@@ -366,7 +366,7 @@ function Snackbar({ message }: { message: string | null }) {
       aria-live="polite"
       className="pointer-events-none fixed inset-x-0 bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px))] z-50 flex justify-center px-4"
     >
-      {message && <div className="min-h-12 rounded-xl bg-ink px-4 py-3.5 text-sm text-paper shadow-pop">{message}</div>}
+      {message && <div className="min-h-12 rounded-xl bg-ink px-4 py-3 text-sm text-paper shadow-pop">{message}</div>}
     </div>
   );
 }
