@@ -663,14 +663,12 @@ function WeekPicker({ week, onChange }: { week: string; onChange(week: string): 
     return () => clearInterval(timer);
   }, [shown.length]);
 
+  // Lined up with the lines under it, in either direction.
   const hebrew = () => (
-    <p
-      lang="he"
-      dir="rtl"
-      className={cx("text-3xl font-medium leading-tight", !shown.length && "text-right sm:text-left")}
-      style={{ fontFamily: '"Frank Ruhl Libre", "David", "Times New Roman", serif' }}
-    >
-      {parsha.hebrew}
+    <p className="text-3xl leading-tight">
+      <span lang="he" dir="rtl" style={{ fontFamily: '"David Libre", "David", "Times New Roman", serif', fontWeight: 700 }}>
+        {parsha.hebrew}
+      </span>
     </p>
   );
   // In Hebrew the parsha is already written above, so just the date.
@@ -740,12 +738,7 @@ function WeekPicker({ week, onChange }: { week: string; onChange(week: string): 
       <div className="pointer-events-none relative flex min-h-64 flex-col justify-between gap-6 p-5 sm:min-h-80 sm:p-6">
         <div className="flex justify-end">{picker(true)}</div>
         <div className="grid gap-1">
-          {/* Lined up with the lines under it, in either direction. */}
-          <p className="text-3xl leading-tight font-medium">
-            <span lang="he" dir="rtl" style={{ fontFamily: '"Frank Ruhl Libre", "David", "Times New Roman", serif' }}>
-              {parsha.hebrew}
-            </span>
-          </p>
+          {hebrew()}
           <p className="text-sm opacity-90">
             {dateLine}
             {backToThisWeek(true)}
