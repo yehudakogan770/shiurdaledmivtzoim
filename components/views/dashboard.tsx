@@ -117,7 +117,8 @@ export function DashboardView() {
 }
 
 /** The Owner's switch for editing what everyone sees, right on the page. */
-export function EditSwitch() {
+/** The Edit switch. `bare` is just the toggle and its label, for sitting inside another bar. */
+export function EditSwitch({ bare }: { bare?: boolean } = {}) {
   const { editing, setEditing } = useEditMode();
   return (
     <button
@@ -127,10 +128,10 @@ export function EditSwitch() {
       onClick={() => setEditing(!editing)}
       className={cx(
         "inline-flex h-11 items-center gap-2.5 rounded-full pe-4 ps-1.5 text-sm font-medium transition",
-        editing ? "bg-accent text-accent-ink" : "bg-card text-ink shadow-card hover:bg-ink/5",
+        bare ? "text-ink" : editing ? "bg-accent text-accent-ink" : "bg-card text-ink shadow-card hover:bg-ink/5",
       )}
     >
-      <span className={cx("relative h-7 w-12 rounded-full transition", editing ? "bg-accent-ink/30" : "bg-ink/15")}>
+      <span className={cx("relative h-7 w-12 rounded-full transition", bare ? (editing ? "bg-accent" : "bg-ink/20") : editing ? "bg-accent-ink/30" : "bg-ink/15")}>
         <span className={cx("absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all", editing ? "start-6" : "start-1")} />
       </span>
       <Pencil size={16} aria-hidden />

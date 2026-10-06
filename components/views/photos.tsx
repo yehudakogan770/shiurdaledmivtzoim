@@ -92,9 +92,9 @@ export function PhotosView() {
 
       {/* A small frosted bar floating just above the bottom of the screen: the photos show through it. */}
       <div className="pointer-events-none fixed inset-x-0 bottom-[calc(1.25rem+env(safe-area-inset-bottom,0px))] z-30 flex justify-center px-4 lg:start-20">
-        <div className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-card/55 p-1.5 shadow-pop ring-1 ring-white/30 backdrop-blur-xl backdrop-saturate-150 dark:ring-white/10">
-          {isAdmin && <EditSwitch />}
-          <Button onClick={choose} className="h-11">
+        <div className="float-bar pointer-events-auto flex items-center gap-1.5 rounded-full bg-card/55 p-1.5 shadow-pop ring-1 ring-white/30 backdrop-blur-xl backdrop-saturate-150 dark:ring-white/10">
+          {isAdmin && <EditSwitch bare />}
+          <Button onClick={choose} className="h-10 px-5">
             <ImagePlus size={18} aria-hidden /> {t("Add photos")}
           </Button>
         </div>

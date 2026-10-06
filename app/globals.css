@@ -274,3 +274,7 @@ select.rounded-full,
 textarea {
   border-radius: 8px !important;
 }
+/* Buttons inside a round floating bar stay round, so they sit neatly inside it. */
+.float-bar .rounded-full:not(#_) {
+  border-radius: 9999px !important;
+}
