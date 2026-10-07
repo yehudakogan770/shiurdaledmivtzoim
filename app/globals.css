@@ -368,9 +368,3 @@ header.sticky {
   backdrop-filter: blur(28px) saturate(170%);
   border-inline-end: 1px solid var(--glass-edge);
 }
-/* The phone top bar's solid color reaches far above it, so pulling the page down past the top shows
-   one solid piece (light by day, dark at night) instead of the glow. */
-header.sticky > span[aria-hidden]:first-child {
-  top: -100vh;
-  height: calc(100% + 1.75rem + 100vh);
-}

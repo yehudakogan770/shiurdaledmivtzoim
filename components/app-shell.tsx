@@ -176,42 +176,66 @@ function ModalDrawer({ open, onClose }: { open: boolean; onClose: () => void }) 
   );
 }
 
+/**
+ * Pulling the page down past the top (the iPhone bounce) opens a gap above the top bar. This fills
+ * exactly that gap with the plain page color, so the bar and the space above it look like one piece.
+ */
+function TopBounceFill() {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const update = () => {
+      const gap = Math.max(0, -window.scrollY);
+      if (ref.current) ref.current.style.height = gap ? `calc(env(safe-area-inset-top, 0px) + ${gap}px)` : "0px";
+    };
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("touchmove", update, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("touchmove", update);
+    };
+  }, []);
+  return <div ref={ref} aria-hidden className="pointer-events-none fixed inset-x-0 top-0 z-30 h-0 bg-paper lg:hidden" />;
+}
+
 /** Top app bar (phones and tablets). */
 function TopAppBar({ onMenu }: { onMenu: () => void }) {
   const { Link } = useNav();
   const { me, guest, settings, isOwner } = useData();
   return (
-    <header className="sticky top-[env(safe-area-inset-top,0px)] z-30 flex h-16 items-center gap-1 px-2 lg:hidden">
-      {/* The bar's background runs a little past its bottom edge and fades out there, so content scrolls under it softly. */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[calc(100%+1.75rem)] bg-paper"
-        style={{
-          maskImage: "linear-gradient(to bottom, #000 calc(100% - 2.5rem), transparent)",
-          WebkitMaskImage: "linear-gradient(to bottom, #000 calc(100% - 2.5rem), transparent)",
-        }}
-      />
-      <IconButton onClick={onMenu} aria-label={t("Open menu")} className="h-12 w-12 text-ink">
-        <Menu size={24} />
-      </IconButton>
-      <Link href="/" className="flex min-w-0 items-center gap-2.5">
-        <LogoMark className="h-8 w-8 shrink-0" />
-        <span className="min-w-0 leading-tight">
-          <span className="block truncate text-lg font-medium">{t(settings.site_name)}</span>
-          <ShkiahLine short className="block truncate text-xs text-muted" />
-        </span>
-      </Link>
-      {me && (
-        <Link href={isOwner ? "/" : "/profile"} aria-label={isOwner ? t("Home") : t("Profile")} className="ms-auto me-2 rounded-full">
-          <Avatar name={me.name} id={me.id} size={36} />
+    <>
+      <TopBounceFill />
+      <header className="sticky top-[env(safe-area-inset-top,0px)] z-30 flex h-16 items-center gap-1 px-2 lg:hidden">
+        {/* The bar's background runs a little past its bottom edge and fades out there, so content scrolls under it softly. */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[calc(100%+1.75rem)] bg-paper"
+          style={{
+            maskImage: "linear-gradient(to bottom, #000 calc(100% - 2.5rem), transparent)",
+            WebkitMaskImage: "linear-gradient(to bottom, #000 calc(100% - 2.5rem), transparent)",
+          }}
+        />
+        <IconButton onClick={onMenu} aria-label={t("Open menu")} className="h-12 w-12 text-ink">
+          <Menu size={24} />
+        </IconButton>
+        <Link href="/" className="flex min-w-0 items-center gap-2.5">
+          <LogoMark className="h-8 w-8 shrink-0" />
+          <span className="min-w-0 leading-tight">
+            <span className="block truncate text-lg font-medium">{t(settings.site_name)}</span>
+            <ShkiahLine short className="block truncate text-xs text-muted" />
+          </span>
         </Link>
-      )}
-      {guest && (
-        <Link href="/login" aria-label={t("Sign in or create an account")} className="ms-auto me-2 grid h-10 w-10 place-items-center rounded-full bg-accent-soft text-accent-on-soft">
-          <UserRound size={22} />
-        </Link>
-      )}
-    </header>
+        {me && (
+          <Link href={isOwner ? "/" : "/profile"} aria-label={isOwner ? t("Home") : t("Profile")} className="ms-auto me-2 rounded-full">
+            <Avatar name={me.name} id={me.id} size={36} />
+          </Link>
+        )}
+        {guest && (
+          <Link href="/login" aria-label={t("Sign in or create an account")} className="ms-auto me-2 grid h-10 w-10 place-items-center rounded-full bg-accent-soft text-accent-on-soft">
+            <UserRound size={22} />
+          </Link>
+        )}
+      </header>
+    </>
   );
 }
 
