@@ -350,3 +350,10 @@ header.sticky {
   -webkit-backdrop-filter: blur(16px);
   backdrop-filter: blur(16px);
 }
+/* The side menu (and the narrow menu strip on computers) is glass too. */
+.fixed.inset-y-0.bg-paper {
+  background: color-mix(in srgb, var(--paper) 62%, transparent);
+  -webkit-backdrop-filter: blur(28px) saturate(170%);
+  backdrop-filter: blur(28px) saturate(170%);
+  border-inline-end: 1px solid var(--glass-edge);
+}
