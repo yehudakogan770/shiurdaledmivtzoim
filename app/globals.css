@@ -313,8 +313,7 @@ textarea {
   --glass-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
 }
 /* The glow sits on its own layer pinned to the screen, reaching well past the top and bottom, so
-   pulling the page up past the bottom (the iPhone bounce) still shows the glow, never a plain band.
-   Past the top it stays the plain page color, matching the top bar and the phone's status bar. */
+   pulling the page up past the bottom (the iPhone bounce) still shows the glow, never a plain band. */
 body {
   background: transparent;
 }
@@ -325,7 +324,6 @@ body::before {
   z-index: -1;
   pointer-events: none;
   background:
-    linear-gradient(to bottom, var(--paper) calc(60vh + 4.5rem), transparent calc(60vh + 12rem)),
     radial-gradient(60% 20.5% at 12% 30.9%, var(--glow-2), transparent 70%),
     radial-gradient(55% 18.2% at 95% 40.9%, var(--glow-1), transparent 70%),
     radial-gradient(60% 20.5% at 20% 61.4%, var(--glow-3), transparent 70%),
@@ -369,4 +367,10 @@ header.sticky {
   -webkit-backdrop-filter: blur(28px) saturate(170%);
   backdrop-filter: blur(28px) saturate(170%);
   border-inline-end: 1px solid var(--glass-edge);
+}
+/* The phone top bar's solid color reaches far above it, so pulling the page down past the top shows
+   one solid piece (light by day, dark at night) instead of the glow. */
+header.sticky > span[aria-hidden]:first-child {
+  top: -100vh;
+  height: calc(100% + 1.75rem + 100vh);
 }
