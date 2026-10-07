@@ -185,7 +185,7 @@ function TopAppBar({ onMenu }: { onMenu: () => void }) {
       {/* The bar's background runs a little past its bottom edge and fades out there, so content scrolls under it softly. */}
       <span
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[calc(100%+1.75rem)] bg-paper/90 backdrop-blur"
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[calc(100%+1.75rem)] bg-paper"
         style={{
           maskImage: "linear-gradient(to bottom, #000 calc(100% - 2.5rem), transparent)",
           WebkitMaskImage: "linear-gradient(to bottom, #000 calc(100% - 2.5rem), transparent)",
