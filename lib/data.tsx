@@ -68,6 +68,8 @@ export interface LogInput {
   group_id?: string | null;
   route_id?: string | null;
   location_id?: string | null;
+  /** The Owner logging for someone else (the account desk); otherwise the signed-in person. */
+  user_id?: string;
 }
 
 interface DataContextValue {
@@ -420,7 +422,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       actions: {
         log: async (input) => {
           const row = {
-            user_id: uid(),
+            user_id: input.user_id ?? uid(),
             category_type: input.category_type,
             personal_category_id: input.category_type === "personal" ? input.personal_category_id ?? null : null,
             quantity: Math.max(0, Math.round(input.quantity)),

@@ -311,15 +311,17 @@ function useTouch() {
   return touch;
 }
 
-function QuickLog({ week }: { week: string }) {
+/** The tap-to-add buttons. With `userId`, the Owner logs for that person (the account desk). */
+export function QuickLog({ week, userId }: { week: string; userId?: string }) {
   const touch = useTouch();
-  const { actions, notify, mine, guest } = useData();
+  const { actions, notify, mine, data, guest } = useData();
   const counters = useCounters(week);
   const past = week !== currentWeek();
+  const rows = userId ? data.activity.filter((a) => a.user_id === userId) : mine.activity;
 
   async function add(c: Counter) {
     try {
-      await actions.log({ ...c.log, activity_date: dateForWeek(week) });
+      await actions.log({ ...c.log, activity_date: dateForWeek(week), ...(userId ? { user_id: userId } : {}) });
       notify(past ? t("Added {name} to the week of {week}", { name: t(c.title), week: weekTitle(week) }) : t("Added {name}", { name: t(c.title) }));
     } catch (e) {
       notify((e as Error).message);
@@ -327,7 +329,7 @@ function QuickLog({ week }: { week: string }) {
   }
 
   async function subtract(c: Counter) {
-    const last = newestInWeek(mine.activity, week, c);
+    const last = newestInWeek(rows, week, c);
     if (!last) return;
     try {
       await actions.setActivityQuantity(last.id, last.quantity - 1);
@@ -343,7 +345,7 @@ function QuickLog({ week }: { week: string }) {
         <QuickButton
           key={c.key}
           c={c}
-          count={sum(mine.activity.filter((a) => activityWeek(a) === week && c.matches(a)))}
+          count={sum(rows.filter((a) => activityWeek(a) === week && c.matches(a)))}
           hint={touch ? t("Tap here to add") : t("Click here to add")}
           sample={guest}
           onAdd={() => add(c)}
@@ -660,7 +662,7 @@ function WeekPicker({ week, onChange }: { week: string; onChange(week: string): 
   const [k, setK] = useState(0);
   useEffect(() => {
     if (shown.length < 2 || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const timer = setInterval(() => setK((n) => n + 1), 1000);
+    const timer = setInterval(() => setK((n) => n + 1), 2000);
     return () => clearInterval(timer);
   }, [shown.length]);
 

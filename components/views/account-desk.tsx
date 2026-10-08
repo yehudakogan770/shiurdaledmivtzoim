@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { CircleCheck, Lock } from "lucide-react";
+import { CircleCheck, Lock, Search, UserRoundPlus } from "lucide-react";
+import type { Profile } from "@/lib/types";
+import { currentWeek } from "@/lib/dates";
+import { QuickLog } from "./dashboard";
 import { getLang, setLanguage, t, type Lang } from "@/lib/i18n";
 import { useData } from "@/lib/data";
 import { useNav } from "@/lib/nav";
@@ -11,7 +14,7 @@ import { BLANK_CHAVRUSA, encodeChavrusa, type Chavrusa } from "@/lib/chavrusa";
 import { ChavrusaFields } from "../chavrusa-fields";
 import { LanguageButtons } from "../language-picker";
 import { LogoMark } from "../brand";
-import { Button, Field, Input, Modal, cx } from "../ui";
+import { Avatar, Button, Field, Input, Modal, cx } from "../ui";
 
 const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
@@ -21,6 +24,43 @@ const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLow
  * Getting back to the Owner screens takes the Owner's password.
  */
 export function AccountDeskView({ ownerLang }: { ownerLang: Lang }) {
+  const [tab, setTab] = useState<"create" | "find">("create");
+  const [leaving, setLeaving] = useState(false);
+  return (
+    <div className="flex min-h-screen flex-col items-center px-4 py-8 sm:py-12">
+      <div role="tablist" className="mb-6 grid w-full max-w-[40rem] grid-cols-2 gap-1 rounded-full bg-sunken p-1">
+        {(["create", "find"] as const).map((k) => (
+          <button
+            key={k}
+            type="button"
+            role="tab"
+            aria-selected={tab === k}
+            onClick={() => setTab(k)}
+            className={cx("flex h-12 items-center justify-center gap-2 rounded-full text-sm font-medium transition", tab === k ? "bg-accent text-accent-ink shadow-card" : "text-ink hover:bg-ink/5")}
+          >
+            {k === "create" ? <UserRoundPlus size={18} aria-hidden /> : <Search size={18} aria-hidden />}
+            {k === "create" ? t("Create an account") : t("Find my account")}
+          </button>
+        ))}
+      </div>
+
+      {tab === "create" ? <CreateAccount /> : <FindAccount />}
+
+      <button
+        type="button"
+        onClick={() => setLeaving(true)}
+        className="mt-8 inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm text-muted hover:bg-ink/5"
+      >
+        <Lock size={16} aria-hidden /> {t("Owner")}
+      </button>
+
+      {leaving && <LeaveDesk ownerLang={ownerLang} onClose={() => setLeaving(false)} />}
+    </div>
+  );
+}
+
+/** Making a new account: the same details as signing up, each sign-in detail typed twice. */
+function CreateAccount() {
   const { actions, settings } = useData();
   const [name, setName] = useState("");
   const [partners, setPartners] = useState<Chavrusa[]>([BLANK_CHAVRUSA]);
@@ -33,7 +73,6 @@ export function AccountDeskView({ ownerLang }: { ownerLang: Lang }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [made, setMade] = useState<{ name: string; username: string } | null>(null);
-  const [leaving, setLeaving] = useState(false);
 
   function clear() {
     setName("");
@@ -74,7 +113,7 @@ export function AccountDeskView({ ownerLang }: { ownerLang: Lang }) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center px-4 py-8 sm:py-12">
+    <>
       {made ? (
         <div className="grid w-full max-w-[40rem] justify-items-center gap-4 rounded-[28px] bg-card px-6 py-12 text-center sm:px-10">
           <span className="grid h-16 w-16 place-items-center rounded-full bg-sage-soft text-sage-on-soft">
@@ -140,16 +179,92 @@ export function AccountDeskView({ ownerLang }: { ownerLang: Lang }) {
           </div>
         </form>
       )}
+    </>
+  );
+}
 
-      <button
-        type="button"
-        onClick={() => setLeaving(true)}
-        className="mt-8 inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm text-muted hover:bg-ink/5"
-      >
-        <Lock size={16} aria-hidden /> {t("Owner")}
-      </button>
+/**
+ * For someone with an account but no phone: they find it by username and log their Mivtzoim here.
+ * Names only show once a few letters are typed, so nobody can scroll through everyone's accounts.
+ */
+function FindAccount() {
+  const { people, me } = useData();
+  const [query, setQuery] = useState("");
+  const [picked, setPicked] = useState<Profile | null>(null);
+  const q = query.trim().toLowerCase().replace(/^@/, "");
+  const found =
+    q.length < 2
+      ? []
+      : people
+          .filter((p) => p.id !== me?.id && ((p.username ?? "").toLowerCase().includes(q) || p.name.toLowerCase().includes(q)))
+          .sort((a, b) => Number((b.username ?? "").toLowerCase() === q) - Number((a.username ?? "").toLowerCase() === q))
+          .slice(0, 8);
 
-      {leaving && <LeaveDesk ownerLang={ownerLang} onClose={() => setLeaving(false)} />}
+  if (picked) {
+    return (
+      <div className="grid w-full max-w-[40rem] gap-5 rounded-[28px] bg-card px-5 py-8 sm:px-8">
+        <div className="flex items-center gap-4">
+          <Avatar name={picked.name} id={picked.id} size={52} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-2xl">{picked.name}</p>
+            {picked.username && <p className="text-sm text-muted">{handle(picked.username)}</p>}
+          </div>
+        </div>
+        <p className="text-sm text-muted">{t("Tap a mivtza to add it to this week. Tap − to take one off.")}</p>
+        <QuickLog week={currentWeek()} userId={picked.id} />
+        <Button
+          className="mt-2 justify-self-center"
+          onClick={() => {
+            setPicked(null);
+            setQuery("");
+          }}
+        >
+          {t("Done")}
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid w-full max-w-[40rem] gap-5 rounded-[28px] bg-card px-5 py-8 sm:px-8">
+      <div>
+        <h1 className="text-[2rem] leading-tight">{t("Find my account")}</h1>
+        <p className="mt-2 text-base text-muted">{t("Type your username, then tap your name to log your Mivtzoim.")}</p>
+      </div>
+      <Field label={t("Username")} htmlFor="desk-find">
+        <Input
+          id="desk-find"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="mendel"
+          autoComplete="off"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+        />
+      </Field>
+      {q.length >= 2 && (
+        <div className="grid gap-2">
+          {found.length ? (
+            found.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setPicked(p)}
+                className="flex items-center gap-4 rounded-2xl bg-sunken p-3 text-start transition hover:bg-ink/8"
+              >
+                <Avatar name={p.name} id={p.id} size={40} />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-lg font-medium">{p.name}</span>
+                  {p.username && <span className="block text-sm text-muted">{handle(p.username)}</span>}
+                </span>
+              </button>
+            ))
+          ) : (
+            <p className="px-1 text-sm text-muted">{t("No account with that username. Check the spelling, or create an account.")}</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

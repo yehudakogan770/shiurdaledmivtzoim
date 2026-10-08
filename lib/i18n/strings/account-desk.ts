@@ -3,6 +3,12 @@ import type { Area } from "./types";
 /** The account desk: the Owner's device, handed to someone to make their own account. */
 const accountDesk: Area = {
   he: {
+    "Create an account": "יצירת חשבון",
+    "Find my account": "מציאת החשבון שלי",
+    "Type your username, then tap your name to log your Mivtzoim.": "הקלידו את שם המשתמש, ואז הקישו על השם כדי לרשום את המבצעים.",
+    "No account with that username. Check the spelling, or create an account.": "אין חשבון עם שם המשתמש הזה. בדקו את האיות, או צרו חשבון.",
+    "Tap a mivtza to add it to this week. Tap − to take one off.": "הקישו על מבצע כדי להוסיף אותו לשבוע הזה. הקישו − כדי להוריד אחד.",
+    "Done": "סיום",
     "Create accounts": "יצירת חשבונות",
     Accounts: "חשבונות",
     "Fill in your details. Your account is ready right away: sign in on any phone or computer with your username and password.":
@@ -24,6 +30,12 @@ const accountDesk: Area = {
     "People here sign in with their Claude account, so accounts can't be made here.": "כאן נכנסים עם חשבון Claude, ולכן אי אפשר ליצור כאן חשבונות.",
   },
   fr: {
+    "Create an account": "Créer un compte",
+    "Find my account": "Trouver mon compte",
+    "Type your username, then tap your name to log your Mivtzoim.": "Tape ton nom d'utilisateur, puis touche ton nom pour noter tes Mivtsaïm.",
+    "No account with that username. Check the spelling, or create an account.": "Aucun compte avec ce nom d'utilisateur. Vérifie l'orthographe ou crée un compte.",
+    "Tap a mivtza to add it to this week. Tap − to take one off.": "Touche un mivtsa pour l'ajouter à cette semaine. Touche − pour en retirer un.",
+    "Done": "Terminé",
     "Create accounts": "Créer des comptes",
     Accounts: "Comptes",
     "Fill in your details. Your account is ready right away: sign in on any phone or computer with your username and password.":
@@ -45,6 +57,12 @@ const accountDesk: Area = {
     "People here sign in with their Claude account, so accounts can't be made here.": "Ici, on se connecte avec son compte Claude : impossible de créer des comptes ici.",
   },
   es: {
+    "Create an account": "Crear una cuenta",
+    "Find my account": "Buscar mi cuenta",
+    "Type your username, then tap your name to log your Mivtzoim.": "Escribe tu nombre de usuario y toca tu nombre para registrar tus Mivtzoim.",
+    "No account with that username. Check the spelling, or create an account.": "No hay ninguna cuenta con ese nombre de usuario. Revisa cómo lo escribiste o crea una cuenta.",
+    "Tap a mivtza to add it to this week. Tap − to take one off.": "Toca un mivtza para agregarlo a esta semana. Toca − para quitar uno.",
+    "Done": "Listo",
     "Create accounts": "Crear cuentas",
     Accounts: "Cuentas",
     "Fill in your details. Your account is ready right away: sign in on any phone or computer with your username and password.":
