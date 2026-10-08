@@ -1,0 +1,370 @@
+@import "tailwindcss";
+@source "../components";
+@source "../lib";
+@source "../spa";
+
+/*
+ * Material You color scheme generated from the brand colors
+ * #106a7a (primary, teal) and #c5c2c2 (neutral, warm grey).
+ * Candle amber and success green are harmonized toward the primary.
+ */
+:root {
+  --paper: #efedf0;
+  --surface: #ffffff;
+  --card: #ffffff;
+  --sunken: #e9e7ea;
+  --high: #e4e2e4;
+  --ink: #1b1b1e;
+  --muted: #44474c;
+  --line: #c5c6cc;
+  --outline: #75777d;
+  --accent: #006878;
+  --accent-ink: #ffffff;
+  --accent-soft: #a8edff;
+  --accent-on-soft: #001f25;
+  --secondary-soft: #d1e6ec;
+  --secondary-on-soft: #0a1e23;
+  --candle: #755b00;
+  --candle-soft: #ffe08e;
+  --candle-on-soft: #241a00;
+  --sage: #256a4a;
+  --sage-soft: #abf2c9;
+  --sage-on-soft: #002112;
+  --danger: #ba1a1a;
+  --danger-soft: #ffdad6;
+  --minus: #ffdad6;
+  --minus-ink: #ba1a1a;
+  --brand: #106a7a;
+  --brand-neutral: #c5c2c2;
+  --elev-1: 0 1px 2px rgba(0, 0, 0, 0.08), 0 1px 3px 1px rgba(0, 0, 0, 0.04);
+  --elev-3: 0 4px 8px 3px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.14);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #131315;
+    --surface: #0d0e10;
+    --card: #1f2022;
+    --sunken: #292a2c;
+    --high: #343537;
+    --ink: #e4e2e4;
+    --muted: #c5c6cc;
+    --line: #44474c;
+    --outline: #8f9096;
+    --accent: #84d2e5;
+    --accent-ink: #00363f;
+    --accent-soft: #004e5b;
+    --accent-on-soft: #a8edff;
+    --secondary-soft: #374a4f;
+    --secondary-on-soft: #d1e6ec;
+    --candle: #e6c361;
+    --candle-soft: #584400;
+    --candle-on-soft: #ffe08e;
+    --sage: #90d5ae;
+    --sage-soft: #005234;
+    --sage-on-soft: #abf2c9;
+    --danger: #ffb4ab;
+    --danger-soft: #93000a;
+    --minus: #d9544c;
+    --minus-ink: #fff4f2;
+    --brand: #106a7a;
+    --brand-neutral: #c5c2c2;
+    --elev-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px 1px rgba(0, 0, 0, 0.2);
+    --elev-3: 0 4px 8px 3px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.4);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --paper: #131315;
+  --surface: #0d0e10;
+  --card: #1f2022;
+  --sunken: #292a2c;
+  --high: #343537;
+  --ink: #e4e2e4;
+  --muted: #c5c6cc;
+  --line: #44474c;
+  --outline: #8f9096;
+  --accent: #84d2e5;
+  --accent-ink: #00363f;
+  --accent-soft: #004e5b;
+  --accent-on-soft: #a8edff;
+  --secondary-soft: #374a4f;
+  --secondary-on-soft: #d1e6ec;
+  --candle: #e6c361;
+  --candle-soft: #584400;
+  --candle-on-soft: #ffe08e;
+  --sage: #90d5ae;
+  --sage-soft: #005234;
+  --sage-on-soft: #abf2c9;
+  --danger: #ffb4ab;
+  --danger-soft: #93000a;
+  --minus: #d9544c;
+  --minus-ink: #fff4f2;
+  --brand: #106a7a;
+  --brand-neutral: #c5c2c2;
+  --elev-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px 1px rgba(0, 0, 0, 0.2);
+  --elev-3: 0 4px 8px 3px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.4);
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-card: var(--card);
+  --color-sunken: var(--sunken);
+  --color-high: var(--high);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-outline: var(--outline);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-on-soft: var(--accent-on-soft);
+  --color-secondary-soft: var(--secondary-soft);
+  --color-secondary-on-soft: var(--secondary-on-soft);
+  --color-candle: var(--candle);
+  --color-candle-soft: var(--candle-soft);
+  --color-candle-on-soft: var(--candle-on-soft);
+  --color-sage: var(--sage);
+  --color-sage-soft: var(--sage-soft);
+  --color-sage-on-soft: var(--sage-on-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-minus: var(--minus);
+  --color-minus-ink: var(--minus-ink);
+  --color-brand: var(--brand);
+  --color-brand-neutral: var(--brand-neutral);
+  --shadow-card: var(--elev-1);
+  --shadow-pop: var(--elev-3);
+  --font-display: "Google Sans Flex", "Google Sans", Roboto, ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Google Sans Flex", "Google Sans", Roboto, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+html,
+body {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* The "Everyone this week" strip: two identical copies slide left forever. */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.marquee-track {
+  animation: marquee linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .marquee {
+    overflow-x: auto;
+  }
+}
+
+/* The little "+3" on a quick-add button: pops a bit each time it goes up. */
+@keyframes tally-pop {
+  0% {
+    transform: scale(0.6);
+  }
+  60% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.tally-pop {
+  animation: tally-pop 220ms ease-out;
+}
+
+/* The logo on the loading screen gently fades in and out. */
+@keyframes logo-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.15;
+  }
+}
+.logo-breathe {
+  animation: logo-breathe 1.6s ease-in-out infinite;
+}
+
+/* The Home page photo slowly zooms out while it shows. */
+@keyframes photo-zoom {
+  from {
+    transform: scale(1.08);
+  }
+  to {
+    transform: scale(1.01);
+  }
+}
+.photo-zoom {
+  animation: photo-zoom 1.4s ease-out forwards;
+}
+
+/* The photos pop-up: a strip of photos gliding past, looping. */
+@keyframes promo-slide {
+  to {
+    transform: translateX(-50%);
+  }
+}
+.promo-slide {
+  animation: promo-slide 16s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .promo-slide {
+    animation: none;
+  }
+}
+
+/*
+ * Corners: softly squared rather than fully round (cards 10px, smaller pieces and buttons 8px).
+ * Colors, lines and shadows are unchanged. Small round icon buttons and avatars stay round.
+ */
+.rounded-\[28px\],
+.rounded-\[24px\] {
+  border-radius: 10px !important;
+}
+.rounded-2xl,
+.rounded-xl {
+  border-radius: 8px !important;
+}
+button.rounded-full:not(.w-8):not(.w-9):not(.w-10):not(.w-11):not(.w-12):not(.w-16),
+a.rounded-full:not(.w-8):not(.w-9):not(.w-10):not(.w-11):not(.w-12),
+input.rounded-full,
+select.rounded-full,
+textarea {
+  border-radius: 8px !important;
+}
+/* Buttons inside a round floating bar stay round, so they sit neatly inside it. */
+.float-bar .rounded-full:not(#_) {
+  border-radius: 9999px !important;
+}
+
+/*
+ * Glass: the cards are frosted glass instead of solid. Soft glows of the site's own colors
+ * (the green, the light blue and the candle yellow) sit behind them, so the frost shows.
+ */
+:root {
+  --glow-1: rgba(16, 106, 122, 0.42);
+  --glow-2: rgba(140, 226, 250, 0.7);
+  --glow-3: rgba(255, 214, 110, 0.58);
+  --glass: rgba(255, 255, 255, 0.55);
+  --glass-tint: 0.62;
+  --glass-edge: rgba(255, 255, 255, 0.75);
+  --glass-shadow: 0 8px 28px rgba(16, 40, 46, 0.1);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --glow-1: rgba(22, 128, 146, 0.58);
+    --glow-2: rgba(0, 96, 112, 0.68);
+    --glow-3: rgba(120, 92, 0, 0.52);
+    --glass: rgba(31, 32, 34, 0.5);
+    --glass-tint: 0.55;
+    --glass-edge: rgba(255, 255, 255, 0.1);
+    --glass-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  }
+}
+:root[data-theme="dark"] {
+  --glow-1: rgba(22, 128, 146, 0.58);
+  --glow-2: rgba(0, 96, 112, 0.68);
+  --glow-3: rgba(120, 92, 0, 0.52);
+  --glass: rgba(31, 32, 34, 0.5);
+  --glass-tint: 0.55;
+  --glass-edge: rgba(255, 255, 255, 0.1);
+  --glass-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+}
+/* The glow sits on its own layer pinned to the screen, reaching well past the top and bottom, so
+   pulling the page up past the bottom (the iPhone bounce) still shows the glow, never a plain band. */
+body {
+  background: transparent;
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: -60vh 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 20.5% at 12% 30.9%, var(--glow-2), transparent 70%),
+    radial-gradient(55% 18.2% at 95% 40.9%, var(--glow-1), transparent 70%),
+    radial-gradient(60% 20.5% at 20% 61.4%, var(--glow-3), transparent 70%),
+    radial-gradient(55% 20.5% at 90% 70.5%, var(--glow-1), transparent 70%),
+    radial-gradient(70% 16% at 75% 14%, var(--glow-1), transparent 70%),
+    radial-gradient(70% 16% at 25% 86%, var(--glow-2), transparent 70%),
+    var(--paper);
+}
+.min-h-screen.bg-paper {
+  background: transparent;
+}
+.bg-card {
+  background: var(--glass) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(170%);
+  backdrop-filter: blur(20px) saturate(170%);
+  border: 1px solid var(--glass-edge);
+  box-shadow: var(--glass-shadow);
+}
+.bg-accent-soft,
+.bg-candle-soft {
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-edge);
+}
+.bg-accent-soft {
+  background: color-mix(in srgb, var(--accent-soft) calc(var(--glass-tint) * 100%), transparent) !important;
+}
+.bg-candle-soft {
+  background: color-mix(in srgb, var(--candle-soft) calc(var(--glass-tint) * 100%), transparent) !important;
+}
+.bg-sunken {
+  background: color-mix(in srgb, var(--sunken) 55%, transparent) !important;
+}
+header.sticky {
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+/* The side menu (and the narrow menu strip on computers) is glass too. */
+.fixed.inset-y-0.bg-paper {
+  background: color-mix(in srgb, var(--paper) 62%, transparent);
+  -webkit-backdrop-filter: blur(28px) saturate(170%);
+  backdrop-filter: blur(28px) saturate(170%);
+  border-inline-end: 1px solid var(--glass-edge);
+}
