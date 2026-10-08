@@ -183,18 +183,33 @@ function ModalDrawer({ open, onClose }: { open: boolean; onClose: () => void }) 
 function TopBounceFill() {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
+    // The phone reports the pull a little late, so while it's happening this follows it every
+    // frame. The fill also reaches a bar's height further down, hidden behind the bar, so even a
+    // frame's delay never lets a sliver of the glow show between them.
+    let frame = 0;
     const update = () => {
       const gap = Math.max(0, -window.scrollY);
-      if (ref.current) ref.current.style.height = gap ? `calc(env(safe-area-inset-top, 0px) + ${gap}px)` : "0px";
+      if (ref.current) ref.current.style.height = gap ? `calc(env(safe-area-inset-top, 0px) + ${gap}px + 4rem)` : "0px";
+      return gap;
     };
-    window.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("touchmove", update, { passive: true });
+    const follow = () => {
+      cancelAnimationFrame(frame);
+      const step = () => {
+        if (update() > 0) frame = requestAnimationFrame(step);
+      };
+      step();
+    };
+    window.addEventListener("scroll", follow, { passive: true });
+    window.addEventListener("touchmove", follow, { passive: true });
+    window.addEventListener("touchend", follow, { passive: true });
     return () => {
-      window.removeEventListener("scroll", update);
-      window.removeEventListener("touchmove", update);
+      cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", follow);
+      window.removeEventListener("touchmove", follow);
+      window.removeEventListener("touchend", follow);
     };
   }, []);
-  return <div ref={ref} aria-hidden className="pointer-events-none fixed inset-x-0 top-0 z-30 h-0 bg-paper lg:hidden" />;
+  return <div ref={ref} aria-hidden className="pointer-events-none fixed inset-x-0 top-0 z-[29] h-0 bg-paper lg:hidden" />;
 }
 
 /** Top app bar (phones and tablets). */
