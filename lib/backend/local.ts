@@ -301,6 +301,19 @@ export function createLocalBackend(): Backend {
       Object.assign(p, { name: name.trim(), username, email, partners });
       save(s);
     },
+    async ownerCreateAccount({ name, partners, username: rawUsername, email: rawEmail, password, language }) {
+      const username = normalizeUsername(rawUsername);
+      const email = checkEmail(rawEmail);
+      checkPassword(password);
+      const s = load();
+      requireAdmin(s);
+      if (s.profiles.some((x) => x.username === username)) throw new Error(t("That username is taken. Try another."));
+      if (s.profiles.some((x) => x.email === email)) throw new Error(t("That email already has an account."));
+      const id = newId();
+      // Like signing up, but the Owner stays signed in.
+      s.profiles.push({ id, name: name.trim(), partners, username, email, language: language || "en", password_hash: await hashPassword(password, id) });
+      save(s);
+    },
     async adminDeletePerson(userId) {
       const s = load();
       requireAdmin(s);

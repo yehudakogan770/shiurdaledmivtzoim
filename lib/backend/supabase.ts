@@ -188,6 +188,24 @@ export function createSupabaseBackend(url: string, key: string): Backend {
       if (error?.message.includes("admin_update_person")) throw new Error(t("Run the latest setup file in Supabase first."));
       fail(error);
     },
+    async ownerCreateAccount({ name, partners, username: rawUsername, email: rawEmail, password, language }) {
+      const username = normalizeUsername(rawUsername);
+      const email = checkEmail(rawEmail);
+      checkPassword(password);
+      const { error } = await sb.rpc("owner_create_account", {
+        p_name: name.trim(),
+        p_username: username,
+        p_email: email,
+        p_password: password,
+        p_partners: partners,
+        p_language: language || "en",
+      });
+      if (!error) return;
+      if (error.message.includes("owner_create_account")) throw new Error(t("Run the latest database update (013) in Supabase first."));
+      if (error.message.includes("username is taken")) throw new Error(t("That username is taken. Try another."));
+      if (error.message.includes("already has an account")) throw new Error(t("That email already has an account."));
+      throw new Error(error.message);
+    },
     async adminDeletePerson(userId) {
       const { error } = await sb.rpc("admin_delete_person", { p_user: userId });
       if (error?.message.includes("admin_delete_person")) throw new Error(t("Run the latest setup file in Supabase first."));

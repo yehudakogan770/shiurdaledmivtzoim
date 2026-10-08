@@ -22,6 +22,8 @@ export const SCREENS: Record<string, () => React.JSX.Element> = {
   "/photos": PhotosView,
   "/profile": ProfileView,
   "/admin": AdminView,
+  // The account desk fills the whole screen (see AppShell); this is only its address.
+  "/accounts": AdminView,
 };
 
 export function Screen({ path }: { path: string }) {

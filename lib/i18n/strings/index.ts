@@ -9,9 +9,10 @@ import profile from "./profile";
 import admin from "./admin";
 import data from "./data";
 import overrides from "./overrides";
+import accountDesk from "./account-desk";
 import type { Area } from "./types";
 
-const AREAS: Area[] = [shell, login, dashboard, routes, photos, history, profile, admin, data, overrides, common];
+const AREAS: Area[] = [shell, login, dashboard, routes, photos, history, profile, admin, data, accountDesk, overrides, common];
 
 /** All the translations together; the chosen versions (overrides) and shared words (common) win. */
 export const STRINGS: Area = {

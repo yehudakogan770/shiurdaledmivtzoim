@@ -56,6 +56,11 @@ export interface Backend {
   /** Admins only: delete an account and everything in it. */
   adminDeletePerson(userId: string): Promise<void>;
   /**
+   * The Owner only: make an account for someone without their own phone or computer, on the
+   * Owner's device. Ready to sign in at once (no confirmation email), and the Owner stays signed in.
+   */
+  ownerCreateAccount(input: SignUpInput): Promise<void>;
+  /**
    * Everyone's entries between two dates, without names (for the totals strip).
    * Only where the backend can't already see everyone's entries; null if unavailable.
    */

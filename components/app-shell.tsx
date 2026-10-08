@@ -16,7 +16,9 @@ import { SiteFooter } from "./site-footer";
 import { EditModeProvider } from "@/lib/edit-mode";
 import { HebrewNamesGate, missingHebrewNames } from "./hebrew-names-gate";
 import { PhotosPromo } from "./photos-promo";
-import { t } from "@/lib/i18n";
+import { isLang, t } from "@/lib/i18n";
+import { setAccountDesk, useAccountDesk } from "@/lib/account-desk";
+import { AccountDeskView } from "./views/account-desk";
 
 const links = [
   { href: "/", label: "Dashboard", short: "Home", icon: LayoutDashboard, match: ["/", "/dashboard"] },
@@ -27,6 +29,8 @@ const links = [
 ];
 
 const ADMIN_LINK = { href: "/admin", label: "Admin", short: "Admin", icon: ShieldCheck, match: ["/admin"] };
+/** The Owner only: hand the device to someone so they can make their own account. */
+const DESK_LINK = { href: "/accounts", label: "Create accounts", short: "Accounts", icon: UserRoundPlus, match: ["/accounts"] };
 
 function isActive(path: string, match: string[]) {
   return match.some((m) => (m === "/" ? path === "/" : path === m || path.startsWith(m + "/")));
@@ -38,7 +42,7 @@ function PanelContent({ expanded, onNavigate }: { expanded: boolean; onNavigate?
   const { me, guest, backend, auth, settings, isAdmin, isOwner } = useData();
   // No Profile page for people without an account, or for the Owner (it doesn't log).
   const shown = guest || isOwner ? links.filter((l) => l.href !== "/profile") : links;
-  const items = isAdmin ? [...shown, ADMIN_LINK] : shown;
+  const items = isOwner ? [...shown, ADMIN_LINK, DESK_LINK] : isAdmin ? [...shown, ADMIN_LINK] : shown;
   const label = cx("whitespace-nowrap transition-opacity duration-200", expanded ? "opacity-100" : "opacity-0");
   return (
     <div className="flex h-full flex-col px-3 py-4" onClick={(e) => (e.target as HTMLElement).closest("a") && onNavigate?.()}>
@@ -260,6 +264,19 @@ export function AppShell({ children }: { children: ReactNode }) {
   const path = rawPath.length > 1 ? rawPath.replace(/\/+$/, "") : rawPath;
   const [menuOpen, setMenuOpen] = useState(false);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
+  const desk = useAccountDesk();
+
+  // Opening Create accounts turns the device into the account desk until the Owner's password is entered.
+  // Only on arriving there: after unlocking, the page is still on /accounts for a moment.
+  const deskPath = useRef("");
+  useEffect(() => {
+    if (status !== "ready") return;
+    if (path !== deskPath.current) {
+      deskPath.current = path;
+      if (isOwner && path === "/accounts") setAccountDesk(true);
+    }
+    if (desk && !isOwner) setAccountDesk(false);
+  }, [status, isOwner, path, desk]);
 
   // Signing in from the sign-in page goes to the home page; signing out goes back to the sample's home page.
   const wasSignedIn = useRef(false);
@@ -287,6 +304,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         <p className="text-2xl">{t("We couldn't load your data")}</p>
         <p className="mt-2 text-muted">{error}</p>
       </div>
+    );
+  } else if (desk && isOwner) {
+    return (
+      <>
+        <AccountDeskView ownerLang={isLang(me?.language) ? me.language : "en"} />
+        <Snackbar message={toast} />
+      </>
     );
   } else if (auth.recovering) {
     return (

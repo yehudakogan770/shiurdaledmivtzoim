@@ -162,6 +162,8 @@ interface DataContextValue {
     adminSetPassword(userId: string, password: string): Promise<void>;
     adminUpdatePerson(userId: string, patch: PersonPatch): Promise<void>;
     adminDeletePerson(userId: string): Promise<void>;
+    /** The Owner: make a ready-to-use account for someone, staying signed in. */
+    ownerCreateAccount(input: SignUpInput): Promise<void>;
     /** Share photos (already made smaller); reports how many are done as they go. */
     uploadPhotos(photos: { full: Blob; thumb: Blob; width: number; height: number; color?: string }[], onProgress?: (done: number) => void): Promise<void>;
     /** The person who shared it, or an admin. */
@@ -579,6 +581,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         adminSetPassword: (userId, password) => b.adminSetPassword(userId, password),
         adminUpdatePerson: (userId, patch) => run(() => b.adminUpdatePerson(userId, patch)),
         adminDeletePerson: (userId) => run(() => b.adminDeletePerson(userId)),
+        ownerCreateAccount: (input) => run(() => b.ownerCreateAccount(input)),
         uploadPhotos: async (list, onProgress) => {
           if (!b.uploadPhoto) throw new Error(t("Photos aren't available here."));
           uid();

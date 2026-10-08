@@ -152,6 +152,9 @@ export async function createClaudeBackend(): Promise<Backend | null> {
     async adminUpdatePerson() {
       throw new Error(t("People here sign in with their Claude account, so their account can't be edited here."));
     },
+    async ownerCreateAccount() {
+      throw new Error(t("People here sign in with their Claude account, so accounts can't be made here."));
+    },
     async adminDeletePerson() {
       throw new Error(t("People here sign in with their Claude account, so their account can't be deleted here."));
     },
