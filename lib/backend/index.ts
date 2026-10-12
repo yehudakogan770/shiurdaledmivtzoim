@@ -73,6 +73,10 @@ export interface Backend {
   uploadPhoto?(full: Blob, thumb: Blob, info: { width: number; height: number; color?: string }): Promise<Photo>;
   /** The person who shared it, or an admin. */
   deletePhoto?(photo: Photo): Promise<void>;
+  /** Where print copies of photos go (the Owner's Google Drive script), if set up. Signed-in people only. */
+  photoDriveUrl?(): Promise<string | null>;
+  /** The Owner only: set or clear that address. */
+  setPhotoDriveUrl?(url: string | null): Promise<void>;
   /** Save the language this account sees the site in. */
   setLanguage?(language: string): Promise<void>;
   /** Business card details this account may see: its own, or everyone's for the Owner. */

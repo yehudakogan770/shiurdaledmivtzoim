@@ -14,6 +14,8 @@ type Store = { [K in Exclude<TableName, "profiles">]: Tables[K][] } & {
   photos?: (Photo & { data: string; thumbData: string })[];
   /** Business card details, with the card picture as a data URL. */
   cards?: (LocationCard & { data?: string | null })[];
+  /** Where print copies of photos go (Google Drive script). */
+  photoDrive?: string | null;
 };
 
 /** Salted SHA-256 so passwords are never stored as plain text. */
@@ -190,6 +192,15 @@ export function createLocalBackend(): Backend {
     },
     async listPhotos() {
       return [...(load().photos ?? [])].sort((a, b) => b.created_at.localeCompare(a.created_at)).map(({ data, thumbData, ...p }) => ({ ...p, url: data, thumbUrl: thumbData }));
+    },
+    async photoDriveUrl() {
+      return load().photoDrive ?? null;
+    },
+    async setPhotoDriveUrl(url) {
+      const s = load();
+      requireAdmin(s);
+      s.photoDrive = url?.trim() || null;
+      save(s);
     },
     async uploadPhoto(full, thumb, info) {
       const s = load();

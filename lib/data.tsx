@@ -18,7 +18,10 @@ import type {
   RouteLocation,
 } from "./types";
 import { DEFAULT_SETTINGS, type SignUpInput } from "./types";
-import { today } from "./dates";
+import { sendToDrive } from "./drive";
+import { printCopy } from "./photos";
+import { today, weekOf } from "./dates";
+import { parshaOfWeek } from "./parsha";
 import { newVersionOnline } from "./install";
 import { isAdminIdentifier } from "./admin";
 import { builtinDescription, builtinIcon, builtins, isBuiltinRow, type Builtin, type BuiltinType } from "./categories";
@@ -167,7 +170,7 @@ interface DataContextValue {
     /** The Owner: make a ready-to-use account for someone, staying signed in. */
     ownerCreateAccount(input: SignUpInput): Promise<void>;
     /** Share photos (already made smaller); reports how many are done as they go. */
-    uploadPhotos(photos: { full: Blob; thumb: Blob; width: number; height: number; color?: string }[], onProgress?: (done: number) => void): Promise<void>;
+    uploadPhotos(photos: { full: Blob; thumb: Blob; width: number; height: number; color?: string; source?: Blob }[], onProgress?: (done: number) => void): Promise<void>;
     /** The person who shared it, or an admin. */
     deletePhoto(id: string): Promise<void>;
   };
@@ -227,7 +230,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setSettings(merged);
     setMe(user);
     // The account's language (chosen at sign-up or on Profile) follows it to any phone.
-    if (user && isLang(user.language)) setLanguage(user.language);
+    // The Owner's account is always in English.
+    if (user && (isAdminIdentifier(user.email) || isAdminIdentifier(user.username))) setLanguage("en");
+    else if (user && isLang(user.language)) setLanguage(user.language);
     // Photos are for everyone, signed in or not.
     if (b.listPhotos) b.listPhotos().then(setPhotos, () => {});
     if (!user) setCards({});
@@ -589,12 +594,29 @@ export function DataProvider({ children }: { children: ReactNode }) {
           uid();
           let done = 0;
           const added: Photo[] = [];
+          // Print copies also go to the Owner's Google Drive, when that's set up. The website's photo
+          // comes first; a print copy that doesn't make it never stops the photo from being shared.
+          const drive = await b.photoDriveUrl?.().catch(() => null);
+          const week = weekOf(new Date());
+          const folder = `${week} ${parshaOfWeek(week).english}`;
+          const who = (me?.name || me?.username || "Photo").replace(/[\\/:*?"<>|]/g, "").trim();
+          let n = 0;
+          const toDrive = async (source?: Blob) => {
+            if (!drive || !source) return;
+            const name = `${who} ${today()} ${String(++n).padStart(2, "0")}-${Math.random().toString(36).slice(2, 6)}.jpg`;
+            try {
+              await sendToDrive(drive, { week: folder, name, photo: await printCopy(source) });
+            } catch (e) {
+              console.warn("Print copy not saved to Drive", e);
+            }
+          };
           try {
             // Two at a time: quicker than one by one, gentle on slow phone connections.
             const queue = [...list];
             const worker = async () => {
               for (let next = queue.shift(); next; next = queue.shift()) {
-                added.push(await b.uploadPhoto!(next.full, next.thumb, { width: next.width, height: next.height, color: next.color }));
+                const [photo] = await Promise.all([b.uploadPhoto!(next.full, next.thumb, { width: next.width, height: next.height, color: next.color }), toDrive(next.source)]);
+                added.push(photo);
                 onProgress?.(++done);
               }
             };

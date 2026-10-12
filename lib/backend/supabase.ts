@@ -206,6 +206,16 @@ export function createSupabaseBackend(url: string, key: string): Backend {
       if (error.message.includes("already has an account")) throw new Error(t("That email already has an account."));
       throw new Error(error.message);
     },
+    async photoDriveUrl() {
+      const { data, error } = await sb.from("photo_drive").select("url").eq("id", 1).maybeSingle();
+      if (error) return null;
+      return (data?.url as string | null) || null;
+    },
+    async setPhotoDriveUrl(url) {
+      const { error } = await sb.from("photo_drive").upsert({ id: 1, url: url?.trim() || null, updated_at: new Date().toISOString() });
+      if (error?.message.includes("photo_drive")) throw new Error(t("Run the latest database update (015) in Supabase first."));
+      fail(error);
+    },
     async adminDeletePerson(userId) {
       const { error } = await sb.rpc("admin_delete_person", { p_user: userId });
       if (error?.message.includes("admin_delete_person")) throw new Error(t("Run the latest setup file in Supabase first."));

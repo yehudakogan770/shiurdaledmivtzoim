@@ -1,6 +1,6 @@
 "use client";
 
-import { LanguageCard } from "../language-picker";
+import { PhotoDriveCard } from "../photo-drive-card";
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { ChevronDown, ChevronUp, Download, ClipboardList, Eye, EyeOff, KeyRound, Flame, Pencil, ShieldCheck, Sparkles, Trash2, Users } from "lucide-react";
 import { TefillinIcon } from "../icons";
@@ -42,10 +42,9 @@ export function AdminView() {
       )}
       <PeopleCard />
       <ExportCard />
+      {isOwner && <PhotoDriveCard />}
       {/* The Owner's History already shows everyone's entries. */}
       {!isOwner && <ActivityCard />}
-      {/* The Owner has no Profile page, so its language is chosen here. */}
-      {isOwner && <LanguageCard />}
     </div>
   );
 }

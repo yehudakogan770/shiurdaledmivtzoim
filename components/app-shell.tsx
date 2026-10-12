@@ -16,7 +16,7 @@ import { SiteFooter } from "./site-footer";
 import { EditModeProvider } from "@/lib/edit-mode";
 import { HebrewNamesGate, missingHebrewNames } from "./hebrew-names-gate";
 import { PhotosPromo } from "./photos-promo";
-import { isLang, t } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
 import { setAccountDesk, useAccountDesk } from "@/lib/account-desk";
 import { AccountDeskView } from "./views/account-desk";
 
@@ -308,7 +308,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   } else if (desk && isOwner) {
     return (
       <>
-        <AccountDeskView ownerLang={isLang(me?.language) ? me.language : "en"} />
+        <AccountDeskView ownerLang="en" />
         <Snackbar message={toast} />
       </>
     );

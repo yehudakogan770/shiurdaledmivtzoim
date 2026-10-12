@@ -17,6 +17,8 @@ export interface ShrunkPhoto {
   color: string;
   /** A preview to show before sending. */
   preview: string;
+  /** The photo as picked, for the large print copy (made only when it's sent). */
+  source?: Blob;
 }
 
 function loadImage(file: Blob): Promise<HTMLImageElement> {
@@ -54,13 +56,29 @@ function draw(img: HTMLImageElement, max: number) {
   return canvas;
 }
 
+/** About 3000 pixels on the long side: sharp in print up to about 8×10 inches. */
+const PRINT = 3000;
+
+/** The large copy for printing, as a JPEG (what print shops and Drive expect). */
+export async function printCopy(file: Blob): Promise<Blob> {
+  const img = await loadImage(file);
+  try {
+    const canvas = draw(img, PRINT);
+    return await new Promise<Blob>((resolve, reject) =>
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error(t("Couldn't prepare the photo.")))), "image/jpeg", 0.9),
+    );
+  } finally {
+    URL.revokeObjectURL(img.src);
+  }
+}
+
 export async function shrinkPhoto(file: File): Promise<ShrunkPhoto> {
   const img = await loadImage(file);
   try {
     const big = draw(img, FULL);
     const small = draw(img, THUMB);
     const [full, thumb] = await Promise.all([encode(big, 0.8), encode(small, 0.74)]);
-    return { full, thumb, width: big.width, height: big.height, color: colorOf(small), preview: URL.createObjectURL(thumb) };
+    return { full, thumb, width: big.width, height: big.height, color: colorOf(small), preview: URL.createObjectURL(thumb), source: file };
   } finally {
     URL.revokeObjectURL(img.src);
   }
