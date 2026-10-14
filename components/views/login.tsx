@@ -133,7 +133,7 @@ export function LoginView({ initialMode = "signin", onBack }: { initialMode?: Mo
                 id="login-username"
                 required
                 value={username}
-                onChange={(e) => setUsername(e.target.value.replace(/\s/g, ""))}
+                onChange={(e) => setUsername(e.target.value.replace(/[\s\p{Cf}]/gu, ""))}
                 placeholder="mendel"
                 autoComplete="username"
                 autoCapitalize="none"

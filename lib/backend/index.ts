@@ -116,18 +116,32 @@ export function newId() {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/** Usernames: 3–20 lowercase letters, numbers, dots, dashes or underscores. */
+/**
+ * A username as typed, cleaned up: no spaces, no invisible characters (keyboards, autofill and
+ * copy-paste sometimes add direction marks or zero-width spaces), wide letters made normal,
+ * lowercase, and no "@" in front.
+ */
+export function cleanUsername(raw: string) {
+  return raw
+    .normalize("NFKC")
+    .replace(/[\s\p{Cf}]/gu, "")
+    .toLowerCase()
+    .replace(/^@+/, "");
+}
+
+/** Usernames: 3–20 lowercase letters, numbers, dots, dashes or underscores. Says exactly what's wrong. */
 export function normalizeUsername(raw: string) {
-  const u = raw.trim().toLowerCase().replace(/^@/, "");
-  if (!/^[a-z0-9._-]{3,20}$/.test(u)) {
-    throw new Error(t("Usernames are 3 to 20 characters: letters, numbers, dots, dashes or underscores."));
-  }
+  const u = cleanUsername(raw);
+  const bad = [...new Set(u.replace(/[a-z0-9._-]/g, ""))].join(" ");
+  if (bad) throw new Error(t("A username can't have: {chars}\nUse only English letters, numbers, dots, dashes or underscores.", { chars: bad }));
+  if (u.length < 3) throw new Error(t("That username is too short. Use at least 3 characters."));
+  if (u.length > 20) throw new Error(t("That username is too long ({n} characters). Use at most 20.", { n: u.length }));
   return u;
 }
 
 /** Lowercased sign-in name for lookups (no validation). */
 export function loginKey(raw: string) {
-  return raw.trim().toLowerCase().replace(/^@/, "");
+  return cleanUsername(raw);
 }
 
 export function checkEmail(raw: string) {

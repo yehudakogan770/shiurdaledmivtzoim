@@ -10,13 +10,14 @@ import { useData } from "@/lib/data";
 import { useNav } from "@/lib/nav";
 import { setAccountDesk } from "@/lib/account-desk";
 import { handle } from "@/lib/admin";
+import { cleanUsername } from "@/lib/backend";
 import { BLANK_CHAVRUSA, encodeChavrusa, type Chavrusa } from "@/lib/chavrusa";
 import { ChavrusaFields } from "../chavrusa-fields";
 import { LanguageButtons } from "../language-picker";
 import { LogoMark } from "../brand";
 import { Avatar, Button, Field, Input, Modal, cx } from "../ui";
 
-const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+const same = (a: string, b: string) => a.normalize("NFKC").replace(/[\s\p{Cf}]/gu, "").toLowerCase() === b.normalize("NFKC").replace(/[\s\p{Cf}]/gu, "").toLowerCase();
 
 /**
  * The account desk (Owner only): the whole screen is the sign-up form, for people without a phone
@@ -102,7 +103,7 @@ function CreateAccount() {
         password,
         language: getLang(),
       });
-      setMade({ name: name.trim(), username: username.trim().toLowerCase().replace(/^@/, "") });
+      setMade({ name: name.trim(), username: cleanUsername(username) });
       clear();
       window.scrollTo(0, 0);
     } catch (err) {
@@ -149,10 +150,10 @@ function CreateAccount() {
             </div>
 
             <Field label={t("Username")} htmlFor="desk-username" hint={t("3 to 20 letters, numbers, dots or dashes. You'll use it to sign in.")}>
-              <Input id="desk-username" required value={username} onChange={(e) => setUsername(e.target.value.replace(/\s/g, ""))} placeholder="mendel" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} />
+              <Input id="desk-username" required value={username} onChange={(e) => setUsername(e.target.value.replace(/[\s\p{Cf}]/gu, ""))} placeholder="mendel" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} />
             </Field>
             <Field label={t("Type the username again")} htmlFor="desk-username2">
-              <Input id="desk-username2" required value={username2} onChange={(e) => setUsername2(e.target.value.replace(/\s/g, ""))} autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} />
+              <Input id="desk-username2" required value={username2} onChange={(e) => setUsername2(e.target.value.replace(/[\s\p{Cf}]/gu, ""))} autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} />
             </Field>
 
             <Field label={t("Email")} htmlFor="desk-email" hint={t("So the admin can reach you, and help if you forget your password.")}>
@@ -191,7 +192,7 @@ function FindAccount() {
   const { people, me } = useData();
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<Profile | null>(null);
-  const q = query.trim().toLowerCase().replace(/^@/, "");
+  const q = cleanUsername(query);
   const found =
     q.length < 2
       ? []

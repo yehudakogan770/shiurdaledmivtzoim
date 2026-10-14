@@ -3,6 +3,9 @@ import type { Area } from "./types";
 /** The account desk: the Owner's device, handed to someone to make their own account. */
 const accountDesk: Area = {
   he: {
+    "A username can't have: {chars}\nUse only English letters, numbers, dots, dashes or underscores.": "שם משתמש לא יכול לכלול: {chars}\nהשתמשו רק באותיות באנגלית, מספרים, נקודות, מקפים או קווים תחתונים.",
+    "That username is too short. Use at least 3 characters.": "שם המשתמש קצר מדי. השתמשו לפחות ב־3 תווים.",
+    "That username is too long ({n} characters). Use at most 20.": "שם המשתמש ארוך מדי ({n} תווים). השתמשו לכל היותר ב־20.",
     "Create an account": "יצירת חשבון",
     "Find my account": "מציאת החשבון שלי",
     "Type your username, then tap your name to log your Mivtzoim.": "הקלידו את שם המשתמש, ואז הקישו על השם כדי לרשום את המבצעים.",
@@ -30,6 +33,9 @@ const accountDesk: Area = {
     "People here sign in with their Claude account, so accounts can't be made here.": "כאן נכנסים עם חשבון Claude, ולכן אי אפשר ליצור כאן חשבונות.",
   },
   fr: {
+    "A username can't have: {chars}\nUse only English letters, numbers, dots, dashes or underscores.": "Un nom d'utilisateur ne peut pas contenir : {chars}\nUtilise seulement des lettres sans accents, des chiffres, des points, des tirets ou des tirets bas.",
+    "That username is too short. Use at least 3 characters.": "Ce nom d'utilisateur est trop court. Utilise au moins 3 caractères.",
+    "That username is too long ({n} characters). Use at most 20.": "Ce nom d'utilisateur est trop long ({n} caractères). Utilise au maximum 20.",
     "Create an account": "Créer un compte",
     "Find my account": "Trouver mon compte",
     "Type your username, then tap your name to log your Mivtzoim.": "Tape ton nom d'utilisateur, puis touche ton nom pour noter tes Mivtsaïm.",
@@ -57,6 +63,9 @@ const accountDesk: Area = {
     "People here sign in with their Claude account, so accounts can't be made here.": "Ici, on se connecte avec son compte Claude : impossible de créer des comptes ici.",
   },
   es: {
+    "A username can't have: {chars}\nUse only English letters, numbers, dots, dashes or underscores.": "Un nombre de usuario no puede tener: {chars}\nUsa solo letras sin acentos, números, puntos, guiones o guiones bajos.",
+    "That username is too short. Use at least 3 characters.": "Ese nombre de usuario es muy corto. Usa al menos 3 caracteres.",
+    "That username is too long ({n} characters). Use at most 20.": "Ese nombre de usuario es muy largo ({n} caracteres). Usa como máximo 20.",
     "Create an account": "Crear una cuenta",
     "Find my account": "Buscar mi cuenta",
     "Type your username, then tap your name to log your Mivtzoim.": "Escribe tu nombre de usuario y toca tu nombre para registrar tus Mivtzoim.",
