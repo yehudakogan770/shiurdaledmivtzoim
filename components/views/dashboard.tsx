@@ -2,7 +2,7 @@
 
 import { arrange } from "@/lib/photos";
 import { useEffect, useRef, useState, type ComponentType } from "react";
-import { ClipboardList, Flame, Megaphone, Minus, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
+import { ChevronDown, ClipboardList, Flame, Megaphone, Minus, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useEditMode } from "@/lib/edit-mode";
 import { SettingField, SharedCategoriesCard } from "./admin";
 import { EntryGroups } from "../entry-groups";
@@ -17,7 +17,7 @@ import type { CommunityRow } from "@/lib/backend";
 import { builtinHiddenIn, categoryHiddenIn, orderedMivtzoim, type BuiltinType } from "@/lib/categories";
 import { parshaName, parshaOfWeek, weekTitle } from "@/lib/parsha";
 import type { Activity } from "@/lib/types";
-import { Card, CardTitle, CategoryIcon, Empty, IconButton, PageHeader, Select, Stat, cx, listClass } from "../ui";
+import { Card, CardTitle, CategoryIcon, Empty, IconButton, PageHeader, Stat, cx, listClass } from "../ui";
 import { getLang, t } from "@/lib/i18n";
 
 export function sum(rows: Activity[]) {
@@ -686,24 +686,34 @@ function WeekPicker({ week, onChange }: { week: string; onChange(week: string): 
         {t("Back to this week")}
       </button>
     );
+  const label = (w: string) => `${w === thisWeek ? `${t("This week")} · ` : ""}${parshaOfWeek(w).local} · ${weekLabel(w)}`;
   const picker = (light: boolean) => (
     <div className={cx("w-full sm:w-auto", light && "pointer-events-auto")}>
       <label htmlFor="week-picker" className="sr-only">
         {t("Week")}
       </label>
-      <Select
-        id="week-picker"
-        value={week}
-        onChange={(e) => onChange(e.target.value)}
-        className={cx("h-11 py-2 text-sm sm:w-auto sm:min-w-72", light && "bg-black/40! text-white! ring-1 ring-white/25 backdrop-blur-md [&>option]:text-ink")}
+      {/* The chosen week is shown in full (smaller text if it must); the real menu sits invisibly on top. */}
+      <div
+        className={cx(
+          "relative flex min-h-11 w-full items-center gap-2 rounded-2xl border-2 border-transparent px-4 text-sm focus-within:border-accent sm:w-auto sm:min-w-72",
+          light ? "bg-black/40 text-white ring-1 ring-white/25 backdrop-blur-md" : "bg-sunken text-ink",
+        )}
       >
-        {weeks.map((w) => (
-          <option key={w} value={w}>
-            {w === thisWeek ? `${t("This week")} · ` : ""}
-            {parshaOfWeek(w).local} · {weekLabel(w)}
-          </option>
-        ))}
-      </Select>
+        <FitText text={label(week)} />
+        <ChevronDown size={18} aria-hidden className={cx("shrink-0", light ? "text-white/80" : "text-muted")} />
+        <select
+          id="week-picker"
+          value={week}
+          onChange={(e) => onChange(e.target.value)}
+          className="absolute inset-0 h-full w-full cursor-pointer appearance-none opacity-0 [&>option]:text-ink"
+        >
+          {weeks.map((w) => (
+            <option key={w} value={w}>
+              {label(w)}
+            </option>
+          ))}
+        </select>
+      </div>
     </div>
   );
 
@@ -835,5 +845,36 @@ function WeeklyChart({ rows, last }: { rows: Activity[]; last: string }) {
         ))}
       </div>
     </div>
+  );
+}
+
+/** Text that shrinks (down to 11px) instead of being cut off; if even that is too wide, it takes two lines. */
+function FitText({ text }: { text: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [fit, setFit] = useState({ px: 14, wrap: false });
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => {
+      el.style.whiteSpace = "nowrap";
+      let px = 14;
+      el.style.fontSize = `${px}px`;
+      while (px > 11 && el.scrollWidth > el.clientWidth + 0.5) {
+        px -= 0.5;
+        el.style.fontSize = `${px}px`;
+      }
+      const wrap = el.scrollWidth > el.clientWidth + 0.5;
+      el.style.whiteSpace = "";
+      setFit({ px: wrap ? 13 : px, wrap });
+    };
+    measure();
+    const watch = new ResizeObserver(measure);
+    watch.observe(el.parentElement ?? el);
+    return () => watch.disconnect();
+  }, [text]);
+  return (
+    <span ref={ref} className={cx("min-w-0 flex-1 leading-tight", fit.wrap ? "py-1.5" : "overflow-hidden whitespace-nowrap")} style={{ fontSize: fit.px }}>
+      {text}
+    </span>
   );
 }
