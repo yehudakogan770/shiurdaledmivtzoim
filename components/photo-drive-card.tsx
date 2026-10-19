@@ -38,7 +38,14 @@ export function PhotoDriveCard() {
       setSaved(next || null);
       notify(next ? t("Connected. New photos also go to Google Drive, in print quality.") : t("Disconnected from Google Drive."));
     } catch (e) {
-      notify(t("Google Drive didn't answer: {reason}", { reason: (e as Error).message }));
+      const reason = (e as Error).message;
+      // The browser says only "Failed to fetch" when Google turns the request away, almost always
+      // because the deployment isn't open to "Anyone" or was made in a different Google account.
+      notify(
+        /failed to fetch|load failed|networkerror/i.test(reason)
+          ? t("Google Drive turned the request away. In the script, click Deploy → Manage deployments and check that Who has access is Anyone, and that you made it while signed in as sdmivtzoim87@gmail.com. Then open the Web app URL in a browser: it should say \"Connected\".")
+          : t("Google Drive didn't answer: {reason}", { reason }),
+      );
     } finally {
       setBusy(false);
     }
