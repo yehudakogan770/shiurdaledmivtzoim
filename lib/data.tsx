@@ -16,6 +16,7 @@ import type {
   SiteSettings,
   Route,
   RouteLocation,
+  WeekAnswer,
 } from "./types";
 import { DEFAULT_SETTINGS, type SignUpInput } from "./types";
 import { sendToDrive } from "./drive";
@@ -34,6 +35,8 @@ export interface AppData {
   stops: RouteLocation[];
   categories: PersonalCategory[];
   activity: Activity[];
+  /** The week's question on Home (did you go on Mivtzoim, who went), for this account. */
+  weeks: WeekAnswer[];
   names: Record<string, string>;
 }
 
@@ -45,6 +48,7 @@ const EMPTY: AppData = {
   stops: [],
   categories: [],
   activity: [],
+  weeks: [],
   names: {},
 };
 
@@ -131,6 +135,8 @@ interface DataContextValue {
   actions: {
     log(input: LogInput): Promise<void>;
     deleteActivity(id: string): Promise<void>;
+    /** Answer the week's question: did this route go on Mivtzoim, and who went. */
+    answerWeek(week: string, answer: { went: boolean; people: string[] }): Promise<void>;
     /** Fix an entry: how many, which day, notes (0 deletes it). */
     updateActivity(id: string, patch: { quantity: number; activity_date: string; notes: string }): Promise<void>;
     /** Change how many an entry counts; 0 deletes it. */
@@ -244,7 +250,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setPeople([]);
       return;
     }
-    const [everyone, groups, members, routes, locations, stops, categories, activity] = await Promise.all([
+    const [everyone, groups, members, routes, locations, stops, categories, activity, weeks] = await Promise.all([
       user.role === "admin" ? b.listPeople().catch(() => [] as Profile[]) : Promise.resolve([] as Profile[]),
       b.list("groups"),
       b.list("group_members"),
@@ -253,6 +259,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       b.list("route_locations"),
       b.list("personal_categories"),
       b.list("mivtzoim_activity"),
+      // Empty until database update 016 is run.
+      b.list("mivtzoim_weeks").catch(() => [] as WeekAnswer[]),
     ]);
     const ids = new Set<string>([user.id]);
     members.forEach((m) => ids.add(m.user_id));
@@ -261,7 +269,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const names = await b.names([...ids]);
     names[user.id] = user.name || names[user.id];
     setPeople(everyone);
-    setData({ groups, members, routes, locations, stops, categories, activity, names });
+    setData({ groups, members, routes, locations, stops, categories, activity, weeks, names });
   }, []);
 
   useEffect(() => {
@@ -447,6 +455,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
           });
         },
         deleteActivity: async (id) => removeActivity(id),
+        answerWeek: async (week, answer) => {
+          const user_id = uid();
+          const fields = { went: answer.went, people: answer.went ? answer.people : [] };
+          const existing = data.weeks.find((w) => w.user_id === user_id && w.week === week);
+          if (existing) {
+            setData((d) => ({ ...d, weeks: d.weeks.map((w) => (w.id === existing.id ? { ...w, ...fields } : w)) }));
+            saveLater(() => b.update("mivtzoim_weeks", realId(existing.id), fields));
+            return;
+          }
+          const tempId = `new-${newId()}`;
+          setData((d) => ({ ...d, weeks: [...d.weeks, { id: tempId, user_id, week, ...fields, created_at: new Date().toISOString() }] }));
+          saveLater(async () => {
+            const saved = await b.insert("mivtzoim_weeks", { user_id, week, ...fields }).catch((e: Error) => {
+              throw new Error(e.message.includes("mivtzoim_weeks") ? t("To save this question, run database update 016 in Supabase first.") : e.message);
+            });
+            savedIds.current.set(tempId, saved.id);
+            setData((d) => ({ ...d, weeks: d.weeks.map((w) => (w.id === tempId ? { ...w, id: saved.id } : w)) }));
+          });
+        },
         updateActivity: async (id, patch) => {
           if (patch.quantity <= 0) return removeActivity(id);
           if (!/^\d{4}-\d{2}-\d{2}$/.test(patch.activity_date)) throw new Error(t("Pick a date."));

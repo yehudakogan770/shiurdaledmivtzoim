@@ -145,6 +145,18 @@ export interface Activity {
   created_at: string;
 }
 
+/** The week's question on Home: did this route go on Mivtzoim, and who went. */
+export interface WeekAnswer {
+  id: string;
+  user_id: string;
+  /** The week's Friday, YYYY-MM-DD. */
+  week: string;
+  went: boolean;
+  /** Who went: the route's Chavrusas (by English name) and anyone else typed in. */
+  people: string[];
+  created_at: string;
+}
+
 export interface Tables {
   profiles: Profile;
   groups: Group;
@@ -154,6 +166,7 @@ export interface Tables {
   route_locations: RouteLocation;
   personal_categories: PersonalCategory;
   mivtzoim_activity: Activity;
+  mivtzoim_weeks: WeekAnswer;
 }
 
 export type TableName = keyof Tables;

@@ -6,6 +6,7 @@ import { ChevronDown, ClipboardList, Flame, Megaphone, Minus, Pencil, Plus, Spar
 import { useEditMode } from "@/lib/edit-mode";
 import { SettingField, SharedCategoriesCard } from "./admin";
 import { EntryGroups } from "../entry-groups";
+import { WeekQuestion } from "../week-question";
 import { TefillinIcon } from "../icons";
 import { useData, type LogInput } from "@/lib/data";
 import { iconForActivity, iconForCategory } from "@/lib/category-icons";
@@ -257,6 +258,8 @@ function PersonalHome() {
           {t("You're looking at the week of {week}. Anything you add, remove or change here counts for that week.", { week: weekTitle(week) })}
         </p>
       )}
+
+      <WeekQuestion week={week} />
 
       <QuickLog week={week} />
 
