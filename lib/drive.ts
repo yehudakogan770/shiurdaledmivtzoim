@@ -32,6 +32,11 @@ function doPost(e) {
   }
 }
 
+// Open the Web app link in a browser to check it: it should say "Connected".
+function doGet() {
+  return ContentService.createTextOutput("Connected. Photos will be saved in: " + root_().getUrl());
+}
+
 function root_() {
   return folder_(DriveApp.getRootFolder(), ROOT);
 }
