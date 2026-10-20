@@ -5,6 +5,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import { Check, Flame, Minus, Plus, Sparkles } from "lucide-react";
 import { TefillinIcon } from "../icons";
 import { useData } from "@/lib/data";
+import { useAskAfterLogging } from "../week-question";
 import { iconForCategory } from "@/lib/category-icons";
 import { useNav } from "@/lib/nav";
 import { activityWeek, currentWeek, today } from "@/lib/dates";
@@ -24,6 +25,7 @@ const TONE: Record<CategoryType, { on: string; chip: string; icon: ComponentType
 
 export function LogView() {
   const { mine, shared, builtins, data, actions, notify } = useData();
+  const askWhoWent = useAskAfterLogging();
   const { query, Link, go } = useNav();
 
   const choices: Choice[] = useMemo(
@@ -93,6 +95,7 @@ export function LogView() {
         });
       }
       notify(t("Logged {list}", { list: toLog.map((c) => `${items[c.key].quantity} ${t(c.label)}`).join(", ") }));
+      askWhoWent(activityWeek({ activity_date: date }));
       setItems({});
       if (query.route) go(`/routes/view?id=${query.route}`);
     } catch (err) {

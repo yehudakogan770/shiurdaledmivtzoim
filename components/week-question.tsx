@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Check, Footprints, Plus } from "lucide-react";
 import { useData } from "@/lib/data";
 import { chavrusasOf } from "@/lib/chavrusa";
 import { currentWeek } from "@/lib/dates";
 import { t } from "@/lib/i18n";
+import { askWhoWent, useWhoWentWeek } from "@/lib/who-went";
 import { Button, Card, Input, Modal, cx } from "./ui";
 
 /**
@@ -15,10 +16,10 @@ import { Button, Card, Input, Modal, cx } from "./ui";
  */
 export function WeekQuestion({ week }: { week: string }) {
   const { me, data, actions, notify } = useData();
-  const [open, setOpen] = useState(false);
   const answer = data.weeks.find((w) => w.user_id === me?.id && w.week === week);
   const people = answer?.people ?? [];
   const save = (went: boolean, next: string[]) => actions.answerWeek(week, { went, people: next }).catch((e: Error) => notify(e.message));
+  const setOpen = (open: boolean) => askWhoWent(open ? week : null);
 
   const yes = () => {
     if (!answer?.went) save(true, people);
@@ -26,8 +27,7 @@ export function WeekQuestion({ week }: { week: string }) {
   };
 
   return (
-    <>
-      <Card>
+    <Card>
         <div className="flex items-center gap-3 px-4 py-3">
           <span aria-hidden className={cx("grid h-9 w-9 shrink-0 place-items-center rounded-full", answer?.went ? "bg-sage-soft text-sage-on-soft" : "bg-accent-soft text-accent-on-soft")}>
             {answer?.went ? <Check size={18} strokeWidth={2.6} /> : <Footprints size={18} />}
@@ -45,10 +45,38 @@ export function WeekQuestion({ week }: { week: string }) {
             </SmallChoice>
           </div>
         </div>
-      </Card>
-      {/* Outside the card: its glass effect would keep the pop-up from covering the screen. */}
-      {open && <WhoWent people={people} onChange={(next) => save(true, next)} onClose={() => setOpen(false)} />}
-    </>
+    </Card>
+  );
+}
+
+/**
+ * After logging a Mivtza: if the week's question isn't answered yet, it becomes Yes and the
+ * "Who went?" pop-up opens. Asked once per week, so quick taps don't open it again and again.
+ */
+export function useAskAfterLogging() {
+  const { me, data, actions, notify } = useData();
+  const asked = useRef(new Set<string>());
+  return (week: string) => {
+    if (!me || asked.current.has(week) || data.weeks.some((w) => w.user_id === me.id && w.week === week)) return;
+    asked.current.add(week);
+    actions.answerWeek(week, { went: true, people: [] }).catch((e: Error) => notify(e.message));
+    askWhoWent(week);
+  };
+}
+
+/** The one "Who went?" pop-up, shown by the app shell for whichever week asked for it. */
+export function WhoWentPrompt() {
+  const { me, data, actions, notify } = useData();
+  const week = useWhoWentWeek();
+  if (!week || !me) return null;
+  const people = data.weeks.find((w) => w.user_id === me.id && w.week === week)?.people ?? [];
+  return (
+    <WhoWent
+      key={week}
+      people={people}
+      onChange={(next) => actions.answerWeek(week, { went: true, people: next }).catch((e: Error) => notify(e.message))}
+      onClose={() => askWhoWent(null)}
+    />
   );
 }
 
@@ -84,12 +112,17 @@ function WhoWent({ people, onChange, onClose }: { people: string[]; onChange(nex
     setAdding(false);
   };
 
+  // Someone went, so at least one name is needed before it closes.
+  const ready = people.length > 0;
   return (
-    <Modal onClose={onClose} blur>
+    <Modal onClose={() => ready && onClose()} blur>
       <div role="dialog" aria-modal="true" aria-labelledby="who-went" onClick={(e) => e.stopPropagation()} className="grid w-full max-w-xs gap-3 rounded-[28px] bg-card p-5 shadow-pop">
-        <h2 id="who-went" className="text-lg font-medium">
-          {t("Who went?")}
-        </h2>
+        <div>
+          <h2 id="who-went" className="text-lg font-medium">
+            {t("Who went?")}
+          </h2>
+          {!ready && <p className="text-sm text-muted">{t("Tap who went on Mivtzoim, then Done.")}</p>}
+        </div>
         <div className="grid gap-1">
           {[...names, ...others].map((name) => (
             <NameRow key={name} name={name} selected={people.includes(name)} onClick={() => toggle(name)} />
@@ -116,7 +149,7 @@ function WhoWent({ people, onChange, onClose }: { people: string[]; onChange(nex
             </button>
           )}
         </div>
-        <Button type="button" onClick={onClose} className="justify-self-end">
+        <Button type="button" onClick={onClose} disabled={!ready} className="justify-self-end">
           {t("Done")}
         </Button>
       </div>

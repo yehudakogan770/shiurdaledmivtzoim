@@ -6,7 +6,7 @@ import { ChevronDown, ClipboardList, Flame, Megaphone, Minus, Pencil, Plus, Spar
 import { useEditMode } from "@/lib/edit-mode";
 import { SettingField, SharedCategoriesCard } from "./admin";
 import { EntryGroups } from "../entry-groups";
-import { WeekQuestion } from "../week-question";
+import { WeekQuestion, useAskAfterLogging } from "../week-question";
 import { TefillinIcon } from "../icons";
 import { useData, type LogInput } from "@/lib/data";
 import { iconForActivity, iconForCategory } from "@/lib/category-icons";
@@ -321,10 +321,13 @@ export function QuickLog({ week, userId }: { week: string; userId?: string }) {
   const counters = useCounters(week);
   const past = week !== currentWeek();
   const rows = userId ? data.activity.filter((a) => a.user_id === userId) : mine.activity;
+  const askWhoWent = useAskAfterLogging();
 
   async function add(c: Counter) {
     try {
       await actions.log({ ...c.log, activity_date: dateForWeek(week), ...(userId ? { user_id: userId } : {}) });
+      // Logging for yourself answers the week's question: you went. (Not the Owner logging for someone.)
+      if (!userId) askWhoWent(week);
       notify(past ? t("Added {name} to the week of {week}", { name: t(c.title), week: weekTitle(week) }) : t("Added {name}", { name: t(c.title) }));
     } catch (e) {
       notify((e as Error).message);

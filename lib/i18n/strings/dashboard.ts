@@ -27,6 +27,7 @@ const dashboard: Area = {
     "Yes": "כן",
     "No": "לא",
     "Who went?": "מי יצא?",
+    "Tap who went on Mivtzoim, then Done.": "סמנו מי יצא למבצעים, ואז סיום.",
     "Their name": "השם שלו",
     "Add": "הוסף",
     "You're looking at the week of {week}. Anything you add, remove or change here counts for that week.":
@@ -118,6 +119,7 @@ const dashboard: Area = {
     "Yes": "Oui",
     "No": "Non",
     "Who went?": "Qui y est allé ?",
+    "Tap who went on Mivtzoim, then Done.": "Touchez qui est sorti faire les Mivtsaïm, puis Terminé.",
     "Their name": "Son nom",
     "Add": "Ajouter",
     "You're looking at the week of {week}. Anything you add, remove or change here counts for that week.":
@@ -209,6 +211,7 @@ const dashboard: Area = {
     "Yes": "Sí",
     "No": "No",
     "Who went?": "¿Quién fue?",
+    "Tap who went on Mivtzoim, then Done.": "Toca quién salió a hacer Mivtzoim y luego Listo.",
     "Their name": "Su nombre",
     "Add": "Agregar",
     "You're looking at the week of {week}. Anything you add, remove or change here counts for that week.":
