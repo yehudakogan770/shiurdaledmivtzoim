@@ -18,7 +18,7 @@ import type { CommunityRow } from "@/lib/backend";
 import { builtinHiddenIn, categoryHiddenIn, orderedMivtzoim, type BuiltinType } from "@/lib/categories";
 import { parshaName, parshaOfWeek, weekTitle } from "@/lib/parsha";
 import type { Activity } from "@/lib/types";
-import { Card, CardTitle, CategoryIcon, Empty, IconButton, PageHeader, Stat, cx, listClass } from "../ui";
+import { Card, CardTitle, CategoryIcon, Empty, IconButton, PageHeader, cx, listClass } from "../ui";
 import { getLang, t } from "@/lib/i18n";
 
 export function sum(rows: Activity[]) {
@@ -207,9 +207,7 @@ function PersonalHome() {
   const { Link } = useNav();
   const thisWeek = currentWeek();
   const [week, setWeek] = useState(thisWeek);
-  const lastWeek = addDays(week, -7);
   const weekRows = mine.activity.filter((a) => activityWeek(a) === week);
-  const lastRows = mine.activity.filter((a) => activityWeek(a) === lastWeek);
   // The week's totals keep anything with entries, even if it was hidden since.
   const counters = useCounters(week, weekRows);
   const weekEntries = [...weekRows].sort((x, y) => activityMoment(y).getTime() - activityMoment(x).getTime());
@@ -232,26 +230,6 @@ function PersonalHome() {
           <p className="whitespace-pre-line">{settings.announcement}</p>
         </div>
       )}
-
-      <div>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]">
-          {counters.map((c) => {
-            const now = sum(weekRows.filter(c.matches));
-            return (
-              <Stat
-                key={c.key}
-                label={t(c.short)}
-                icon={c.icon}
-                value={now}
-                delta={now - sum(lastRows.filter(c.matches))}
-                note={t("vs last week")}
-                tone={c.tone}
-                color={c.custom ? c.color : undefined}
-              />
-            );
-          })}
-        </div>
-      </div>
 
       {week !== thisWeek && (
         <p role="status" className="rounded-[20px] bg-candle-soft px-5 py-3 text-sm text-candle-on-soft">
@@ -346,7 +324,7 @@ export function QuickLog({ week, userId }: { week: string; userId?: string }) {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
       {counters.map((c) => (
         <QuickButton
           key={c.key}
@@ -424,9 +402,10 @@ function QuickButton({ c, count, hint, sample, onAdd, onSubtract }: { c: Counter
   return (
     <div
       ref={box}
-      className={cx("flex items-center gap-2 rounded-[28px] p-3 pe-4", c.soft)}
+      className={cx("relative aspect-square rounded-[28px]", c.soft)}
       style={c.custom ? { background: `color-mix(in srgb, ${c.color} 18%, var(--card))` } : undefined}
     >
+      {/* The whole square adds one; the number is this week's total. */}
       <button
         type="button"
         onClick={() => {
@@ -435,24 +414,27 @@ function QuickButton({ c, count, hint, sample, onAdd, onSubtract }: { c: Counter
           onAdd();
         }}
         aria-label={t("Add 1 {name}", { name: t(c.title) })}
-        className="flex min-w-0 flex-1 items-center gap-4 rounded-[22px] p-2 text-start transition hover:bg-ink/5 active:scale-[0.99] disabled:opacity-60"
+        className="flex h-full w-full flex-col justify-between rounded-[28px] p-4 text-start transition hover:bg-ink/5 active:scale-[0.98] disabled:opacity-60"
       >
-        <span className={cx("relative grid h-14 w-14 shrink-0 place-items-center rounded-2xl", c.chip)} style={c.custom ? { background: c.color } : undefined}>
-          <c.icon size={26} />
-          {plus.n > 0 && (
-            <span aria-live="polite" aria-label={t("Adding {n}", { n: plus.n })} className={cx("absolute -top-4 -end-6 transition-opacity duration-300", plus.fading && "opacity-0")}>
-              <span key={plus.n} className="tally-pop block text-sage tabular pointer-events-none text-lg font-bold leading-none [text-shadow:0_0_4px_var(--card),0_0_2px_var(--card)]">
-                +{plus.n}
-              </span>
-            </span>
-          )}
+        <span className={cx("grid h-12 w-12 shrink-0 place-items-center rounded-2xl", c.chip)} style={c.custom ? { background: c.color } : undefined}>
+          <c.icon size={24} />
         </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-xl font-medium">{t(c.title)}</span>
-          <span className="block truncate text-sm opacity-80">{hint}</span>
+        <span className="min-w-0">
+          <span className="relative inline-block">
+            <span className="tabular block text-5xl font-normal leading-none tracking-tight">{count}</span>
+            {plus.n > 0 && (
+              <span aria-live="polite" aria-label={t("Adding {n}", { n: plus.n })} className={cx("absolute start-full top-1/2 ms-2 -translate-y-1/2 transition-opacity duration-300", plus.fading && "opacity-0")}>
+                <span key={plus.n} className="tally-pop block text-sage tabular pointer-events-none text-lg font-bold leading-none [text-shadow:0_0_4px_var(--card),0_0_2px_var(--card)]">
+                  +{plus.n}
+                </span>
+              </span>
+            )}
+          </span>
+          <span className="mt-2 block truncate text-lg font-medium leading-tight">{t(c.short)}</span>
+          <span className="block truncate text-xs opacity-80">{hint}</span>
         </span>
       </button>
-      <span className="relative shrink-0">
+      <span className="absolute top-3 end-3">
         <button
           type="button"
           disabled={count === 0}
@@ -462,12 +444,12 @@ function QuickButton({ c, count, hint, sample, onAdd, onSubtract }: { c: Counter
           }}
           aria-label={t("Remove 1 {name}", { name: t(c.title) })}
           title={t("Remove 1 {name}", { name: t(c.title) })}
-          className="grid h-11 w-11 place-items-center rounded-full bg-minus text-minus-ink transition hover:brightness-95 disabled:opacity-30"
+          className="grid h-10 w-10 place-items-center rounded-full bg-minus text-minus-ink transition hover:brightness-95 disabled:opacity-30"
         >
-          <Minus size={20} strokeWidth={2.5} />
+          <Minus size={18} strokeWidth={2.5} />
         </button>
         {minus.n > 0 && (
-          <span aria-live="polite" aria-label={t("Removing {n}", { n: minus.n })} className={cx("absolute -top-4 -end-2 transition-opacity duration-300", minus.fading && "opacity-0")}>
+          <span aria-live="polite" aria-label={t("Removing {n}", { n: minus.n })} className={cx("absolute -bottom-6 end-1 transition-opacity duration-300", minus.fading && "opacity-0")}>
             <span key={minus.n} className="tally-pop block text-danger tabular pointer-events-none text-lg font-bold leading-none [text-shadow:0_0_4px_var(--card),0_0_2px_var(--card)]">
               −{minus.n}
             </span>
