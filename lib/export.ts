@@ -1,4 +1,4 @@
-import type { Activity, PersonalCategory, Profile, Route, Location } from "./types";
+import type { Activity, PersonalCategory, Profile, Route, Location, WeekAnswer } from "./types";
 import { activityMoment, activityWeek, formatShort } from "./dates";
 import { categoryName, reportColumns, type Builtin } from "./categories";
 import { parshaName, weekTitle } from "./parsha";
@@ -9,6 +9,8 @@ import { t, tn } from "./i18n";
 export interface ExportInput {
   weeks: string[]; // Fridays (YYYY-MM-DD) to include
   activity: Activity[];
+  /** Each route's answer to the week's question: did they go on Mivtzoim, and who went. */
+  answers: WeekAnswer[];
   categories: PersonalCategory[];
   builtins: Builtin[];
   shared: PersonalCategory[];
@@ -60,6 +62,9 @@ export async function buildWorkbook(input: ExportInput): Promise<Blob> {
   const stopOf = (a: Activity) => input.locations.find((l) => l.id === a.location_id)?.name ?? "";
   const whereOf = (a: Activity) => [routeOf(a), stopOf(a)].filter(Boolean).join(" · ") || t("General");
   const byName = (ids: Iterable<string>) => [...new Set(ids)].sort((a, b) => nameOf(a).localeCompare(nameOf(b)));
+  const answers = input.answers.filter((x) => inWeeks.has(x.week));
+  const answerOf = (id: string, w: string) => answers.find((x) => x.user_id === id && x.week === w);
+  const wentText = (x?: WeekAnswer) => (!x ? t("No answer") : x.went ? t("Yes") : t("No"));
 
   const wb = new ExcelJS.Workbook();
   wb.creator = input.siteName;
@@ -95,6 +100,23 @@ export async function buildWorkbook(input: ExportInput): Promise<Blob> {
   bold(summary.addRow([t("Total"), ...counts(rows), sum(rows)]));
   widths(summary, [34, ...columns.map(() => 14), 10]);
 
+  // The week's question: one line per route and week, for every route that answered or logged.
+  const went = wb.addWorksheet(sheetName(t("Who went")), { views: [{ state: "frozen", ySplit: 4 }] });
+  title(went, `${t("Did you go on Mivtzoim?")} · ${rangeText}`, t("Each route's answer to the question on its Home page."));
+  header(went, [t("Week"), t("Route name"), t("Chavrusas (Hebrew)"), t("Did you go on Mivtzoim?"), t("Who went"), t("How many went")]);
+  for (const w of weeks) {
+    const ids = byName([...rows.filter((a) => activityWeek(a) === w).map((a) => a.user_id), ...answers.filter((x) => x.week === w).map((x) => x.user_id)]);
+    for (const id of ids) {
+      const x = answerOf(id, w);
+      const row = went.addRow([weekTitle(w), nameOf(id), hebrewOf(id), wentText(x), x?.went ? x.people.join(", ") : "", x?.went ? x.people.length : ""]);
+      row.getCell(3).alignment = RTL;
+      row.getCell(4).alignment = { horizontal: "center" };
+    }
+  }
+  went.autoFilter = { from: "A4", to: "F4" };
+  widths(went, [30, 22, 34, 24, 40, 14]);
+  went.pageSetup = { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+
   // 2) One sheet per week: a block per route, with its Chavrusas and what was done where.
   const used = new Set<string>();
   for (const w of weeks) {
@@ -104,13 +126,14 @@ export async function buildWorkbook(input: ExportInput): Promise<Blob> {
     const ws = wb.addWorksheet(name);
     const list = rows.filter((a) => activityWeek(a) === w);
     const routeCount = new Set(list.map((a) => a.user_id)).size;
+    const answered = answers.filter((x) => x.week === w).map((x) => x.user_id);
     title(ws, weekTitle(w), tn(routeCount, "{total} Mivtzoim from {n} route", "{total} Mivtzoim from {n} routes", { total: sum(list) }));
     widths(ws, [26, 38, 12]);
-    if (list.length === 0) {
+    if (list.length === 0 && answered.length === 0) {
       ws.addRow([t("Nothing logged this week")]);
       continue;
     }
-    for (const id of byName(list.map((a) => a.user_id))) {
+    for (const id of byName([...list.map((a) => a.user_id), ...answered])) {
       const mine = list.filter((a) => a.user_id === id);
       // The route's name, then its Chavrusas in Hebrew.
       const top = ws.addRow([nameOf(id), hebrewOf(id) || "—"]);
@@ -122,6 +145,20 @@ export async function buildWorkbook(input: ExportInput): Promise<Blob> {
       top.getCell(2).font = { bold: true, size: 12 };
       top.getCell(2).alignment = RTL;
       ws.mergeCells(top.number, 2, top.number, 3);
+      // The week's question, like a line on a form.
+      const x = answerOf(id, w);
+      const q = ws.addRow([t("Did you go on Mivtzoim?"), wentText(x)]);
+      q.getCell(1).font = { bold: true };
+      if (x?.went) {
+        const who = ws.addRow([t("Who went"), x.people.join(", ") || "—"]);
+        who.getCell(1).font = { bold: true };
+        who.getCell(2).alignment = { wrapText: true, vertical: "top" };
+        ws.mergeCells(who.number, 2, who.number, 3);
+      }
+      if (mine.length === 0) {
+        ws.addRow([]);
+        continue;
+      }
       header(ws, [t("Mivtza"), t("Where"), t("Amount")]);
       // One line per mivtza and place.
       const lines = new Map<string, { label: string; where: string; total: number }>();

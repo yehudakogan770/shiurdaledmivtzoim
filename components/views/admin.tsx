@@ -691,6 +691,7 @@ function ExportCard() {
       const blob = await buildWorkbook({
         weeks: selected,
         activity: data.activity,
+        answers: data.weeks,
         categories: data.categories,
         builtins,
         shared,

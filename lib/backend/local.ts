@@ -42,7 +42,6 @@ function empty(): Store {
     route_locations: [],
     personal_categories: [],
     mivtzoim_activity: [],
-    mivtzoim_weeks: [],
   };
 }
 

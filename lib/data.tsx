@@ -24,6 +24,7 @@ import { printCopy } from "./photos";
 import { today, weekOf } from "./dates";
 import { parshaOfWeek } from "./parsha";
 import { newVersionOnline } from "./install";
+import { splitWeekAnswers, weekAnswerEntry } from "./week-answers";
 import { isAdminIdentifier } from "./admin";
 import { builtinDescription, builtinIcon, builtins, isBuiltinRow, type Builtin, type BuiltinType } from "./categories";
 
@@ -250,7 +251,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setPeople([]);
       return;
     }
-    const [everyone, groups, members, routes, locations, stops, categories, activity, weeks] = await Promise.all([
+    const [everyone, groups, members, routes, locations, stops, categories, entries] = await Promise.all([
       user.role === "admin" ? b.listPeople().catch(() => [] as Profile[]) : Promise.resolve([] as Profile[]),
       b.list("groups"),
       b.list("group_members"),
@@ -259,9 +260,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       b.list("route_locations"),
       b.list("personal_categories"),
       b.list("mivtzoim_activity"),
-      // Empty until database update 016 is run.
-      b.list("mivtzoim_weeks").catch(() => [] as WeekAnswer[]),
     ]);
+    // The week's question is saved among the entries; take those out so they're never counted.
+    const { activity, weeks } = splitWeekAnswers(entries);
     const ids = new Set<string>([user.id]);
     members.forEach((m) => ids.add(m.user_id));
     activity.forEach((a) => ids.add(a.user_id));
@@ -458,18 +459,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
         answerWeek: async (week, answer) => {
           const user_id = uid();
           const fields = { went: answer.went, people: answer.went ? answer.people : [] };
+          const entry = weekAnswerEntry(user_id, week, fields);
           const existing = data.weeks.find((w) => w.user_id === user_id && w.week === week);
           if (existing) {
             setData((d) => ({ ...d, weeks: d.weeks.map((w) => (w.id === existing.id ? { ...w, ...fields } : w)) }));
-            saveLater(() => b.update("mivtzoim_weeks", realId(existing.id), fields));
+            saveLater(() => b.update("mivtzoim_activity", realId(existing.id), { notes: entry.notes }));
             return;
           }
           const tempId = `new-${newId()}`;
           setData((d) => ({ ...d, weeks: [...d.weeks, { id: tempId, user_id, week, ...fields, created_at: new Date().toISOString() }] }));
           saveLater(async () => {
-            const saved = await b.insert("mivtzoim_weeks", { user_id, week, ...fields }).catch((e: Error) => {
-              throw new Error(e.message.includes("mivtzoim_weeks") ? t("To save this question, run database update 016 in Supabase first.") : e.message);
-            });
+            const saved = await b.insert("mivtzoim_activity", entry);
             savedIds.current.set(tempId, saved.id);
             setData((d) => ({ ...d, weeks: d.weeks.map((w) => (w.id === tempId ? { ...w, id: saved.id } : w)) }));
           });

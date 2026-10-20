@@ -28,7 +28,6 @@ const dashboard: Area = {
     "Someone else": "מישהו אחר",
     "Their name": "השם שלו",
     "Add": "הוסף",
-    "To save this question, run database update 016 in Supabase first.": "כדי לשמור את השאלה הזו, הרץ קודם את עדכון מסד הנתונים 016 ב-Supabase.",
     "You're looking at the week of {week}. Anything you add, remove or change here counts for that week.":
       "אתה צופה בשבוע של {week}. כל מה שתוסיף, תסיר או תשנה כאן ייספר לשבוע הזה.",
     "Everything you logged, by week": "כל מה שרשמת, לפי שבוע",
@@ -119,7 +118,6 @@ const dashboard: Area = {
     "Someone else": "Quelqu'un d'autre",
     "Their name": "Son nom",
     "Add": "Ajouter",
-    "To save this question, run database update 016 in Supabase first.": "Pour enregistrer cette question, lancez d'abord la mise à jour 016 de la base de données dans Supabase.",
     "You're looking at the week of {week}. Anything you add, remove or change here counts for that week.":
       "Vous consultez la semaine de {week}. Tout ce que vous ajoutez, retirez ou modifiez ici compte pour cette semaine.",
     "Everything you logged, by week": "Tout ce que vous avez enregistré, par semaine",
@@ -210,7 +208,6 @@ const dashboard: Area = {
     "Someone else": "Otra persona",
     "Their name": "Su nombre",
     "Add": "Agregar",
-    "To save this question, run database update 016 in Supabase first.": "Para guardar esta pregunta, primero ejecuta la actualización 016 de la base de datos en Supabase.",
     "You're looking at the week of {week}. Anything you add, remove or change here counts for that week.":
       "Estás viendo la semana de {week}. Todo lo que agregues, quites o cambies aquí cuenta para esa semana.",
     "Everything you logged, by week": "Todo lo que registraste, por semana",

@@ -145,8 +145,12 @@ export interface Activity {
   created_at: string;
 }
 
-/** The week's question on Home: did this route go on Mivtzoim, and who went. */
+/**
+ * The week's question on Home: did this route go on Mivtzoim, and who went. Saved as a hidden
+ * entry among the account's Mivtzoim entries (see lib/week-answers.ts), so no database update is needed.
+ */
 export interface WeekAnswer {
+  /** The id of the hidden entry it's saved in. */
   id: string;
   user_id: string;
   /** The week's Friday, YYYY-MM-DD. */
@@ -166,7 +170,6 @@ export interface Tables {
   route_locations: RouteLocation;
   personal_categories: PersonalCategory;
   mivtzoim_activity: Activity;
-  mivtzoim_weeks: WeekAnswer;
 }
 
 export type TableName = keyof Tables;
