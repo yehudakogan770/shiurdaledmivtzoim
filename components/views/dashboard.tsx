@@ -416,25 +416,28 @@ function QuickButton({ c, count, hint, sample, onAdd, onSubtract }: { c: Counter
         aria-label={t("Add 1 {name}", { name: t(c.title) })}
         className="flex h-full w-full flex-col justify-between rounded-[28px] p-4 text-start transition hover:bg-ink/5 active:scale-[0.98] disabled:opacity-60"
       >
-        <span className={cx("grid h-12 w-12 shrink-0 place-items-center rounded-2xl", c.chip)} style={c.custom ? { background: c.color } : undefined}>
-          <c.icon size={24} />
-        </span>
-        <span className="min-w-0">
-          <span className="relative inline-block">
-            <span className="tabular block text-5xl font-normal leading-none tracking-tight">{count}</span>
+        {/* Icon and number side by side at the top; the name and the minus share the bottom. */}
+        <span className="flex items-center gap-2.5">
+          <span className={cx("grid h-10 w-10 shrink-0 place-items-center rounded-xl", c.chip)} style={c.custom ? { background: c.color } : undefined}>
+            <c.icon size={22} />
+          </span>
+          <span className="relative">
+            <span className="tabular block text-4xl font-normal leading-none tracking-tight">{count}</span>
             {plus.n > 0 && (
-              <span aria-live="polite" aria-label={t("Adding {n}", { n: plus.n })} className={cx("absolute start-full top-1/2 ms-2 -translate-y-1/2 transition-opacity duration-300", plus.fading && "opacity-0")}>
-                <span key={plus.n} className="tally-pop block text-sage tabular pointer-events-none text-lg font-bold leading-none [text-shadow:0_0_4px_var(--card),0_0_2px_var(--card)]">
+              <span aria-live="polite" aria-label={t("Adding {n}", { n: plus.n })} className={cx("absolute -top-4 start-full ms-0.5 transition-opacity duration-300", plus.fading && "opacity-0")}>
+                <span key={plus.n} className="tally-pop block text-sage tabular pointer-events-none text-base font-bold leading-none [text-shadow:0_0_4px_var(--card),0_0_2px_var(--card)]">
                   +{plus.n}
                 </span>
               </span>
             )}
           </span>
-          <span className="mt-2 block truncate text-lg font-medium leading-tight">{t(c.short)}</span>
-          <span className="block truncate text-xs opacity-80">{hint}</span>
+        </span>
+        <span className="min-w-0 pe-10">
+          <span className="block truncate text-lg font-medium leading-tight">{t(c.short)}</span>
+          <span className="mt-0.5 block truncate text-xs opacity-80">{hint}</span>
         </span>
       </button>
-      <span className="absolute top-3 end-3">
+      <span className="absolute bottom-4 end-3">
         <button
           type="button"
           disabled={count === 0}
@@ -444,12 +447,12 @@ function QuickButton({ c, count, hint, sample, onAdd, onSubtract }: { c: Counter
           }}
           aria-label={t("Remove 1 {name}", { name: t(c.title) })}
           title={t("Remove 1 {name}", { name: t(c.title) })}
-          className="grid h-10 w-10 place-items-center rounded-full bg-minus text-minus-ink transition hover:brightness-95 disabled:opacity-30"
+          className="grid h-9 w-9 place-items-center rounded-full bg-minus text-minus-ink transition hover:brightness-95 disabled:opacity-30"
         >
-          <Minus size={18} strokeWidth={2.5} />
+          <Minus size={16} strokeWidth={2.5} />
         </button>
         {minus.n > 0 && (
-          <span aria-live="polite" aria-label={t("Removing {n}", { n: minus.n })} className={cx("absolute -bottom-6 end-1 transition-opacity duration-300", minus.fading && "opacity-0")}>
+          <span aria-live="polite" aria-label={t("Removing {n}", { n: minus.n })} className={cx("absolute -top-6 end-1 transition-opacity duration-300", minus.fading && "opacity-0")}>
             <span key={minus.n} className="tally-pop block text-danger tabular pointer-events-none text-lg font-bold leading-none [text-shadow:0_0_4px_var(--card),0_0_2px_var(--card)]">
               −{minus.n}
             </span>
