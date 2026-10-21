@@ -14,6 +14,7 @@ export function ChavrusaFields({
   onChange,
   idPrefix,
   requireHebrew,
+  forSomeoneElse,
   max = 5,
 }: {
   value: Chavrusa[];
@@ -21,6 +22,8 @@ export function ChavrusaFields({
   idPrefix: string;
   /** Ask for the Hebrew names whenever an English name is filled in. */
   requireHebrew?: boolean;
+  /** An admin editing someone else's account: the first box isn't "Your name". */
+  forSomeoneElse?: boolean;
   max?: number;
 }) {
   const list = value.length ? value : [BLANK_CHAVRUSA];
@@ -37,7 +40,8 @@ export function ChavrusaFields({
                 aria-label={t("Chavrusa {n}, English name", { n: i + 1 })}
                 value={c.name}
                 onChange={(e) => set(i, { name: e.target.value })}
-                placeholder={t("Chavrusa's name")}
+                // The first one is the person filling this in, so people don't think the route name is them.
+                placeholder={i === 0 && !forSomeoneElse ? t("Your name") : t("Chavrusa's name")}
                 autoComplete="off"
               />
               {list.length > 1 && (

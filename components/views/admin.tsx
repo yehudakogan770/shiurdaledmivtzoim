@@ -888,7 +888,7 @@ function EditPerson({ person }: { person: Profile }) {
         </Field>
         <div className="grid gap-1.5 sm:col-span-2">
           <p className="px-1 text-sm font-medium text-muted">{t("Chavrusas")}</p>
-          <ChavrusaFields value={draft.partners} onChange={(partners) => setDraft({ ...draft, partners })} idPrefix={id("partners")} />
+          <ChavrusaFields value={draft.partners} onChange={(partners) => setDraft({ ...draft, partners })} idPrefix={id("partners")} forSomeoneElse />
         </div>
       </div>
       <div className="flex gap-2">
