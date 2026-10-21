@@ -726,7 +726,7 @@ function ExportCard() {
 
   return (
     <Card>
-      <CardTitle sub={t("A spreadsheet of everyone's Mivtzoim, organized by week. Opens in Excel, Google Sheets or Numbers.")}>{t("Export to Excel")}</CardTitle>
+      <CardTitle sub={t("Everyone's Mivtzoim for the Duch. Opens in Excel, Google Sheets or Numbers.")}>{t("Export to Excel")}</CardTitle>
       <div className="grid gap-4 px-6 pb-6">
         <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t("Which weeks")}>
           {choice("this", t("This week"))}
@@ -767,7 +767,7 @@ function ExportCard() {
           <Download size={16} aria-hidden /> {busy ? t("Making the file…") : selected.length > 1 ? t("Download Excel ({n} weeks)", { n: selected.length }) : t("Download Excel")}
         </Button>
         <p className="text-xs text-muted">
-          {t("Inside: a Summary tab (each week's totals), a By route tab, one tab per week (each route's totals, plus every entry), and an All entries tab.")}
+          {t("One page, like the Duch: each week's totals, then each route with who went (English name, and Hebrew name with the mother's name), how many of each Mivtza, and any notes.")}
         </p>
       </div>
     </Card>
