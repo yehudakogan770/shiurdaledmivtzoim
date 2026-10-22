@@ -1,0 +1,38 @@
+// Shiur Daled Mivtzoim: saves print copies of shared photos in this Google Drive,
+// in "Mivtzoim Photos", one folder per week.
+const ROOT = "Mivtzoim Photos";
+
+function doPost(e) {
+  try {
+    const d = JSON.parse(e.postData.contents);
+    if (d.test) return reply({ ok: true, folder: root_().getUrl() });
+    if (!/^image\/(jpeg|png|webp)$/.test(d.type)) throw new Error("Only photos");
+    const bytes = Utilities.base64Decode(d.data);
+    if (bytes.length > 20 * 1024 * 1024) throw new Error("Too big");
+    const lock = LockService.getScriptLock();
+    lock.waitLock(20000);
+    let week;
+    try {
+      week = folder_(root_(), String(d.week || "Photos").slice(0, 100));
+    } finally {
+      lock.releaseLock();
+    }
+    week.createFile(Utilities.newBlob(bytes, d.type, String(d.name || "photo.jpg").slice(0, 150)));
+    return reply({ ok: true });
+  } catch (err) {
+    return reply({ ok: false, error: String(err) });
+  }
+}
+
+function root_() {
+  return folder_(DriveApp.getRootFolder(), ROOT);
+}
+
+function folder_(parent, name) {
+  const found = parent.getFoldersByName(name);
+  return found.hasNext() ? found.next() : parent.createFolder(name);
+}
+
+function reply(o) {
+  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
+}
