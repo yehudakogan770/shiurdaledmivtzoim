@@ -433,7 +433,8 @@ function QuickButton({ c, count, hint, sample, onAdd, onSubtract }: { c: Counter
           </span>
         </span>
         <span className="min-w-0 pe-10">
-          <span className="block truncate text-lg font-medium leading-tight">{t(c.short)}</span>
+          {/* Long names wrap onto a second line instead of being cut off with "…". */}
+          <span className="line-clamp-2 block text-lg font-medium leading-tight [overflow-wrap:anywhere]">{t(c.short)}</span>
           <span className="mt-0.5 block truncate text-xs opacity-80">{hint}</span>
         </span>
       </button>
