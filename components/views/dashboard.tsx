@@ -387,8 +387,8 @@ function reducedMotion() {
 }
 
 /**
- * The number on a square: counts up from 0 to the week's total when the page opens (about half a
- * second), then rolls each time it changes. `dir` says which way the last change went.
+ * The number on a square: counts up from 0 to the week's total when the page opens (50 numbers a
+ * second, so 165 takes 3.3 seconds), then rolls each time it changes. `dir` says which way the last change went.
  */
 function useShownCount(count: number) {
   const [shown, setShown] = useState(() => (reducedMotion() ? count : 0));
@@ -402,8 +402,8 @@ function useShownCount(count: number) {
     const start = performance.now();
     let frame = 0;
     const step = (now: number) => {
-      const k = Math.min(1, (now - start) / 550);
-      setShown(Math.round(count * (1 - Math.pow(1 - k, 3))));
+      const k = Math.min(1, (now - start) / Math.max(1, (count / 50) * 1000));
+      setShown(Math.round(count * k));
       if (k < 1) frame = requestAnimationFrame(step);
       else setReady(true);
     };
