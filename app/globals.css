@@ -213,6 +213,49 @@ h3 {
   animation: tally-pop 220ms ease-out;
 }
 
+/* A Home square when it's tapped: a quick squeeze and spring back. */
+@keyframes tile-bounce {
+  0% { transform: scale(1); }
+  35% { transform: scale(0.94); }
+  70% { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+.tile-bounce {
+  animation: tile-bounce 220ms ease-out;
+}
+
+/* A square's number when it changes: the new one rolls in from below (up) or above (down). */
+@keyframes num-up {
+  from { transform: translateY(55%); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+@keyframes num-down {
+  from { transform: translateY(-55%); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+.num-up {
+  animation: num-up 200ms ease-out;
+}
+.num-down {
+  animation: num-down 200ms ease-out;
+}
+
+/* Home's cards slide up one after another when the page opens (they're all there at once; only the motion is staggered). */
+@keyframes rise-in {
+  from { transform: translateY(18px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+.rise > * {
+  animation: rise-in 320ms ease-out backwards;
+}
+.rise > :nth-child(2) { animation-delay: 40ms; }
+.rise > :nth-child(3) { animation-delay: 80ms; }
+.rise > :nth-child(4) { animation-delay: 120ms; }
+.rise > :nth-child(5) { animation-delay: 160ms; }
+.rise > :nth-child(6) { animation-delay: 200ms; }
+.rise > :nth-child(7) { animation-delay: 240ms; }
+.rise > :nth-child(n + 8) { animation-delay: 280ms; }
+
 /* The logo on the loading screen gently fades in and out. */
 @keyframes logo-breathe {
   0%,

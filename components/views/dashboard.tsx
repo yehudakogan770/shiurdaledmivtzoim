@@ -214,7 +214,7 @@ function PersonalHome() {
   const hd = hebrewDate();
 
   return (
-    <div className="grid grid-cols-1 gap-3">
+    <div className="rise grid grid-cols-1 gap-3">
       <PageHeader eyebrow={`${longDate()}${hd ? ` · ${hd}` : ""} · ${parshaOfWeek(currentWeek()).local}`} title={me?.name || t("Dashboard")} />
 
       <WeekPicker week={week} onChange={setWeek} />
@@ -381,10 +381,61 @@ function useTally() {
   };
 }
 
+/** true when the phone is set to cut down on motion: no counting up, no rolling numbers. */
+function reducedMotion() {
+  return typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+}
+
+/**
+ * The number on a square: counts up from 0 to the week's total when the page opens (about half a
+ * second), then rolls each time it changes. `dir` says which way the last change went.
+ */
+function useShownCount(count: number) {
+  const [shown, setShown] = useState(() => (reducedMotion() ? count : 0));
+  const [ready, setReady] = useState(() => reducedMotion());
+  const [dir, setDir] = useState<"up" | "down">("up");
+  // Only a real change rolls the number, not the end of counting up.
+  const [changed, setChanged] = useState(false);
+  const prev = useRef(count);
+  useEffect(() => {
+    if (ready) return;
+    const start = performance.now();
+    let frame = 0;
+    const step = (now: number) => {
+      const k = Math.min(1, (now - start) / 550);
+      setShown(Math.round(count * (1 - Math.pow(1 - k, 3))));
+      if (k < 1) frame = requestAnimationFrame(step);
+      else setReady(true);
+    };
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+    // Counting up runs once, toward the total it opened with; a tap meanwhile jumps straight to it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (count === prev.current) return;
+    setDir(count > prev.current ? "up" : "down");
+    prev.current = count;
+    setReady(true);
+    setChanged(true);
+    setShown(count);
+  }, [count]);
+  return { shown, dir, rolling: ready && changed };
+}
+
 function QuickButton({ c, count, hint, sample, onAdd, onSubtract }: { c: Counter; count: number; hint: string; sample?: boolean; onAdd(): void; onSubtract(): void }) {
   const plus = useTally();
   const minus = useTally();
   const box = useRef<HTMLDivElement>(null);
+  const num = useShownCount(count);
+  // Restarts the bounce on every tap, even quick ones in a row.
+  const bounce = () => {
+    const el = box.current;
+    if (!el || reducedMotion()) return;
+    el.classList.remove("tile-bounce");
+    void el.offsetWidth;
+    el.classList.add("tile-bounce");
+  };
   const counting = plus.n > 0 || minus.n > 0;
 
   useEffect(() => {
@@ -411,6 +462,7 @@ function QuickButton({ c, count, hint, sample, onAdd, onSubtract }: { c: Counter
         onClick={() => {
           // In the sample nothing is added, so there's nothing to count.
           if (!sample) plus.tap();
+          bounce();
           onAdd();
         }}
         aria-label={t("Add 1 {name}", { name: t(c.title) })}
@@ -422,7 +474,11 @@ function QuickButton({ c, count, hint, sample, onAdd, onSubtract }: { c: Counter
             <c.icon size={22} />
           </span>
           <span className="relative">
-            <span className="tabular block text-4xl font-normal leading-none tracking-tight">{count}</span>
+            <span className="block overflow-hidden">
+              <span key={num.rolling ? count : "counting"} className={cx("tabular block text-4xl font-normal leading-none tracking-tight", num.rolling && (num.dir === "up" ? "num-up" : "num-down"))}>
+                {num.shown}
+              </span>
+            </span>
             {plus.n > 0 && (
               <span aria-live="polite" aria-label={t("Adding {n}", { n: plus.n })} className={cx("absolute -top-4 start-full ms-0.5 transition-opacity duration-300", plus.fading && "opacity-0")}>
                 <span key={plus.n} className="tally-pop block text-sage tabular pointer-events-none text-base font-bold leading-none [text-shadow:0_0_4px_var(--card),0_0_2px_var(--card)]">
@@ -444,6 +500,7 @@ function QuickButton({ c, count, hint, sample, onAdd, onSubtract }: { c: Counter
           disabled={count === 0}
           onClick={() => {
             minus.tap();
+            bounce();
             onSubtract();
           }}
           aria-label={t("Remove 1 {name}", { name: t(c.title) })}
