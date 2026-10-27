@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { AtSign, KeyRound, Mail, Pencil, Plus, X } from "lucide-react";
+import { AtSign, Camera, KeyRound, Mail, Pencil, Plus, Trash2, X } from "lucide-react";
 import { handle } from "@/lib/admin";
 import { useData } from "@/lib/data";
 import { useNav } from "@/lib/nav";
 import { SUGGESTED_PERSONAL } from "@/lib/categories";
 import { BLANK_CHAVRUSA, chavrusasOf, encodeChavrusa, type Chavrusa } from "@/lib/chavrusa";
 import { ChavrusaFields, ChavrusaNames } from "../chavrusa-fields";
-import { Button, Card, CardTitle, Field, IconButton, Input, Modal, PageHeader } from "../ui";
+import { Avatar, Button, Card, CardTitle, Field, IconButton, Input, Modal, PageHeader } from "../ui";
 import { sum } from "./dashboard";
 import { InstallCard } from "../install-app";
 import { MyPhotos } from "./photos";
@@ -233,7 +233,8 @@ function AccountCard() {
           </form>
         ) : (
           <div className="divide-y divide-line/60">
-            <div className="flex items-start gap-3 pb-3">
+            {editable && <PhotoRow />}
+            <div className="flex items-start gap-3 py-3">
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-muted">{t("Route name")}</p>
                 <p className="break-words text-2xl font-medium">{me?.name}</p>
@@ -387,5 +388,53 @@ function SecureChangeDialog({ kind, onClose }: { kind: "username" | "email" | "p
         </div>
       </form>
     </Modal>
+  );
+}
+
+/** The profile photo: tap to pick one (it's cut to a square), or take it off. */
+function PhotoRow() {
+  const { me, auth, notify } = useData();
+  const input = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  async function set(file: Blob | null) {
+    setBusy(true);
+    try {
+      await auth.setAvatar(file);
+      notify(file ? t("Profile photo saved.") : t("Profile photo removed."));
+    } catch (err) {
+      notify((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="flex items-center gap-4 pb-4">
+      <button type="button" onClick={() => input.current?.click()} disabled={busy} aria-label={t("Change profile photo")} className="relative shrink-0 rounded-full">
+        <Avatar name={me?.name ?? ""} id={me?.id} src={me?.avatar_url} size={76} />
+        <span aria-hidden className="absolute -bottom-1 -end-1 grid h-8 w-8 place-items-center rounded-full border-2 border-card bg-accent text-accent-ink">
+          <Camera size={15} />
+        </span>
+      </button>
+      <div className="min-w-0 flex-1">
+        <p className="font-medium">{t("Profile photo")}</p>
+        <p className="text-sm text-muted">{busy ? t("Saving…") : me?.avatar_url ? t("Tap the photo to change it.") : t("Add a photo of yourself.")}</p>
+      </div>
+      {me?.avatar_url && !busy && (
+        <IconButton aria-label={t("Remove profile photo")} onClick={() => set(null)}>
+          <Trash2 size={18} />
+        </IconButton>
+      )}
+      <input
+        ref={input}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (file) set(file);
+        }}
+      />
+    </div>
   );
 }

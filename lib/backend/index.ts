@@ -77,6 +77,8 @@ export interface Backend {
   photoDriveUrl?(): Promise<string | null>;
   /** The Owner only: set or clear that address. */
   setPhotoDriveUrl?(url: string | null): Promise<void>;
+  /** Set this account's profile photo (already made small and square), or remove it with null. */
+  setAvatar?(photo: Blob | null): Promise<string | null>;
   /** Save the language this account sees the site in. */
   setLanguage?(language: string): Promise<void>;
   /** Business card details this account may see: its own, or everyone's for the Owner. */

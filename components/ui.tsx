@@ -226,7 +226,12 @@ export function initials(name: string) {
   return ((parts[0][0] ?? "") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
 }
 
-export function Avatar({ name, id, size = 32 }: { name: string; id?: string; size?: number }) {
+export function Avatar({ name, id, size = 32, src }: { name: string; id?: string; size?: number; src?: string | null }) {
+  const [broken, setBroken] = useState(false);
+  if (src && !broken) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={src} alt="" aria-hidden onError={() => setBroken(true)} className="shrink-0 rounded-full object-cover" style={{ width: size, height: size }} />;
+  }
   const key = id || name;
   let h = 0;
   for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;

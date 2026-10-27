@@ -589,7 +589,7 @@ function PeopleCard() {
                 onClick={() => setOpen(expanded ? null : p.id)}
                 className="flex min-w-0 flex-1 items-center gap-3 rounded-2xl text-start"
               >
-              <Avatar name={p.name} id={p.id} size={40} />
+              <Avatar name={p.name} id={p.id} src={p.avatar_url} size={40} />
               <span className="min-w-0 flex-1">
                 <span className="flex flex-wrap items-center gap-2">
                   <span className="truncate font-medium">{p.name}</span>

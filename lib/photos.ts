@@ -56,6 +56,18 @@ function draw(img: HTMLImageElement, max: number) {
   return canvas;
 }
 
+/** A profile photo: the middle square of the picture, 400×400 (about 30 KB). */
+export async function avatarPhoto(file: Blob): Promise<Blob> {
+  const img = await loadImage(file);
+  const side = Math.min(img.naturalWidth, img.naturalHeight);
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = Math.min(400, side);
+  const ctx = canvas.getContext("2d")!;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, canvas.width, canvas.height);
+  return encode(canvas, 0.85);
+}
+
 /** About 3000 pixels on the long side: sharp in print up to about 8×10 inches. */
 const PRINT = 3000;
 

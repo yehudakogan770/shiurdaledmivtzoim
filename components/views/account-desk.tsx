@@ -205,7 +205,7 @@ function FindAccount() {
     return (
       <div className="grid w-full max-w-[40rem] gap-5 rounded-[28px] bg-card px-5 py-8 sm:px-8">
         <div className="flex items-center gap-4">
-          <Avatar name={picked.name} id={picked.id} size={52} />
+          <Avatar name={picked.name} id={picked.id} src={picked.avatar_url} size={52} />
           <div className="min-w-0 flex-1">
             <p className="truncate text-2xl">{picked.name}</p>
             {picked.username && <p className="text-sm text-muted">{handle(picked.username)}</p>}
@@ -254,7 +254,7 @@ function FindAccount() {
                 onClick={() => setPicked(p)}
                 className="flex items-center gap-4 rounded-2xl bg-sunken p-3 text-start transition hover:bg-ink/8"
               >
-                <Avatar name={p.name} id={p.id} size={40} />
+                <Avatar name={p.name} id={p.id} src={p.avatar_url} size={40} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-lg font-medium">{p.name}</span>
                   {p.username && <span className="block text-sm text-muted">{handle(p.username)}</span>}

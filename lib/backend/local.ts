@@ -62,7 +62,7 @@ function roleOf(p: LocalProfile): "user" | "admin" {
 }
 
 function publicProfile(p: LocalProfile): Profile {
-  return { id: p.id, name: p.name, username: p.username, email: p.email ?? null, partners: p.partners ?? [], role: roleOf(p), language: p.language ?? null };
+  return { id: p.id, name: p.name, username: p.username, email: p.email ?? null, partners: p.partners ?? [], role: roleOf(p), language: p.language ?? null, avatar_url: p.avatar_url ?? null };
 }
 
 function requireAdmin(s: Store) {
@@ -126,6 +126,22 @@ export function createLocalBackend(): Backend {
       const p = s.profiles.find((x) => x.id === s.session);
       if (p) p.language = language;
       save(s);
+    },
+    async setAvatar(photo) {
+      const s = load();
+      const p = s.profiles.find((x) => x.id === s.session);
+      if (!p) throw new Error(t("Please sign in first."));
+      // Kept on this device as a small picture.
+      p.avatar_url = photo
+        ? await new Promise<string>((ok, fail) => {
+            const r = new FileReader();
+            r.onload = () => ok(String(r.result));
+            r.onerror = () => fail(r.error);
+            r.readAsDataURL(photo);
+          })
+        : null;
+      save(s);
+      return p.avatar_url;
     },
     async updateProfile({ name, partners }) {
       const s = load();

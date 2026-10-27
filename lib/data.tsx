@@ -20,7 +20,7 @@ import type {
 } from "./types";
 import { DEFAULT_SETTINGS, type SignUpInput } from "./types";
 import { sendToDrive } from "./drive";
-import { printCopy } from "./photos";
+import { avatarPhoto, printCopy } from "./photos";
 import { today, weekOf } from "./dates";
 import { parshaOfWeek } from "./parsha";
 import { newVersionOnline } from "./install";
@@ -128,6 +128,8 @@ interface DataContextValue {
     finishRecovery(): void;
     signOut(): Promise<void>;
     updateProfile(name: string, partners: string[]): Promise<void>;
+    /** Set or remove this account's profile photo (any picture; it's made small and square here). */
+    setAvatar(photo: Blob | null): Promise<void>;
     /** Show the site in this language, and keep it with the account. */
     setLanguage(language: Lang): Promise<void>;
     changeUsername(username: string): Promise<void>;
@@ -429,6 +431,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
         finishRecovery: () => setRecovering(false),
         signOut: () => run(() => b.signOut()),
         updateProfile: (name, partners) => run(() => b.updateProfile({ name, partners })),
+        setAvatar: async (photo) => {
+          if (!b.setAvatar) throw new Error(t("Profile photos aren't available here."));
+          const url = await b.setAvatar(photo ? await avatarPhoto(photo) : null);
+          setMe((m) => (m ? { ...m, avatar_url: url } : m));
+        },
         setLanguage: async (language) => {
           setLanguage(language);
           if (b.setLanguage) await b.setLanguage(language);

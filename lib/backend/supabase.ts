@@ -36,7 +36,7 @@ export function createSupabaseBackend(url: string, key: string): Backend {
     async currentUser() {
       const { data } = await sb.auth.getUser();
       if (!data.user) return null;
-      const { data: p } = await sb.from("profiles").select("id, name, username, partners, role").eq("id", data.user.id).maybeSingle();
+      const { data: p } = await sb.from("profiles").select("id, name, username, partners, role, avatar_url").eq("id", data.user.id).maybeSingle();
       const username = p?.username || data.user.user_metadata?.username || null;
       return {
         id: data.user.id,
@@ -46,6 +46,7 @@ export function createSupabaseBackend(url: string, key: string): Backend {
         partners: p?.partners ?? [],
         role: p?.role === "admin" ? "admin" : "user",
         language: data.user.user_metadata?.language ?? null,
+        avatar_url: p?.avatar_url ?? null,
       };
     },
     async signIn(rawUsername, password) {
@@ -297,10 +298,33 @@ export function createSupabaseBackend(url: string, key: string): Backend {
     },
     async listPeople() {
       const withEmail = await sb.rpc("admin_people");
-      if (!withEmail.error && withEmail.data) return withEmail.data as Profile[];
+      // Profile photos come from the profiles table itself (admins can read every row).
+      const photos = await sb.from("profiles").select("id, avatar_url");
+      const photoOf = new Map(((photos.data ?? []) as { id: string; avatar_url: string | null }[]).map((r) => [r.id, r.avatar_url]));
+      const add = (list: Profile[]) => list.map((p) => ({ ...p, avatar_url: photoOf.get(p.id) ?? null }));
+      if (!withEmail.error && withEmail.data) return add(withEmail.data as Profile[]);
       const { data, error } = await sb.from("profiles").select("id, name, username, partners, role");
       fail(error);
-      return (data ?? []) as Profile[];
+      return add((data ?? []) as Profile[]);
+    },
+    async setAvatar(photo) {
+      const me = await uid();
+      const store = sb.storage.from("photos");
+      const { data: old } = await sb.from("profiles").select("avatar_url").eq("id", me).maybeSingle();
+      let url: string | null = null;
+      if (photo) {
+        // In the person's own photos folder, under a new name each time so phones don't show the old one.
+        const path = `${me}/avatar-${Date.now()}.${photo.type === "image/webp" ? "webp" : "jpg"}`;
+        const { error } = await store.upload(path, photo, { contentType: photo.type, cacheControl: "31536000", upsert: false });
+        if (error) throw new Error(/bucket not found/i.test(error.message) ? t("Photos aren't set up yet: run database update 011 in Supabase first.") : t("The photo didn't upload: {reason}", { reason: error.message }));
+        url = store.getPublicUrl(path).data.publicUrl;
+      }
+      const { error } = await sb.from("profiles").update({ avatar_url: url }).eq("id", me);
+      fail(error);
+      // Remove the old picture file, if it was one of ours.
+      const oldPath = (old?.avatar_url as string | null)?.split("/photos/")[1];
+      if (oldPath?.startsWith(`${me}/avatar-`)) await store.remove([oldPath]).catch(() => {});
+      return url;
     },
   };
 }

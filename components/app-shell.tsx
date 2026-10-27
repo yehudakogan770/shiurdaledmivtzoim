@@ -94,7 +94,7 @@ function PanelContent({ expanded, onNavigate }: { expanded: boolean; onNavigate?
         {me && (
           <div className={cx("flex items-center gap-2 overflow-hidden rounded-[28px] p-2 transition-colors", expanded ? "bg-card" : "bg-transparent")}>
             <Link href={isOwner ? "/" : "/profile"} className="flex min-w-0 flex-1 items-center gap-3 rounded-full p-1 pe-3 hover:bg-ink/5">
-              <Avatar name={me.name} id={me.id} size={40} />
+              <Avatar name={me.name} id={me.id} src={me.avatar_url} size={40} />
               <span className={cx("min-w-0", label)}>
                 <span className="block truncate text-sm font-medium">{displayName(me)}</span>
                 <span className="block truncate text-xs text-muted">{me.username ? handle(me.username) : t("View profile")}</span>
@@ -247,7 +247,7 @@ function TopAppBar({ onMenu }: { onMenu: () => void }) {
         </Link>
         {me && (
           <Link href={isOwner ? "/" : "/profile"} aria-label={isOwner ? t("Home") : t("Profile")} className="ms-auto me-2 rounded-full">
-            <Avatar name={me.name} id={me.id} size={36} />
+            <Avatar name={me.name} id={me.id} src={me.avatar_url} size={36} />
           </Link>
         )}
         {guest && (

@@ -10,6 +10,8 @@ export interface Profile {
   role?: "user" | "admin";
   /** The site's language for this account: "en", "he", "fr" or "es". */
   language?: string | null;
+  /** The account's profile photo (a small square picture), if they added one. */
+  avatar_url?: string | null;
 }
 
 /** "Mendel Cohen & Yossi Levi" */
