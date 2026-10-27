@@ -20,6 +20,7 @@ import { t } from "@/lib/i18n";
 import { setAccountDesk, useAccountDesk } from "@/lib/account-desk";
 import { AccountDeskView } from "./views/account-desk";
 import { WhoWentPrompt } from "./week-question";
+import { MessagePrompt } from "./message-prompt";
 
 const links = [
   { href: "/", label: "Dashboard", short: "Home", icon: LayoutDashboard, match: ["/", "/dashboard"] },
@@ -376,6 +377,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Tells people they can add photos: the first three visits, not for the Owner, after the Hebrew names. */}
       {me && !guest && !isOwner && !(backend?.hasAuth && missingHebrewNames(me.partners)) && <PhotosPromo key={me.id} />}
       {me && !guest && !isOwner && <WhoWentPrompt />}
+      {/* The Owner's messages wait until the Hebrew names are filled in. */}
+      {me && !guest && !isOwner && !(backend?.hasAuth && missingHebrewNames(me.partners)) && <MessagePrompt />}
       <Snackbar message={toast} />
     </div>
     </EditModeProvider>

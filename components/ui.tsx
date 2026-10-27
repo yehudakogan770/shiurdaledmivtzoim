@@ -3,6 +3,7 @@
 import { isRtl } from "@/lib/i18n";
 import { useEffect, useRef, useState, type ButtonHTMLAttributes, type ComponentType, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 import { TrendingDown, TrendingUp } from "lucide-react";
+import { createPortal } from "react-dom";
 import { useNav } from "@/lib/nav";
 
 /* Material You (Material 3) building blocks, styled after Google Pixel. */
@@ -347,7 +348,8 @@ export function Modal({ onClose, blur, children }: { onClose(): void; blur?: boo
     };
   }, []);
 
-  return (
+  // Drawn at the top of the page, not inside its card: a glass card would keep it from covering the screen.
+  return createPortal(
     <div
       className={cx("fixed inset-x-0 top-0 z-[60] grid h-[100dvh] place-items-center overflow-hidden overscroll-none p-4", blur ? "bg-black/40 backdrop-blur-sm" : "bg-black/50")}
       style={view ? { top: view.top, height: view.height } : undefined}
@@ -356,6 +358,7 @@ export function Modal({ onClose, blur, children }: { onClose(): void; blur?: boo
       <div ref={panel} className="grid max-h-full w-full place-items-center overflow-y-auto overscroll-contain">
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

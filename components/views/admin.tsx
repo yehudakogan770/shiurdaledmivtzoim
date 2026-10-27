@@ -2,7 +2,7 @@
 
 import { PhotoDriveCard } from "../photo-drive-card";
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
-import { ChevronDown, ChevronUp, Download, ClipboardList, Eye, EyeOff, KeyRound, Flame, Pencil, ShieldCheck, Sparkles, Trash2, Users } from "lucide-react";
+import { ChevronDown, ChevronUp, Download, ClipboardList, Eye, EyeOff, KeyRound, Flame, Megaphone, Pencil, Search, ShieldCheck, Sparkles, Trash2, Users, X } from "lucide-react";
 import { TefillinIcon } from "../icons";
 import { bringBackFrom, categoryName, hiddenNowOrLater, hiddenRanges, hideFrom, orderedMivtzoim, reportColumns, type BuiltinType } from "@/lib/categories";
 import { dayWithParsha, weekTitle } from "@/lib/parsha";
@@ -12,6 +12,7 @@ import { ICON_CHOICES, iconForActivity, iconForCategory, iconForName } from "@/l
 import { useData } from "@/lib/data";
 import { handle, isAdminIdentifier } from "@/lib/admin";
 import { chavrusasOf, encodeChavrusa, type Chavrusa } from "@/lib/chavrusa";
+import { DESTINATIONS } from "@/lib/messages";
 import { ChavrusaFields, ChavrusaNames } from "../chavrusa-fields";
 import { Avatar, Badge, Button, Card, CardTitle, CategoryIcon, Empty, Field, IconButton, Input, Modal, PageHeader, Select, Textarea, cx, listClass } from "../ui";
 import { sum } from "./dashboard";
@@ -531,14 +532,49 @@ export function SharedCategoriesCard({ controls = true, title = "Mivtzoim for ev
   );
 }
 
+/**
+ * Everything an account can be found by: its route name, username, email, its Chavrusas (English,
+ * Hebrew and mothers' names), and the routes and places it made.
+ */
+function searchText(p: Profile, data: ReturnType<typeof useData>["data"]) {
+  const chavrusas = chavrusasOf(p.partners).flatMap((c) => [c.name, c.hebrew, c.mother]);
+  const routes = data.routes.filter((r) => r.created_by === p.id).flatMap((r) => [r.name, r.description ?? ""]);
+  const places = data.locations.filter((l) => l.created_by === p.id).flatMap((l) => [l.name, l.address ?? "", l.type ?? ""]);
+  return [p.name, p.username ?? "", p.email ?? "", ...chavrusas, ...routes, ...places].join(" ").toLowerCase();
+}
+
 function PeopleCard() {
   const { me, people, data } = useData();
   const [open, setOpen] = useState<string | null>(null);
-  const rows = [...people].sort((a, b) => (a.role === b.role ? a.name.localeCompare(b.name) : a.role === "admin" ? -1 : 1));
+  const [query, setQuery] = useState("");
+  const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  // Every word typed has to match something on the account, in any order.
+  const rows = [...people]
+    .filter((p) => !words.length || ((text) => words.every((w) => text.includes(w)))(searchText(p, data)))
+    .sort((a, b) => (a.role === b.role ? a.name.localeCompare(b.name) : a.role === "admin" ? -1 : 1));
 
   return (
     <Card>
-      <CardTitle sub={tn(people.length, "{n} account", "{n} accounts")}>{t("People")}</CardTitle>
+      <CardTitle sub={words.length ? t("{n} of {total} accounts", { n: rows.length, total: people.length }) : tn(people.length, "{n} account", "{n} accounts")}>{t("People")}</CardTitle>
+      <div className="px-6 pb-3">
+        <label className="relative block">
+          <Search size={18} aria-hidden className="pointer-events-none absolute start-4 top-1/2 -translate-y-1/2 text-muted" />
+          <Input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={t("Search by route, name, Chavrusa, username, email or place")}
+            aria-label={t("Search accounts")}
+            className="ps-11"
+          />
+          {query && (
+            <button type="button" onClick={() => setQuery("")} aria-label={t("Clear search")} className="absolute end-3 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-muted hover:bg-ink/8">
+              <X size={16} />
+            </button>
+          )}
+        </label>
+      </div>
+      {rows.length === 0 && <p className="px-6 pb-5 text-sm text-muted">{t("No account matches “{q}”.", { q: query.trim() })}</p>}
       <ul className={listClass}>
         {rows.map((p) => {
           const total = sum(data.activity.filter((a) => a.user_id === p.id));
@@ -649,6 +685,7 @@ function PersonDetails({ person }: { person: Profile }) {
         <SetPassword person={person} />
         <AdminRole person={person} />
         <DeletePerson person={person} />
+        <MessagePerson person={person} />
       </div>
       <div className="overflow-hidden rounded-2xl bg-card">
         <p className="px-6 pt-4 pb-1 text-sm font-medium">{t("Entries ({n})", { n: rows.length })}</p>
@@ -1085,5 +1122,91 @@ function SetPassword({ person }: { person: Profile }) {
         </Button>
       </div>
     </form>
+  );
+}
+
+/**
+ * The Owner: send this account a pop-up message for the next time they open the site, with a
+ * button that takes them where they need to go (for example, to fill in their Chavrusas).
+ */
+function MessagePerson({ person }: { person: Profile }) {
+  const { isOwner, data, actions, notify } = useData();
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const [go, setGo] = useState("");
+  const [busy, setBusy] = useState(false);
+  if (!isOwner) return null;
+  const waiting = data.messages.filter((m) => m.user_id === person.id);
+  const presets: [string, string][] = [
+    ["Please add your Chavrusas' names (English and Hebrew, with mothers' names) so they go into the Duch.", "chavrusas"],
+    ["Don't forget to log this week's Mivtzoim!", "home"],
+    ["Please upload your photos from Mivtzoim this week.", "photos"],
+  ];
+
+  async function send(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await actions.sendMessage(person.id, text, go);
+      notify(t("Message sent. {name} sees it next time they open the site.", { name: person.name }));
+      setOpen(false);
+      setText("");
+      setGo("");
+    } catch (err) {
+      notify((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <Button variant="tonal" className="h-9 px-4" onClick={() => setOpen(true)}>
+        <Megaphone size={16} aria-hidden /> {t("Send a message")}
+        {waiting.length > 0 && <Badge tone="accent">{waiting.length}</Badge>}
+      </Button>
+      {open && (
+        <Modal onClose={() => setOpen(false)} blur>
+          <form role="dialog" aria-modal="true" aria-labelledby="msg-title" onSubmit={send} onClick={(e) => e.stopPropagation()} className="grid w-full max-w-md gap-4 rounded-[28px] bg-card p-6 shadow-pop">
+            <div>
+              <h2 id="msg-title" className="text-xl font-medium">{t("Message {name}", { name: person.name })}</h2>
+              <p className="text-sm text-muted">{t("It pops up the next time they open the site.")}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {presets.map(([p, dest]) => (
+                <button key={p} type="button" onClick={() => { setText(t(p)); setGo(dest); }} className="rounded-full border border-outline px-3 py-1.5 text-start text-sm hover:bg-ink/8">
+                  {t(p).length > 42 ? t(p).slice(0, 40) + "…" : t(p)}
+                </button>
+              ))}
+            </div>
+            <Field label={t("Message")} htmlFor="msg-text">
+              <Textarea id="msg-text" required rows={4} maxLength={500} value={text} onChange={(e) => setText(e.target.value)} placeholder={t("Write your message…")} />
+            </Field>
+            <Field label={t("Button that takes them to")} htmlFor="msg-go">
+              <Select id="msg-go" value={go} onChange={(e) => setGo(e.target.value)}>
+                {DESTINATIONS.map((d) => (
+                  <option key={d.key} value={d.key}>{t(d.label)}</option>
+                ))}
+              </Select>
+            </Field>
+            {waiting.length > 0 && (
+              <div className="grid gap-2 rounded-2xl bg-paper p-3">
+                <p className="text-sm font-medium">{t("Not seen yet")}</p>
+                {waiting.map((m) => (
+                  <div key={m.id} className="flex items-start gap-2 text-sm">
+                    <p className="min-w-0 flex-1 whitespace-pre-line">{m.text}</p>
+                    <button type="button" onClick={() => actions.dismissMessage(m.id)} className="shrink-0 text-accent hover:underline">{t("Take back")}</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setOpen(false)}>{t("Cancel")}</Button>
+              <Button type="submit" disabled={busy || !text.trim()}>{busy ? t("Sending…") : t("Send")}</Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+    </>
   );
 }

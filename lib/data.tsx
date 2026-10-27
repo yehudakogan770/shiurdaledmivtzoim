@@ -25,6 +25,7 @@ import { today, weekOf } from "./dates";
 import { parshaOfWeek } from "./parsha";
 import { newVersionOnline } from "./install";
 import { splitWeekAnswers, weekAnswerEntry } from "./week-answers";
+import { isMessage, messageEntry, readMessage, type Message } from "./messages";
 import { isAdminIdentifier } from "./admin";
 import { builtinDescription, builtinIcon, builtins, isBuiltinRow, type Builtin, type BuiltinType } from "./categories";
 
@@ -38,6 +39,8 @@ export interface AppData {
   activity: Activity[];
   /** The week's question on Home (did you go on Mivtzoim, who went), for this account. */
   weeks: WeekAnswer[];
+  /** Messages from the Owner: to this account, or to everyone for the Owner. */
+  messages: Message[];
   names: Record<string, string>;
 }
 
@@ -50,6 +53,7 @@ const EMPTY: AppData = {
   categories: [],
   activity: [],
   weeks: [],
+  messages: [],
   names: {},
 };
 
@@ -138,6 +142,10 @@ interface DataContextValue {
     deleteActivity(id: string): Promise<void>;
     /** Answer the week's question: did this route go on Mivtzoim, and who went. */
     answerWeek(week: string, answer: { went: boolean; people: string[] }): Promise<void>;
+    /** The Owner: send someone a pop-up message, with a button to a page (or none). */
+    sendMessage(userId: string, text: string, go: string): Promise<void>;
+    /** Close a message: the person who got it ("OK"), or the Owner taking it back. */
+    dismissMessage(id: string): Promise<void>;
     /** Fix an entry: how many, which day, notes (0 deletes it). */
     updateActivity(id: string, patch: { quantity: number; activity_date: string; notes: string }): Promise<void>;
     /** Change how many an entry counts; 0 deletes it. */
@@ -261,8 +269,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       b.list("personal_categories"),
       b.list("mivtzoim_activity"),
     ]);
-    // The week's question is saved among the entries; take those out so they're never counted.
-    const { activity, weeks } = splitWeekAnswers(entries);
+    // The week's question and the Owner's messages are saved among the entries; take those out so they're never counted.
+    const messages = entries.filter(isMessage).map(readMessage).filter((m): m is Message => !!m);
+    const { activity, weeks } = splitWeekAnswers(entries.filter((a) => !isMessage(a)));
     const ids = new Set<string>([user.id]);
     members.forEach((m) => ids.add(m.user_id));
     activity.forEach((a) => ids.add(a.user_id));
@@ -270,7 +279,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const names = await b.names([...ids]);
     names[user.id] = user.name || names[user.id];
     setPeople(everyone);
-    setData({ groups, members, routes, locations, stops, categories, activity, weeks, names });
+    setData({ groups, members, routes, locations, stops, categories, activity, weeks, messages, names });
   }, []);
 
   useEffect(() => {
@@ -456,6 +465,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
           });
         },
         deleteActivity: async (id) => removeActivity(id),
+        sendMessage: (userId, text, go) =>
+          run(async () => {
+            if (!text.trim()) throw new Error(t("Write a message first."));
+            await b.insert("mivtzoim_activity", messageEntry(userId, text, go, today())).catch((e: Error) => {
+              throw new Error(e.message.includes("row-level security") ? t("To send messages, run database update 014 in Supabase first.") : e.message);
+            });
+          }),
+        dismissMessage: async (id) => {
+          setData((d) => ({ ...d, messages: d.messages.filter((m) => m.id !== id) }));
+          saveLater(() => b.remove("mivtzoim_activity", id));
+        },
         answerWeek: async (week, answer) => {
           const user_id = uid();
           const fields = { went: answer.went, people: answer.went ? answer.people : [] };

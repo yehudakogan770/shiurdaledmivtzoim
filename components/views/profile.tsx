@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { AtSign, KeyRound, Mail, Pencil, Plus, X } from "lucide-react";
 import { handle } from "@/lib/admin";
 import { useData } from "@/lib/data";
+import { useNav } from "@/lib/nav";
 import { SUGGESTED_PERSONAL } from "@/lib/categories";
 import { BLANK_CHAVRUSA, chavrusasOf, encodeChavrusa, type Chavrusa } from "@/lib/chavrusa";
 import { ChavrusaFields, ChavrusaNames } from "../chavrusa-fields";
@@ -143,12 +144,22 @@ function AccountCard() {
   const [partners, setPartners] = useState<Chavrusa[]>([BLANK_CHAVRUSA]);
   const [busy, setBusy] = useState(false);
   const editable = backend?.kind !== "claude";
+  const { query } = useNav();
+  const box = useRef<HTMLDivElement>(null);
 
   function start(which: NonNullable<typeof open>) {
     setName(me?.name ?? "");
     setPartners(me?.partners?.length ? chavrusasOf(me.partners) : [BLANK_CHAVRUSA]);
     setOpen(which);
   }
+
+  // Arriving from a message's "Edit my Chavrusas" button: open the editor right away.
+  useEffect(() => {
+    if (query.edit !== "chavrusas" || !me || !editable) return;
+    start("details");
+    setTimeout(() => box.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query.edit, me?.id]);
 
   async function run(work: () => Promise<string>) {
     setBusy(true);
@@ -205,6 +216,7 @@ function AccountCard() {
   );
 
   return (
+    <div ref={box} className="scroll-mt-24">
     <Card>
       <CardTitle sub={t("Change your route name, Chavrusas and how you sign in")}>{t("Account settings")}</CardTitle>
       <div className="grid gap-4 px-6 pb-6">
@@ -264,6 +276,7 @@ function AccountCard() {
         )}
       </div>
     </Card>
+    </div>
   );
 }
 
