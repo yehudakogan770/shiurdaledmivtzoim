@@ -1,36 +1,32 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { ArrowDownLeft, ArrowUpRight, Download, Package, Plus, ShieldCheck, Trash2, Wallet } from "lucide-react";
+import { useRef, useState, type FormEvent, type ReactNode } from "react";
+import { Download, Pencil, ShieldCheck, Trash2 } from "lucide-react";
 import { useData } from "@/lib/data";
-import { activityWeek, addDays, currentWeek, today } from "@/lib/dates";
-import { orderedMivtzoim } from "@/lib/categories";
-import { weekTitle } from "@/lib/parsha";
+import { formatShort, today } from "@/lib/dates";
 import { buildFinanceWorkbook, monthLabel } from "@/lib/finance-export";
-import type { FinanceEntry, Supply } from "@/lib/types";
-import { Button, Card, CardTitle, Empty, Field, IconButton, Input, PageHeader, Segmented, Select, cx, listClass } from "../ui";
-import { sum } from "./dashboard";
+import type { FinanceEntry } from "@/lib/types";
+import { givenOut } from "@/lib/given-out";
+import { Button, Card, Empty, Field, IconButton, Input, PageHeader, Segmented, Select, cx } from "../ui";
 
-/** The Owner's money: donations in, expenses out, the balance, and the weekly supplies. English only (Owner screens). */
+/**
+ * The Owner's books: donations in, expenses out, the balance, and how many of each Mivtza to buy or
+ * print. Laid out as plain tables, like a ledger. English only (Owner screens).
+ */
 
 const METHODS = ["Cash App", "Zelle", "Cash", "Pushka", "Check", "Other"];
 const CATEGORIES = ["Shabbos candles", "Tefillin supplies", "Lechaims", "Challah", "Water & snacks", "Bags", "Printing & pamphlets", "Transportation", "Food for the bochurim", "Other"];
-const SUGGESTED: { name: string; per_week: number }[] = [
-  { name: "Water bottles", per_week: 48 },
-  { name: "Snacks", per_week: 40 },
-  { name: "Lechaim cups", per_week: 50 },
-  { name: "Challah", per_week: 20 },
-  { name: "Bags", per_week: 60 },
-  { name: "Shabbos candle kits", per_week: 150 },
-];
 
 const usd = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD" });
+const total = (list: FinanceEntry[]) => list.reduce((n, e) => n + e.amount, 0);
+/** "Oct 27, 2026" */
+const day = (iso: string) => new Date(iso + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
-type Tab = "overview" | "in" | "out" | "supplies";
+type Tab = "summary" | "in" | "out" | "buy";
 
 export function FinancesView() {
-  const { isOwner, finances, settings, notify } = useData();
-  const [tab, setTab] = useState<Tab>("overview");
+  const { isOwner, finances, settings, notify, data, builtins, shared } = useData();
+  const [tab, setTab] = useState<Tab>("summary");
   if (!isOwner) {
     return (
       <Card>
@@ -43,13 +39,11 @@ export function FinancesView() {
   if (!finances) {
     return (
       <div className="grid gap-3">
-        <PageHeader title="Finances" subtitle="Money in, money out, and what to buy each week." />
+        <PageHeader title="Finances" />
         <Card>
-          <div className="grid gap-3 px-6 py-6">
+          <div className="grid gap-2 px-6 py-5 text-sm">
             <p className="font-medium">One database update is needed first.</p>
-            <p className="text-sm text-muted">
-              In Supabase, open SQL Editor → New query, paste the file <b>supabase/migrations/016_finances.sql</b> and click Run. Then reload this page. Only the Owner will be able to see these records.
-            </p>
+            <p className="text-muted">In Supabase, open SQL Editor → New query, paste the file supabase/migrations/016_finances.sql and click Run. Then reload this page.</p>
           </div>
         </Card>
       </div>
@@ -58,7 +52,7 @@ export function FinancesView() {
 
   async function download() {
     try {
-      const blob = await buildFinanceWorkbook(finances!.entries, finances!.supplies, settings.site_name);
+      const blob = await buildFinanceWorkbook(finances!.entries, givenOut(data.activity, builtins, shared, 8), settings.site_name);
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
       link.download = `${settings.site_name} - Finances ${today()}.xlsx`;
@@ -74,146 +68,228 @@ export function FinancesView() {
     <div className="grid grid-cols-1 gap-3">
       <PageHeader
         title="Finances"
-        subtitle="Only you can see this page."
+        subtitle="Visible to the Owner only."
         action={
-          <Button variant="tonal" onClick={download}>
-            <Download size={16} aria-hidden /> Excel
+          <Button variant="secondary" onClick={download}>
+            <Download size={16} aria-hidden /> Export
           </Button>
         }
       />
-      <Totals entries={finances.entries} supplies={finances.supplies} />
-      <div className="overflow-x-auto">
+      <Summary entries={finances.entries} />
+      {/* Slightly tighter tabs so all four fit across a phone. */}
+      <div className="overflow-x-auto [&_button]:px-3 sm:[&_button]:px-4">
         <Segmented<Tab>
-          label="Finances section"
+          label="Section"
           value={tab}
           onChange={setTab}
           options={[
-            { value: "overview", label: "Overview" },
-            { value: "in", label: "In" },
-            { value: "out", label: "Out" },
-            { value: "supplies", label: "Supplies" },
+            { value: "summary", label: "Summary" },
+            { value: "in", label: "Income" },
+            { value: "out", label: "Expenses" },
+            { value: "buy", label: "Buy/print" },
           ]}
         />
       </div>
-      {tab === "overview" && <Overview entries={finances.entries} />}
-      {tab === "in" && <Entries kind="in" entries={finances.entries} />}
-      {tab === "out" && <Entries kind="out" entries={finances.entries} />}
-      {tab === "supplies" && <Supplies supplies={finances.supplies} />}
+      {tab === "summary" && <Monthly entries={finances.entries} />}
+      {tab === "in" && <Ledger kind="in" entries={finances.entries} />}
+      {tab === "out" && <Ledger kind="out" entries={finances.entries} />}
+      {tab === "buy" && <BuyPrint />}
     </div>
   );
 }
 
-const total = (list: FinanceEntry[]) => list.reduce((n, e) => n + e.amount, 0);
+/** A plain table: a header row, then rows; numbers line up on the right. */
+function Table({ head, children, foot, wide }: { head: ReactNode; children: ReactNode; foot?: ReactNode; wide?: boolean }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className={cx("w-full border-collapse text-sm", wide && "min-w-[32rem]")}>
+        <thead className="border-b border-line text-start text-xs uppercase tracking-wide text-muted">{head}</thead>
+        <tbody className="divide-y divide-line/60">{children}</tbody>
+        {foot && <tfoot className="border-t-2 border-line font-medium">{foot}</tfoot>}
+      </table>
+    </div>
+  );
+}
+const th = "px-2 py-2.5 text-start font-medium first:ps-6 last:pe-6 sm:px-4";
+const td = "px-2 py-2.5 first:ps-6 last:pe-6 sm:px-4";
+/** Columns left out on phones, so the table fits without scrolling sideways. */
+const wideOnly = "hidden sm:table-cell";
+const num = "tabular text-end whitespace-nowrap";
 
-function Totals({ entries, supplies }: { entries: FinanceEntry[]; supplies: Supply[] }) {
+/** The four numbers that matter, in one row. */
+function Summary({ entries }: { entries: FinanceEntry[] }) {
   const month = today().slice(0, 7);
+  const year = today().slice(0, 4);
   const inn = entries.filter((e) => e.kind === "in");
   const out = entries.filter((e) => e.kind === "out");
-  const toBuy = supplies.reduce((n, x) => n + Math.max(0, x.per_week - x.in_stock) * x.unit_cost, 0);
-  const tiles: [string, string, string, string][] = [
-    ["Balance", usd(total(inn) - total(out)), "everything in, minus everything out", total(inn) - total(out) < 0 ? "text-danger" : ""],
-    ["In this month", usd(total(inn.filter((e) => e.entry_date.startsWith(month)))), monthLabel(month), "text-sage"],
-    ["Out this month", usd(total(out.filter((e) => e.entry_date.startsWith(month)))), monthLabel(month), ""],
-    ["Shopping this week", usd(toBuy), "what's still needed, at your prices", ""],
+  const balance = total(inn) - total(out);
+  const name = monthLabel(month).split(" ")[0];
+  const cells: [string, string, boolean?][] = [
+    ["Balance", usd(balance), balance < 0],
+    [`Income, ${name}`, usd(total(inn.filter((e) => e.entry_date.startsWith(month))))],
+    [`Expenses, ${name}`, usd(total(out.filter((e) => e.entry_date.startsWith(month))))],
+    [`Income, ${year}`, usd(total(inn.filter((e) => e.entry_date.startsWith(year))))],
   ];
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-      {tiles.map(([label, value, note, tone]) => (
-        <Card key={label}>
-          <div className="px-5 py-4">
-            <p className="text-sm font-medium text-muted">{label}</p>
-            <p className={cx("tabular mt-1 text-2xl font-medium sm:text-3xl", tone)}>{value}</p>
-            <p className="mt-1 text-xs text-muted">{note}</p>
+    <Card>
+      <dl className="grid grid-cols-2 divide-line/60 sm:grid-cols-4 sm:divide-x">
+        {cells.map(([label, value, negative]) => (
+          <div key={label} className="px-6 py-4">
+            <dt className="text-xs uppercase tracking-wide text-muted">{label}</dt>
+            <dd className={cx("tabular mt-1 text-xl font-medium", negative && "text-danger")}>{value}</dd>
           </div>
-        </Card>
-      ))}
+        ))}
+      </dl>
+    </Card>
+  );
+}
+
+function SectionTitle({ title, sub }: { title: string; sub?: string }) {
+  return (
+    <div className="px-6 pt-5 pb-3">
+      <h2 className="font-medium">{title}</h2>
+      {sub && <p className="text-sm text-muted">{sub}</p>}
     </div>
   );
 }
 
-function Overview({ entries }: { entries: FinanceEntry[] }) {
-  const months = [...new Set(entries.map((e) => e.entry_date.slice(0, 7)))].sort().reverse();
-  const out = entries.filter((e) => e.kind === "out");
-  const byCategory = [...new Set(out.map((e) => e.category || "Other"))]
-    .map((c) => [c, total(out.filter((e) => (e.category || "Other") === c))] as const)
-    .sort((a, b) => b[1] - a[1]);
-  const biggest = Math.max(1, ...byCategory.map(([, n]) => n));
+/** Month by month, with a running balance, then expenses by category. */
+function Monthly({ entries }: { entries: FinanceEntry[] }) {
   if (entries.length === 0) {
     return (
       <Card>
-        <Empty title="Nothing recorded yet" icon={Wallet}>
-          Add a donation under Money in, or an expense under Money out.
-        </Empty>
+        <p className="px-6 py-5 text-sm text-muted">No records yet. Add income or an expense to start.</p>
       </Card>
     );
   }
+  const months = [...new Set(entries.map((e) => e.entry_date.slice(0, 7)))].sort();
+  let running = 0;
+  const rows = months.map((m) => {
+    const list = entries.filter((e) => e.entry_date.startsWith(m));
+    const i = total(list.filter((e) => e.kind === "in"));
+    const o = total(list.filter((e) => e.kind === "out"));
+    running += i - o;
+    return { m, i, o, balance: running };
+  });
+  const out = entries.filter((e) => e.kind === "out");
+  const spent = total(out);
+  const byCategory = [...new Set(out.map((e) => e.category || "Other"))]
+    .map((c) => [c, total(out.filter((e) => (e.category || "Other") === c))] as const)
+    .sort((a, b) => b[1] - a[1]);
+  const inAll = total(entries.filter((e) => e.kind === "in"));
   return (
-    <div className="grid gap-3 lg:grid-cols-2">
+    <div className="grid gap-3 xl:grid-cols-2 [&>*]:min-w-0">
       <Card>
-        <CardTitle sub="Each month's money in and out">By month</CardTitle>
-        <ul className={listClass}>
-          {months.map((m) => {
-            const list = entries.filter((e) => e.entry_date.startsWith(m));
-            const i = total(list.filter((e) => e.kind === "in"));
-            const o = total(list.filter((e) => e.kind === "out"));
-            return (
-              <li key={m} className="flex items-center gap-3 px-6 py-3">
-                <span className="min-w-0 flex-1 font-medium">{monthLabel(m)}</span>
-                <span className="tabular text-sm text-sage">+{usd(i)}</span>
-                <span className="tabular text-sm text-muted">−{usd(o)}</span>
-                <span className={cx("tabular w-24 text-end font-medium", i - o < 0 && "text-danger")}>{usd(i - o)}</span>
-              </li>
-            );
-          })}
-        </ul>
+        <SectionTitle title="By month" />
+        <Table
+          head={
+            <tr>
+              <th className={th}>Month</th>
+              <th className={cx(th, "text-end")}>Income</th>
+              <th className={cx(th, "text-end")}>Expenses</th>
+              <th className={cx(th, "text-end", wideOnly)}>Net</th>
+              <th className={cx(th, "text-end")}>Balance</th>
+            </tr>
+          }
+          foot={
+            <tr>
+              <td className={td}>Total</td>
+              <td className={cx(td, num)}>{usd(inAll)}</td>
+              <td className={cx(td, num)}>{usd(spent)}</td>
+              <td className={cx(td, num, wideOnly)}>{usd(inAll - spent)}</td>
+              <td className={cx(td, num)}>{usd(inAll - spent)}</td>
+            </tr>
+          }
+        >
+          {[...rows].reverse().map((r) => (
+            <tr key={r.m}>
+              <td className={td}>{monthLabel(r.m)}</td>
+              <td className={cx(td, num)}>{usd(r.i)}</td>
+              <td className={cx(td, num)}>{usd(r.o)}</td>
+              <td className={cx(td, num, wideOnly, r.i - r.o < 0 && "text-danger")}>{usd(r.i - r.o)}</td>
+              <td className={cx(td, num)}>{usd(r.balance)}</td>
+            </tr>
+          ))}
+        </Table>
       </Card>
       <Card>
-        <CardTitle sub="Everything spent, by what it was for">Where the money goes</CardTitle>
+        <SectionTitle title="Expenses by category" />
         {byCategory.length === 0 ? (
-          <p className="px-6 pb-6 text-sm text-muted">No expenses yet.</p>
+          <p className="px-6 pb-5 text-sm text-muted">No expenses yet.</p>
         ) : (
-          <ul className="grid gap-3 px-6 pb-6">
+          <Table
+            head={
+              <tr>
+                <th className={th}>Category</th>
+                <th className={cx(th, "text-end")}>Amount</th>
+                <th className={cx(th, "text-end")}>Share</th>
+              </tr>
+            }
+            foot={
+              <tr>
+                <td className={td}>Total</td>
+                <td className={cx(td, num)}>{usd(spent)}</td>
+                <td className={cx(td, num)}>100%</td>
+              </tr>
+            }
+          >
             {byCategory.map(([c, n]) => (
-              <li key={c}>
-                <div className="flex justify-between text-sm">
-                  <span>{c}</span>
-                  <span className="tabular font-medium">{usd(n)}</span>
-                </div>
-                <div className="mt-1 h-2 overflow-hidden rounded-full bg-sunken">
-                  <div className="h-full rounded-full bg-accent" style={{ width: `${(n / biggest) * 100}%` }} />
-                </div>
-              </li>
+              <tr key={c}>
+                <td className={td}>{c}</td>
+                <td className={cx(td, num)}>{usd(n)}</td>
+                <td className={cx(td, num, "text-muted")}>{Math.round((n / spent) * 100)}%</td>
+              </tr>
             ))}
-          </ul>
+          </Table>
         )}
       </Card>
     </div>
   );
 }
 
-/** Money in or money out: add one, and the list of them, newest first. */
-function Entries({ kind, entries }: { kind: "in" | "out"; entries: FinanceEntry[] }) {
+/** Income or expenses: a form to add or change one, and the full list as a table, newest first. */
+function Ledger({ kind, entries }: { kind: "in" | "out"; entries: FinanceEntry[] }) {
   const { actions, notify } = useData();
   const blank = { date: today(), amount: "", who: "", pick: kind === "in" ? "Cash App" : CATEGORIES[0], notes: "" };
   const [form, setForm] = useState(blank);
   const [busy, setBusy] = useState(false);
+  // The entry being changed, if any: the same form fills in with it.
+  const [editing, setEditing] = useState<FinanceEntry | null>(null);
+  const formTop = useRef<HTMLDivElement>(null);
   const list = entries.filter((e) => e.kind === kind).sort((a, b) => b.entry_date.localeCompare(a.entry_date) || b.created_at.localeCompare(a.created_at));
+  const word = kind === "in" ? "income" : "expense";
 
-  async function add(e: FormEvent) {
+  function edit(e: FinanceEntry) {
+    setEditing(e);
+    setForm({ date: e.entry_date, amount: String(e.amount), who: e.who ?? "", pick: (kind === "in" ? e.method : e.category) || blank.pick, notes: e.notes ?? "" });
+    formTop.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  function cancel() {
+    setEditing(null);
+    setForm(blank);
+  }
+
+  async function save(e: FormEvent) {
     e.preventDefault();
     setBusy(true);
     try {
-      await actions.addFinance({
-        kind,
+      const fields = {
         entry_date: form.date || today(),
         amount: Number(form.amount),
         who: form.who.trim() || null,
         method: kind === "in" ? form.pick : null,
         category: kind === "out" ? form.pick : null,
         notes: form.notes.trim() || null,
-      });
-      notify(kind === "in" ? `Added a donation of ${usd(Number(form.amount))}.` : `Added an expense of ${usd(Number(form.amount))}.`);
-      setForm({ ...blank, date: form.date, pick: form.pick });
+      };
+      if (editing) {
+        await actions.updateFinance(editing.id, fields);
+        notify("Saved the changes.");
+        cancel();
+      } else {
+        await actions.addFinance({ kind, ...fields });
+        notify(`Recorded ${usd(Number(form.amount))} ${word}.`);
+        setForm({ ...blank, date: form.date, pick: form.pick });
+      }
     } catch (err) {
       notify((err as Error).message);
     } finally {
@@ -222,169 +298,183 @@ function Entries({ kind, entries }: { kind: "in" | "out"; entries: FinanceEntry[
   }
 
   return (
-    <div className="grid gap-3 lg:grid-cols-[22rem_1fr]">
-      <Card>
-        <CardTitle>{kind === "in" ? "Add a donation" : "Add an expense"}</CardTitle>
-        <form onSubmit={add} className="grid gap-3 px-6 pb-6">
-          <div className="grid grid-cols-2 gap-3">
+    <div className="grid gap-3">
+      <div ref={formTop} className="scroll-mt-24">
+        <Card className={cx(editing && "ring-2 ring-accent")}>
+          <SectionTitle title={editing ? `Edit ${word}` : kind === "in" ? "Record income" : "Record an expense"} />
+          <form onSubmit={save} className="grid gap-3 px-6 pb-5 sm:grid-cols-2 lg:grid-cols-[8rem_10rem_1fr_1fr_1fr_auto] lg:items-end [&>*]:min-w-0">
             <Field label="Amount ($)" htmlFor={`${kind}-amount`}>
-              <Input id={`${kind}-amount`} required inputMode="decimal" type="number" min="0.01" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="18.00" />
+              <Input id={`${kind}-amount`} required inputMode="decimal" type="number" min="0.01" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="0.00" />
             </Field>
             <Field label="Date" htmlFor={`${kind}-date`}>
               <Input id={`${kind}-date`} type="date" required value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
             </Field>
-          </div>
-          <Field label={kind === "in" ? "How" : "What for"} htmlFor={`${kind}-pick`}>
-            <Select id={`${kind}-pick`} value={form.pick} onChange={(e) => setForm({ ...form, pick: e.target.value })}>
-              {(kind === "in" ? METHODS : CATEGORIES).map((m) => (
-                <option key={m}>{m}</option>
-              ))}
-            </Select>
-          </Field>
-          <Field label={kind === "in" ? "From (who gave)" : "Paid by / where"} htmlFor={`${kind}-who`}>
-            <Input id={`${kind}-who`} value={form.who} onChange={(e) => setForm({ ...form, who: e.target.value })} placeholder={kind === "in" ? "Name, or leave empty" : "e.g. Moshe, or Costco"} />
-          </Field>
-          <Field label="Notes" htmlFor={`${kind}-notes`}>
-            <Input id={`${kind}-notes`} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Optional" />
-          </Field>
-          <Button type="submit" disabled={busy}>
-            <Plus size={16} aria-hidden /> {busy ? "Saving…" : "Add"}
-          </Button>
-        </form>
-      </Card>
+            <Field label={kind === "in" ? "Method" : "Category"} htmlFor={`${kind}-pick`}>
+              <Select id={`${kind}-pick`} value={form.pick} onChange={(e) => setForm({ ...form, pick: e.target.value })}>
+                {(kind === "in" ? METHODS : CATEGORIES).map((m) => (
+                  <option key={m}>{m}</option>
+                ))}
+              </Select>
+            </Field>
+            <Field label={kind === "in" ? "From" : "Paid by / vendor"} htmlFor={`${kind}-who`}>
+              <Input id={`${kind}-who`} value={form.who} onChange={(e) => setForm({ ...form, who: e.target.value })} placeholder={kind === "in" ? "Name (optional)" : "e.g. Costco"} />
+            </Field>
+            <Field label="Notes" htmlFor={`${kind}-notes`}>
+              <Input id={`${kind}-notes`} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Optional" />
+            </Field>
+            <div className="flex gap-2 sm:col-span-2 lg:col-span-1">
+              <Button type="submit" disabled={busy} className="flex-1 lg:flex-none">
+                {busy ? "Saving…" : editing ? "Save" : "Add"}
+              </Button>
+              {editing && (
+                <Button variant="ghost" onClick={cancel}>
+                  Cancel
+                </Button>
+              )}
+            </div>
+          </form>
+        </Card>
+      </div>
       <Card>
-        <CardTitle sub={`${list.length} ${list.length === 1 ? "entry" : "entries"} · ${usd(total(list))} in all`}>{kind === "in" ? "Money in" : "Money out"}</CardTitle>
+        <SectionTitle title={kind === "in" ? "Income" : "Expenses"} sub={`${list.length} ${list.length === 1 ? "record" : "records"}`} />
         {list.length === 0 ? (
-          <Empty title={kind === "in" ? "No donations yet" : "No expenses yet"} icon={kind === "in" ? ArrowDownLeft : ArrowUpRight} />
+          <p className="px-6 pb-5 text-sm text-muted">Nothing recorded yet.</p>
         ) : (
-          <ul className={listClass}>
+          <>
+          {/* Phones: one simple row per record, so Edit and Delete are always in reach. */}
+          <ul className="divide-y divide-line/60 border-t border-line sm:hidden">
             {list.map((e) => (
-              <li key={e.id} className="flex items-center gap-3 px-6 py-3">
-                <span className={cx("grid h-10 w-10 shrink-0 place-items-center rounded-full", kind === "in" ? "bg-sage-soft text-sage-on-soft" : "bg-sunken text-muted")}>
-                  {kind === "in" ? <ArrowDownLeft size={18} /> : <ArrowUpRight size={18} />}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium">{kind === "in" ? e.who || "Anonymous" : e.category}</span>
-                  <span className="block truncate text-sm text-muted">
-                    {[e.entry_date, kind === "in" ? e.method : e.who, e.notes].filter(Boolean).join(" · ")}
-                  </span>
-                </span>
-                <span className={cx("tabular text-lg font-medium", kind === "in" && "text-sage")}>{usd(e.amount)}</span>
+              <li key={e.id} className={cx("flex items-center gap-2 py-2.5 ps-6 pe-3", editing?.id === e.id && "bg-accent/8")}>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="truncate font-medium">{kind === "in" ? e.who || "Anonymous" : e.category}</span>
+                    <span className="tabular shrink-0 font-medium">{usd(e.amount)}</span>
+                  </div>
+                  <p className="truncate text-xs text-muted">{[day(e.entry_date), kind === "in" ? e.method : e.who, e.notes].filter(Boolean).join(" · ")}</p>
+                </div>
+                <IconButton aria-label="Edit" onClick={() => edit(e)} className="h-9 w-9">
+                  <Pencil size={15} />
+                </IconButton>
                 <IconButton
                   aria-label="Delete"
+                  className="h-9 w-9"
                   onClick={() => {
-                    if (confirm(`Delete this ${usd(e.amount)} ${kind === "in" ? "donation" : "expense"}?`)) actions.deleteFinance(e.id);
+                    if (!confirm(`Delete this ${usd(e.amount)} ${word}?`)) return;
+                    if (editing?.id === e.id) cancel();
+                    actions.deleteFinance(e.id);
                   }}
                 >
-                  <Trash2 size={18} />
+                  <Trash2 size={15} />
                 </IconButton>
               </li>
             ))}
+            <li className="flex justify-between py-2.5 ps-6 pe-6 font-medium">
+              <span>Total</span>
+              <span className="tabular">{usd(total(list))}</span>
+            </li>
           </ul>
+          <div className="hidden sm:block">
+          <Table
+            wide
+            head={
+              <tr>
+                <th className={th}>Date</th>
+                <th className={th}>{kind === "in" ? "From" : "Category"}</th>
+                <th className={th}>{kind === "in" ? "Method" : "Paid by / vendor"}</th>
+                <th className={th}>Notes</th>
+                <th className={cx(th, "text-end")}>Amount</th>
+                <th className={th}>
+                  <span className="sr-only">Actions</span>
+                </th>
+              </tr>
+            }
+            foot={
+              <tr>
+                <td className={td} colSpan={4}>
+                  Total
+                </td>
+                <td className={cx(td, num)}>{usd(total(list))}</td>
+                <td className={td} />
+              </tr>
+            }
+          >
+            {list.map((e) => (
+              <tr key={e.id} className={cx(editing?.id === e.id && "bg-accent/8")}>
+                <td className={cx(td, "whitespace-nowrap text-muted")}>{day(e.entry_date)}</td>
+                <td className={td}>{kind === "in" ? e.who || "Anonymous" : e.category}</td>
+                <td className={cx(td, "text-muted")}>{(kind === "in" ? e.method : e.who) || "—"}</td>
+                <td className={cx(td, "max-w-[14rem] truncate text-muted")} title={e.notes ?? undefined}>
+                  {e.notes || ""}
+                </td>
+                <td className={cx(td, num, "font-medium")}>{usd(e.amount)}</td>
+                <td className={cx(td, "whitespace-nowrap text-end")}>
+                  <IconButton aria-label="Edit" onClick={() => edit(e)} className="h-8 w-8">
+                    <Pencil size={15} />
+                  </IconButton>
+                  <IconButton
+                    aria-label="Delete"
+                    className="h-8 w-8"
+                    onClick={() => {
+                      if (!confirm(`Delete this ${usd(e.amount)} ${word}?`)) return;
+                      if (editing?.id === e.id) cancel();
+                      actions.deleteFinance(e.id);
+                    }}
+                  >
+                    <Trash2 size={15} />
+                  </IconButton>
+                </td>
+              </tr>
+            ))}
+          </Table>
+          </div>
+          </>
         )}
       </Card>
     </div>
   );
 }
 
-/** What to buy each week: how many are needed, how many are left, and what it costs. */
-function Supplies({ supplies }: { supplies: Supply[] }) {
-  const { actions, notify, data, builtins, shared } = useData();
-  const [name, setName] = useState("");
-  const mivtzoim = orderedMivtzoim(builtins, shared);
-  const lastWeek = addDays(currentWeek(), -7);
-  const list = [...supplies].sort((a, b) => (a.position ?? 999) - (b.position ?? 999) || a.created_at.localeCompare(b.created_at));
-  // How many went out last week with a mivtza, from everyone's entries.
-  const usedLastWeek = (key: string) =>
-    sum(data.activity.filter((a) => activityWeek(a) === lastWeek && (a.category_type === key || a.personal_category_id === key)));
-  const add = (n: string, per_week = 0) =>
-    actions.addSupply({ name: n, per_week, in_stock: 0, unit_cost: 0, mivtza: null, position: supplies.length }).then(() => setName(""), (e: Error) => notify(e.message));
-  const num = (v: string) => Math.max(0, Math.round(Number(v) || 0));
-  const toBuy = list.reduce((n, x) => n + Math.max(0, x.per_week - x.in_stock) * x.unit_cost, 0);
-  // Suggestions not on the list yet stay one tap away.
-  const missing = SUGGESTED.filter((sg) => !list.some((x) => x.name.toLowerCase() === sg.name.toLowerCase()));
-
+/** How many of each Mivtza everyone gave out each week, and how many to get for next week. */
+function BuyPrint() {
+  const { data, builtins, shared } = useData();
+  const { weeks, items } = givenOut(data.activity, builtins, shared, 6);
   return (
     <Card>
-      <CardTitle sub={`To buy this week: ${usd(toBuy)} · Change any number and it saves.`}>Weekly supplies</CardTitle>
-      {missing.length > 0 && <p className="px-6 pb-2 text-sm text-muted">{list.length ? "Add more:" : "Start with these, or add your own below:"}</p>}
-      {missing.length > 0 && (
-        <div className="flex flex-wrap gap-2 px-6 pb-4">
-          {missing.map((s) => (
-            <Button key={s.name} variant="tonal" className="h-9 px-4" onClick={() => add(s.name, s.per_week)}>
-              <Plus size={14} aria-hidden /> {s.name}
-            </Button>
+      <SectionTitle title="Given out per week" sub="From everyone's logged Mivtzoim. Next week = the higher of last week and the 4-week average, rounded up to the next 5." />
+      {weeks.length === 0 ? (
+        <p className="px-6 pb-5 text-sm text-muted">No finished weeks yet.</p>
+      ) : (
+        <Table
+          head={
+            <tr>
+              <th className={th}>Mivtza</th>
+              {weeks.map((w, i) => (
+                <th key={w} className={cx(th, "text-end whitespace-nowrap", i < weeks.length - 2 && wideOnly)}>
+                  {formatShort(w)}
+                </th>
+              ))}
+              <th className={cx(th, "text-end")}>Avg.</th>
+              <th className={cx(th, "text-end whitespace-nowrap", wideOnly)}>This week</th>
+              <th className={cx(th, "text-end whitespace-nowrap text-ink")}>Next week</th>
+            </tr>
+          }
+        >
+          {items.map((x) => (
+            <tr key={x.key}>
+              <td className={td}>{x.label}</td>
+              {x.counts.map((n, i) => (
+                <td key={weeks[i]} className={cx(td, num, i < weeks.length - 2 && wideOnly, n === 0 && "text-muted")}>
+                  {n}
+                </td>
+              ))}
+              <td className={cx(td, num, "text-muted")}>{Math.round(x.average)}</td>
+              <td className={cx(td, num, wideOnly, "text-muted")}>{x.thisWeek}</td>
+              <td className={cx(td, num, "font-semibold")}>{x.suggested}</td>
+            </tr>
           ))}
-        </div>
+        </Table>
       )}
-      <ul className={listClass}>
-        {list.map((x) => {
-          const buy = Math.max(0, x.per_week - x.in_stock);
-          return (
-            <li key={x.id} className="grid gap-3 px-6 py-4">
-              <div className="flex items-center gap-3">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent-soft text-accent-on-soft">
-                  <Package size={18} />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium">{x.name}</span>
-                  <span className={cx("block text-sm", buy ? "text-candle" : "text-sage")}>{buy ? `Buy ${buy} · ${usd(buy * x.unit_cost)}` : "Enough for this week"}</span>
-                </span>
-                <IconButton aria-label={`Delete ${x.name}`} onClick={() => confirm(`Delete ${x.name}?`) && actions.deleteSupply(x.id)}>
-                  <Trash2 size={18} />
-                </IconButton>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                <Field label="Per week" htmlFor={`${x.id}-pw`}>
-                  <Input id={`${x.id}-pw`} type="number" inputMode="numeric" min="0" defaultValue={x.per_week} onBlur={(e) => num(e.target.value) !== x.per_week && actions.updateSupply(x.id, { per_week: num(e.target.value) })} />
-                </Field>
-                <Field label="In stock" htmlFor={`${x.id}-st`}>
-                  <Input id={`${x.id}-st`} type="number" inputMode="numeric" min="0" defaultValue={x.in_stock} onBlur={(e) => num(e.target.value) !== x.in_stock && actions.updateSupply(x.id, { in_stock: num(e.target.value) })} />
-                </Field>
-                <Field label="Cost each" htmlFor={`${x.id}-c`}>
-                  <Input
-                    id={`${x.id}-c`}
-                    type="number"
-                    inputMode="decimal"
-                    min="0"
-                    step="0.01"
-                    defaultValue={x.unit_cost || ""}
-                    placeholder="0.00"
-                    onBlur={(e) => {
-                      const v = Math.max(0, Math.round((Number(e.target.value) || 0) * 100) / 100);
-                      if (v !== x.unit_cost) actions.updateSupply(x.id, { unit_cost: v });
-                    }}
-                  />
-                </Field>
-              </div>
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <span className="shrink-0 text-muted">Handed out with</span>
-                <Select aria-label={`Mivtza for ${x.name}`} value={x.mivtza ?? ""} onChange={(e) => actions.updateSupply(x.id, { mivtza: e.target.value || null })} className="min-w-0 flex-1">
-                  <option value="">—</option>
-                  {mivtzoim.map((m) => (
-                    <option key={m.key} value={m.key}>
-                      {m.builtin ? m.builtin.name : m.category.name}
-                    </option>
-                  ))}
-                </Select>
-                {x.mivtza && <span className="w-full text-muted">{usedLastWeek(x.mivtza)} given out the week of {weekTitle(lastWeek)}</span>}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-      <form
-        className="flex gap-2 px-6 py-4"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (name.trim()) add(name.trim());
-        }}
-      >
-        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Add an item (e.g. Tefillin straps)" aria-label="New supply item" />
-        <Button type="submit" disabled={!name.trim()}>
-          <Plus size={16} aria-hidden /> Add
-        </Button>
-      </form>
+      <p className="px-6 py-3 text-xs text-muted">Weeks are shown by their Friday. On a phone, only the last 2 weeks show; turn it sideways or open it on a computer for all 6. Water, snacks and bags aren&apos;t logged as Mivtzoim, so they can&apos;t be counted here.</p>
     </Card>
   );
 }

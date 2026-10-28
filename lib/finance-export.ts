@@ -1,4 +1,6 @@
-import type { FinanceEntry, Supply } from "./types";
+import type { FinanceEntry } from "./types";
+import type { GivenOut } from "./given-out";
+import { formatShort } from "./dates";
 import { weekTitle } from "./parsha";
 import { activityWeek } from "./dates";
 
@@ -11,8 +13,8 @@ export function monthLabel(key: string) {
   return new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
 }
 
-/** The Owner's finances as an Excel file: a month-by-month summary, money in, money out, and the supplies list. */
-export async function buildFinanceWorkbook(entries: FinanceEntry[], supplies: Supply[], siteName: string): Promise<Blob> {
+/** The Owner's finances as an Excel file: a month-by-month summary, money in, money out, and how many of each Mivtza went out each week. */
+export async function buildFinanceWorkbook(entries: FinanceEntry[], given: { weeks: string[]; items: GivenOut[] }, siteName: string): Promise<Blob> {
   const { default: ExcelJS } = await import("exceljs");
   const wb = new ExcelJS.Workbook();
   wb.creator = siteName;
@@ -64,15 +66,11 @@ export async function buildFinanceWorkbook(entries: FinanceEntry[], supplies: Su
   list("Money in", "in");
   list("Money out", "out");
 
-  // 4) The weekly supplies: what to buy and what it costs.
-  const sp = wb.addWorksheet("Supplies");
-  header(sp, ["Item", "Needed each week", "In stock", "To buy", "Cost each", "Cost to buy", "Cost of a full week"]);
-  for (const x of [...supplies].sort((a, b) => (a.position ?? 999) - (b.position ?? 999) || a.name.localeCompare(b.name))) {
-    const buy = Math.max(0, x.per_week - x.in_stock);
-    sp.addRow([x.name, x.per_week, x.in_stock, buy, x.unit_cost, buy * x.unit_cost, x.per_week * x.unit_cost]);
-  }
-  money(sp, [5, 6, 7]);
-  [24, 16, 10, 10, 12, 14, 18].forEach((w, i) => (sp.getColumn(i + 1).width = w));
+  // 4) How many of each Mivtza went out each week, and how many to get for next week.
+  const g = wb.addWorksheet("Given out");
+  header(g, ["Mivtza", ...given.weeks.map((w) => `Week of ${formatShort(w)}`), "4-week average", "Get for next week"]);
+  for (const x of given.items) g.addRow([x.label, ...x.counts, Math.round(x.average), x.suggested]);
+  [22, ...given.weeks.map(() => 13), 15, 17].forEach((w, i) => (g.getColumn(i + 1).width = w));
 
   // Each sheet prints one page wide.
   wb.eachSheet((ws) => (ws.pageSetup = { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0 }));

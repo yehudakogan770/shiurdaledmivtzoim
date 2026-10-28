@@ -179,20 +179,6 @@ export interface FinanceEntry {
   created_at: string;
 }
 
-/** Something bought for Mivtzoim each week (water, snacks, candles…). The Owner only. */
-export interface Supply {
-  id: string;
-  name: string;
-  /** How many are needed each week. */
-  per_week: number;
-  in_stock: number;
-  /** The price of one. */
-  unit_cost: number;
-  /** The mivtza it's handed out with (a built-in type or category id), to show how many went out last week. */
-  mivtza?: string | null;
-  position?: number | null;
-  created_at: string;
-}
 
 export interface Tables {
   profiles: Profile;
@@ -204,7 +190,6 @@ export interface Tables {
   personal_categories: PersonalCategory;
   mivtzoim_activity: Activity;
   finance_entries: FinanceEntry;
-  supplies: Supply;
 }
 
 export type TableName = keyof Tables;

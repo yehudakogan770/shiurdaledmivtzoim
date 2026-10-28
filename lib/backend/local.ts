@@ -43,7 +43,6 @@ function empty(): Store {
     personal_categories: [],
     mivtzoim_activity: [],
     finance_entries: [],
-    supplies: [],
   };
 }
 
