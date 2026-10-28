@@ -163,6 +163,37 @@ export interface WeekAnswer {
   created_at: string;
 }
 
+/** Money in (a donation) or money out (an expense). The Owner only. */
+export interface FinanceEntry {
+  id: string;
+  kind: "in" | "out";
+  entry_date: string; // YYYY-MM-DD
+  amount: number;
+  /** Money in: Cash App, Zelle, Cash, Pushka, Check, Other. */
+  method?: string | null;
+  /** Money in: who gave. Money out: who paid or where it was bought. */
+  who?: string | null;
+  /** Money out: what it was for (Candles, Challah…). */
+  category?: string | null;
+  notes?: string | null;
+  created_at: string;
+}
+
+/** Something bought for Mivtzoim each week (water, snacks, candles…). The Owner only. */
+export interface Supply {
+  id: string;
+  name: string;
+  /** How many are needed each week. */
+  per_week: number;
+  in_stock: number;
+  /** The price of one. */
+  unit_cost: number;
+  /** The mivtza it's handed out with (a built-in type or category id), to show how many went out last week. */
+  mivtza?: string | null;
+  position?: number | null;
+  created_at: string;
+}
+
 export interface Tables {
   profiles: Profile;
   groups: Group;
@@ -172,6 +203,8 @@ export interface Tables {
   route_locations: RouteLocation;
   personal_categories: PersonalCategory;
   mivtzoim_activity: Activity;
+  finance_entries: FinanceEntry;
+  supplies: Supply;
 }
 
 export type TableName = keyof Tables;

@@ -7,6 +7,7 @@ import { LogView } from "./views/log";
 import { ProfileView } from "./views/profile";
 import { NewRouteView, RouteDetailView, RoutesView } from "./views/routes";
 import { PhotosView } from "./views/photos";
+import { FinancesView } from "./views/finances";
 
 /** Path to screen, shared by the Next.js pages and the single-file build. */
 export const SCREENS: Record<string, () => React.JSX.Element> = {
@@ -22,6 +23,7 @@ export const SCREENS: Record<string, () => React.JSX.Element> = {
   "/photos": PhotosView,
   "/profile": ProfileView,
   "/admin": AdminView,
+  "/finances": FinancesView,
   // The account desk fills the whole screen (see AppShell); this is only its address.
   "/accounts": AdminView,
 };

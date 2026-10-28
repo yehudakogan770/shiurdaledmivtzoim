@@ -17,6 +17,8 @@ import type {
   Route,
   RouteLocation,
   WeekAnswer,
+  FinanceEntry,
+  Supply,
 } from "./types";
 import { DEFAULT_SETTINGS, type SignUpInput } from "./types";
 import { sendToDrive } from "./drive";
@@ -113,6 +115,11 @@ interface DataContextValue {
   photos: Photo[];
   /** Business card details by place, for this account's own places (all of them for the Owner). */
   cards: Record<string, LocationCard>;
+  /**
+   * The Owner's finances: money in and out, and the weekly supplies. null until database update 016
+   * is run (or for anyone but the Owner).
+   */
+  finances: { entries: FinanceEntry[]; supplies: Supply[] } | null;
   /** Every account; filled in for admins only. */
   people: Profile[];
   toast: string | null;
@@ -190,6 +197,12 @@ interface DataContextValue {
     uploadPhotos(photos: { full: Blob; thumb: Blob; width: number; height: number; color?: string; source?: Blob }[], onProgress?: (done: number) => void): Promise<void>;
     /** The person who shared it, or an admin. */
     deletePhoto(id: string): Promise<void>;
+    /** The Owner's finances. */
+    addFinance(entry: Omit<FinanceEntry, "id" | "created_at">): Promise<void>;
+    deleteFinance(id: string): Promise<void>;
+    addSupply(supply: Omit<Supply, "id" | "created_at">): Promise<void>;
+    updateSupply(id: string, patch: Partial<Omit<Supply, "id" | "created_at">>): Promise<void>;
+    deleteSupply(id: string): Promise<void>;
   };
 }
 
@@ -224,6 +237,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [people, setPeople] = useState<Profile[]>([]);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [cards, setCards] = useState<Record<string, LocationCard>>({});
+  const [finances, setFinances] = useState<DataContextValue["finances"]>(null);
   const [recovering, setRecovering] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -281,6 +295,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const names = await b.names([...ids]);
     names[user.id] = user.name || names[user.id];
     setPeople(everyone);
+    // Only the Owner has finances; the database refuses everyone else (and until update 016 is run).
+    if (isAdminIdentifier(user.email) || isAdminIdentifier(user.username)) {
+      Promise.all([b.list("finance_entries"), b.list("supplies")]).then(
+        ([entries, supplies]) => setFinances({ entries: entries.map((e) => ({ ...e, amount: Number(e.amount) })), supplies: supplies.map((x) => ({ ...x, unit_cost: Number(x.unit_cost) })) }),
+        () => setFinances(null),
+      );
+    } else setFinances(null);
     setData({ groups, members, routes, locations, stops, categories, activity, weeks, messages, names });
   }, []);
 
@@ -419,6 +440,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       people,
       photos,
       cards,
+      finances,
       toast,
       notify,
       refresh,
@@ -679,6 +701,28 @@ export function DataProvider({ children }: { children: ReactNode }) {
             if (added.length) setPhotos((p) => [...added, ...p]);
           }
         },
+        addFinance: async (entry) => {
+          if (!(entry.amount > 0)) throw new Error(t("Enter an amount."));
+          const saved = await b.insert("finance_entries", { ...entry, amount: Math.round(entry.amount * 100) / 100 });
+          setFinances((f) => (f ? { ...f, entries: [...f.entries, { ...saved, amount: Number(saved.amount) }] } : f));
+        },
+        deleteFinance: async (id) => {
+          setFinances((f) => (f ? { ...f, entries: f.entries.filter((e) => e.id !== id) } : f));
+          saveLater(() => b.remove("finance_entries", id));
+        },
+        addSupply: async (supply) => {
+          if (!supply.name.trim()) throw new Error(t("Give it a name."));
+          const saved = await b.insert("supplies", { ...supply, name: supply.name.trim() });
+          setFinances((f) => (f ? { ...f, supplies: [...f.supplies, { ...saved, unit_cost: Number(saved.unit_cost) }] } : f));
+        },
+        updateSupply: async (id, patch) => {
+          setFinances((f) => (f ? { ...f, supplies: f.supplies.map((x) => (x.id === id ? { ...x, ...patch } : x)) } : f));
+          saveLater(() => b.update("supplies", id, patch));
+        },
+        deleteSupply: async (id) => {
+          setFinances((f) => (f ? { ...f, supplies: f.supplies.filter((x) => x.id !== id) } : f));
+          saveLater(() => b.remove("supplies", id));
+        },
         deletePhoto: async (id) => {
           const photo = photos.find((x) => x.id === id);
           if (!photo || !b.deletePhoto) return;
@@ -764,7 +808,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       actions: sampleOnly(value.actions),
       auth: { ...sampleOnly(value.auth), signIn, signUp, requestPasswordReset, updatePassword, finishRecovery, recovering },
     };
-  }, [backend, status, error, me, data, mine, settings, people, photos, cards, recovering, toast, notify, refresh, load]);
+  }, [backend, status, error, me, data, mine, settings, people, photos, cards, finances, recovering, toast, notify, refresh, load]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }
