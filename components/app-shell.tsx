@@ -23,6 +23,7 @@ import { WhoWentPrompt } from "./week-question";
 import { MessagePrompt } from "./message-prompt";
 import { PosterPrompt } from "./poster-prompt";
 import { AccountSwitcher } from "./account-switcher";
+import { lockPage } from "@/lib/page-lock";
 
 const links = [
   { href: "/", label: "Dashboard", short: "Home", icon: LayoutDashboard, match: ["/", "/dashboard"] },
@@ -232,11 +233,10 @@ function ModalDrawer({ open, onOpen, onClose }: { open: boolean; onOpen: () => v
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     document.addEventListener("keydown", onKey);
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const unlock = lockPage();
     return () => {
       document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = overflow;
+      unlock();
     };
   }, [open, onClose]);
   return (

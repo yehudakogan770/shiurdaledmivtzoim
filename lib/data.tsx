@@ -356,6 +356,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
     };
   }, [load]);
 
+  // Another tab (or the home-screen app sharing this browser) switched accounts or signed out:
+  // reload, so this tab never shows one account while saving as another.
+  useEffect(() => {
+    if (backend?.kind !== "supabase") return;
+    const onStorage = (e: StorageEvent) => {
+      if (!e.key || !/^sb-.*-auth-token$/.test(e.key)) return;
+      let user: string | null = null;
+      try {
+        user = e.newValue ? JSON.parse(e.newValue)?.user?.id ?? null : null;
+      } catch {
+        user = null;
+      }
+      if (user !== (me?.id ?? null)) window.location.reload();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [backend, me?.id]);
+
   // Pick up other people's changes when the tab comes back into view.
   useEffect(() => {
     if (!backend) return;
@@ -500,7 +518,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
         updatePassword: (password) => b.updatePassword(password),
         recovering,
         finishRecovery: () => setRecovering(false),
-        signOut: () => run(() => b.signOut()),
+        // Taps still saving belong to this account: let them finish before signing out.
+        signOut: () =>
+          run(async () => {
+            await saveQueue.current;
+            await b.signOut();
+          }),
         updateProfile: (name, partners) => run(() => b.updateProfile({ name, partners })),
         setAvatar: async (photo) => {
           if (!b.setAvatar) throw new Error(t("Profile photos aren't available here."));

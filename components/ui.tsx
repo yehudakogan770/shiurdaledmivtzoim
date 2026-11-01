@@ -4,6 +4,7 @@ import { isRtl } from "@/lib/i18n";
 import { useEffect, useRef, useState, type ButtonHTMLAttributes, type ComponentType, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 import { TrendingDown, TrendingUp } from "lucide-react";
 import { createPortal } from "react-dom";
+import { lockPage } from "@/lib/page-lock";
 import { useNav } from "@/lib/nav";
 
 /* Material You (Material 3) building blocks, styled after Google Pixel. */
@@ -305,18 +306,7 @@ export function Modal({ onClose, blur, children }: { onClose(): void; blur?: boo
   }, [onClose]);
 
   useEffect(() => {
-    const { body, documentElement: html } = document;
-    const y = window.scrollY;
-    const before = { position: body.style.position, top: body.style.top, left: body.style.left, right: body.style.right, width: body.style.width, overflow: body.style.overflow, htmlOverflow: html.style.overflow, overscroll: html.style.overscrollBehavior };
-    // Pin the page in place: iPhones ignore overflow:hidden alone.
-    body.style.position = "fixed";
-    body.style.top = `-${y}px`;
-    body.style.left = "0";
-    body.style.right = "0";
-    body.style.width = "100%";
-    body.style.overflow = "hidden";
-    html.style.overflow = "hidden";
-    html.style.overscrollBehavior = "none";
+    const unlock = lockPage();
 
     // Swipes do nothing while it's open: the page can't be dragged, bounced or zoomed.
     // The only thing that scrolls is the pop-up itself, and only if it's taller than the screen.
@@ -341,15 +331,7 @@ export function Modal({ onClose, blur, children }: { onClose(): void; blur?: boo
       document.removeEventListener("wheel", block);
       vv?.removeEventListener("resize", fit);
       vv?.removeEventListener("scroll", fit);
-      body.style.position = before.position;
-      body.style.top = before.top;
-      body.style.left = before.left;
-      body.style.right = before.right;
-      body.style.width = before.width;
-      body.style.overflow = before.overflow;
-      html.style.overflow = before.htmlOverflow;
-      html.style.overscrollBehavior = before.overscroll;
-      window.scrollTo(0, y);
+      unlock();
     };
   }, []);
 
