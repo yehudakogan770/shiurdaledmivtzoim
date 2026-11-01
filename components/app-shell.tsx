@@ -19,6 +19,7 @@ import { PhotosPromo } from "./photos-promo";
 import { t } from "@/lib/i18n";
 import { setAccountDesk, useAccountDesk } from "@/lib/account-desk";
 import { AccountDeskView } from "./views/account-desk";
+import { useScrollReveal } from "@/lib/scroll-reveal";
 import { WhoWentPrompt } from "./week-question";
 import { MessagePrompt } from "./message-prompt";
 
@@ -269,6 +270,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
   const desk = useAccountDesk();
+  const mainRef = useRef<HTMLElement>(null);
+  useScrollReveal(mainRef, `${path}|${status}`);
 
   // Opening Create accounts turns the device into the account desk until the Owner's password is entered.
   // Only on arriving there: after unlocking, the page is still on /accounts for a moment.
@@ -369,7 +372,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <ShkiahLine />
           </span>
         </div>
-        <main className="px-4 pt-2 pb-16 sm:px-6 lg:px-8 lg:pt-4 lg:pb-12">
+        <main ref={mainRef} className="px-4 pt-2 pb-16 sm:px-6 lg:px-8 lg:pt-4 lg:pb-12">
           <div className="w-full">{body}</div>
           <SiteFooter />
         </main>
