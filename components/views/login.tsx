@@ -5,8 +5,8 @@ import { LanguageButtons } from "../language-picker";
 import { useState, type FormEvent } from "react";
 import { ArrowLeft, Plus, X } from "lucide-react";
 import { useData } from "@/lib/data";
-import { currentWeek, hebrewDate } from "@/lib/dates";
-import { parshaOfWeek } from "@/lib/parsha";
+import { hebrewDate } from "@/lib/dates";
+import { parshaThisShabbos } from "@/lib/parsha";
 import { ADMIN_EMAILS } from "@/lib/admin";
 import { BLANK_CHAVRUSA, encodeChavrusa, type Chavrusa } from "@/lib/chavrusa";
 import { ChavrusaFields } from "../chavrusa-fields";
@@ -229,7 +229,7 @@ export function LoginView({ initialMode = "signin", onBack }: { initialMode?: Mo
       <div className="mt-6 flex w-full max-w-[64rem] flex-wrap justify-between gap-2 px-4 text-xs text-muted">
         <span>{t(settings.site_name)}</span>
         <span>
-          {hebrewDate()} · {parshaOfWeek(currentWeek()).local}
+          {hebrewDate()} · {parshaThisShabbos().local}
         </span>
       </div>
       <SiteFooter className="w-full max-w-[64rem] px-0" />

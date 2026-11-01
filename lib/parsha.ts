@@ -1,5 +1,5 @@
 import { HDate, Locale, Sedra } from "@hebcal/core";
-import { activityWeek, addDays, formatDay, parseDate, weekLabel } from "./dates";
+import { activityWeek, addDays, formatDay, parseDate, toISODate, weekLabel } from "./dates";
 import { getLang, hebcalName, t } from "./i18n";
 
 const sedras = new Map<number, Sedra>();
@@ -39,6 +39,15 @@ export function parshaOfWeek(fridayISO: string): Parsha {
   return chag
     ? { hebrew: he, english: en, local: name, name }
     : { hebrew: `פרשת ${he}`, english: `Parshas ${en}`, local: `${t("Parshas")} ${name}`, name };
+}
+
+/**
+ * The parsha of the coming Shabbos, by the calendar: from Sunday 12am through Shabbos. Used for the
+ * date line at the top of the page. (The Mivtzoim week, which starts Friday 5am, is separate.)
+ */
+export function parshaThisShabbos(now = new Date()): Parsha {
+  const shabbos = new Date(now.getFullYear(), now.getMonth(), now.getDate() + ((6 - now.getDay() + 7) % 7));
+  return parshaOfWeek(addDays(toISODate(shabbos), -1));
 }
 
 /** Just the name, without "Parshas": "Ki Savo", or the Yom Tov name. */

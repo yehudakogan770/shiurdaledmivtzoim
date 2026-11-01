@@ -16,7 +16,7 @@ import { activityMoment, activityWeek, addDays, allWeeks, currentWeek, formatDay
 import { InstallBanner } from "../install-app";
 import type { CommunityRow } from "@/lib/backend";
 import { builtinHiddenIn, categoryHiddenIn, orderedMivtzoim, type BuiltinType } from "@/lib/categories";
-import { parshaName, parshaOfWeek, weekTitle } from "@/lib/parsha";
+import { parshaName, parshaOfWeek, parshaThisShabbos, weekTitle } from "@/lib/parsha";
 import type { Activity } from "@/lib/types";
 import { Card, CardTitle, CategoryIcon, Empty, IconButton, PageHeader, cx, listClass } from "../ui";
 import { getLang, t } from "@/lib/i18n";
@@ -152,7 +152,7 @@ function OwnerHome() {
   const hd = hebrewDate();
   return (
     <div className="grid grid-cols-1 gap-3">
-      <PageHeader eyebrow={`${longDate()}${hd ? ` · ${hd}` : ""} · ${parshaOfWeek(currentWeek()).local}`} title={t("Dashboard")} action={<EditSwitch />} />
+      <PageHeader eyebrow={`${longDate()}${hd ? ` · ${hd}` : ""} · ${parshaThisShabbos().local}`} title={t("Dashboard")} action={<EditSwitch />} />
 
       {editing && (
         <Card>
@@ -215,7 +215,7 @@ function PersonalHome() {
 
   return (
     <div className="rise grid grid-cols-1 gap-3">
-      <PageHeader eyebrow={`${longDate()}${hd ? ` · ${hd}` : ""} · ${parshaOfWeek(currentWeek()).local}`} title={me?.name || t("Dashboard")} />
+      <PageHeader eyebrow={`${longDate()}${hd ? ` · ${hd}` : ""} · ${parshaThisShabbos().local}`} title={me?.name || t("Dashboard")} />
 
       <WeekPicker week={week} onChange={setWeek} />
 

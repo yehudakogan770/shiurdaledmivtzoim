@@ -6,8 +6,8 @@ import { handle } from "@/lib/admin";
 import { useData } from "@/lib/data";
 import { displayName } from "@/lib/types";
 import { useNav } from "@/lib/nav";
-import { currentWeek, hebrewDate } from "@/lib/dates";
-import { parshaOfWeek } from "@/lib/parsha";
+import { hebrewDate } from "@/lib/dates";
+import { parshaThisShabbos } from "@/lib/parsha";
 import { useShkiah } from "@/lib/shkiah";
 import { Avatar, ButtonLink, Empty, IconButton, cx } from "./ui";
 import { LogoMark } from "./brand";
@@ -80,7 +80,7 @@ function PanelContent({ expanded, onNavigate }: { expanded: boolean; onNavigate?
         })}
       </nav>
       <div className="mt-auto grid gap-3">
-        <p className={cx("px-4 text-sm text-muted", label)}>{hebrewDate()} · {parshaOfWeek(currentWeek()).local}</p>
+        <p className={cx("px-4 text-sm text-muted", label)}>{hebrewDate()} · {parshaThisShabbos().local}</p>
         {guest && (
           <div className={cx("grid gap-2 overflow-hidden rounded-[28px] p-2", expanded ? "bg-card" : "bg-transparent")}>
             <Link href="/login?mode=signup" className="flex h-12 items-center gap-3 rounded-full bg-accent px-3.5 text-sm font-medium text-accent-ink">
