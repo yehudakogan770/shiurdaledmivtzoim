@@ -79,6 +79,15 @@ export interface Backend {
   setPhotoDriveUrl?(url: string | null): Promise<void>;
   /** The Owner: store a poster picture (already made smaller) and give back its address. */
   uploadPosterImage?(image: Blob): Promise<string>;
+  /**
+   * More than one account on this device, like the Owner's account and a regular one: the
+   * accounts kept signed in here, adding another, and switching between them without a password.
+   */
+  savedAccounts?(): Promise<SavedAccount[]>;
+  addAccount?(username: string, password: string): Promise<void>;
+  switchAccount?(userId: string): Promise<void>;
+  /** Stop keeping this account signed in on this device. */
+  forgetAccount?(userId: string): Promise<void>;
   /** Set this account's profile photo (already made small and square), or remove it with null. */
   setAvatar?(photo: Blob | null): Promise<string | null>;
   /** Save the language this account sees the site in. */
@@ -104,6 +113,13 @@ export interface CommunityRow {
   quantity: number;
   /** true for the signed-in person's own entries */
   mine: boolean;
+}
+
+/** An account kept signed in on this device. */
+export interface SavedAccount {
+  id: string;
+  name: string;
+  username: string | null;
 }
 
 export interface PersonPatch {

@@ -707,7 +707,8 @@ function WeekPicker({ week, onChange }: { week: string; onChange(week: string): 
   const weeks = allWeeks();
   const parsha = parshaOfWeek(week);
   const inWeek = photos.filter((p) => weekOf(new Date(p.created_at)) === week);
-  const shown = arrange((inWeek.length ? inWeek : photos).slice(0, 12));
+  // This week's photos first, then the newest earlier ones, so the card has up to 12 to show.
+  const shown = [...arrange(inWeek.slice(0, 12)), ...arrange(photos.filter((p) => !inWeek.includes(p)).slice(0, Math.max(0, 12 - inWeek.length)))];
   const [k, setK] = useState(0);
   useEffect(() => {
     if (shown.length < 2 || matchMedia("(prefers-reduced-motion: reduce)").matches) return;

@@ -22,6 +22,7 @@ import { AccountDeskView } from "./views/account-desk";
 import { WhoWentPrompt } from "./week-question";
 import { MessagePrompt } from "./message-prompt";
 import { PosterPrompt } from "./poster-prompt";
+import { AccountSwitcher } from "./account-switcher";
 
 const links = [
   { href: "/", label: "Dashboard", short: "Home", icon: LayoutDashboard, match: ["/", "/dashboard"] },
@@ -110,6 +111,7 @@ function PanelContent({ expanded, onNavigate }: { expanded: boolean; onNavigate?
             )}
           </div>
         )}
+        {me && expanded && <AccountSwitcher onDone={onNavigate} />}
       </div>
     </div>
   );

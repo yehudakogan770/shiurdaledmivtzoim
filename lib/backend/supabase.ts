@@ -12,6 +12,27 @@ function fail(error: { message: string } | null) {
   if (error) throw new Error(error.message);
 }
 
+/**
+ * Other accounts kept signed in on this device, so someone (like the Owner) can switch between
+ * them. Each keeps its sign-in tokens, the same kind Supabase already keeps for the account in use.
+ */
+const ACCOUNTS_KEY = "sdm-accounts";
+type Kept = { id: string; name: string; username: string | null; access_token: string; refresh_token: string };
+function readKept(): Kept[] {
+  try {
+    return JSON.parse(localStorage.getItem(ACCOUNTS_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+function writeKept(list: Kept[]) {
+  try {
+    localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(list));
+  } catch {
+    // Not remembered on this device.
+  }
+}
+
 /** The hosted website: Supabase auth and Postgres with row level security. */
 export function createSupabaseBackend(url: string, key: string): Backend {
   // Implicit flow: email links (confirmation, password reset) work on any device,
@@ -19,6 +40,16 @@ export function createSupabaseBackend(url: string, key: string): Backend {
   const sb = createClient(url, key, {
     auth: { flowType: "implicit", persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
   });
+
+  /** Keep the account in use (with its newest tokens) in the list of accounts on this device. */
+  async function keepCurrent() {
+    const { data } = await sb.auth.getSession();
+    const s = data.session;
+    if (!s) return;
+    const { data: p } = await sb.from("profiles").select("name, username").eq("id", s.user.id).maybeSingle();
+    const entry: Kept = { id: s.user.id, name: p?.name || p?.username || s.user.email || "Account", username: p?.username ?? null, access_token: s.access_token, refresh_token: s.refresh_token };
+    writeKept([...readKept().filter((k) => k.id !== entry.id), entry]);
+  }
 
   async function uid() {
     const { data } = await sb.auth.getUser();
@@ -74,7 +105,39 @@ export function createSupabaseBackend(url: string, key: string): Backend {
     },
     async signOut() {
       // Only this device. Supabase's default ("global") would sign the account out on every phone and computer.
+      const { data } = await sb.auth.getSession();
+      if (data.session) writeKept(readKept().filter((k) => k.id !== data.session!.user.id));
       await sb.auth.signOut({ scope: "local" });
+    },
+    async savedAccounts() {
+      await keepCurrent();
+      return readKept().map(({ id, name, username }) => ({ id, name, username }));
+    },
+    async addAccount(rawUsername, password) {
+      await keepCurrent();
+      const { data: before } = await sb.auth.getSession();
+      try {
+        await this.signIn(rawUsername, password);
+      } catch (e) {
+        // Wrong password: stay in the account that was open.
+        if (before.session) await sb.auth.setSession({ access_token: before.session.access_token, refresh_token: before.session.refresh_token });
+        throw e;
+      }
+      await keepCurrent();
+    },
+    async switchAccount(userId) {
+      await keepCurrent();
+      const target = readKept().find((k) => k.id === userId);
+      if (!target) throw new Error(t("Please sign in to that account again."));
+      const { error } = await sb.auth.setSession({ access_token: target.access_token, refresh_token: target.refresh_token });
+      if (error) {
+        writeKept(readKept().filter((k) => k.id !== userId));
+        throw new Error(t("That account was signed out. Add it again with its username and password."));
+      }
+      await keepCurrent();
+    },
+    async forgetAccount(userId) {
+      writeKept(readKept().filter((k) => k.id !== userId));
     },
     async setLanguage(language) {
       // Kept with the account's sign-in details, so it follows the person to any phone.

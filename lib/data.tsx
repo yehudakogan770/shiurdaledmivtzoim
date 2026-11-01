@@ -2,7 +2,7 @@
 
 import { isLang, setLanguage, t, type Lang } from "./i18n";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { newId, newJoinCode, pickBackend, type Backend, type PersonPatch } from "./backend";
+import { newId, newJoinCode, pickBackend, type Backend, type PersonPatch, type SavedAccount } from "./backend";
 import type {
   Activity,
   HiddenRange,
@@ -130,6 +130,12 @@ interface DataContextValue {
   notify(message: string): void;
   refresh(): Promise<void>;
   auth: {
+    /** The accounts signed in on this device, to switch between (empty where not available). */
+    savedAccounts(): Promise<SavedAccount[]>;
+    /** Sign in to another account too, and switch to it; the one in use stays signed in. */
+    addAccount(username: string, password: string): Promise<void>;
+    switchAccount(userId: string): Promise<void>;
+    forgetAccount(userId: string): Promise<void>;
     signIn(username: string, password: string): Promise<void>;
     signUp(input: SignUpInput): Promise<{ needsConfirmation: boolean }>;
     requestPasswordReset(email: string): Promise<void>;
@@ -471,6 +477,23 @@ export function DataProvider({ children }: { children: ReactNode }) {
       notify,
       refresh,
       auth: {
+        savedAccounts: async () => (b.savedAccounts ? b.savedAccounts() : []),
+        // Changes still saving belong to the account in use, so they finish before switching.
+        addAccount: (username, password) =>
+          run(async () => {
+            if (!b.addAccount) throw new Error(t("Switching accounts isn't available here."));
+            await saveQueue.current;
+            await b.addAccount(username, password);
+          }),
+        switchAccount: (userId) =>
+          run(async () => {
+            if (!b.switchAccount) throw new Error(t("Switching accounts isn't available here."));
+            await saveQueue.current;
+            await b.switchAccount(userId);
+          }),
+        forgetAccount: async (userId) => {
+          await b.forgetAccount?.(userId);
+        },
         signIn: (username, password) => run(() => b.signIn(username, password)),
         signUp: (input) => run(() => b.signUp(input)),
         requestPasswordReset: (email) => b.requestPasswordReset(email),

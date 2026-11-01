@@ -16,6 +16,8 @@ type Store = { [K in Exclude<TableName, "profiles">]: Tables[K][] } & {
   cards?: (LocationCard & { data?: string | null })[];
   /** Where print copies of photos go (Google Drive script). */
   photoDrive?: string | null;
+  /** Accounts kept signed in on this device, to switch between. */
+  kept?: string[];
 };
 
 /** Salted SHA-256 so passwords are never stored as plain text. */
@@ -122,7 +124,32 @@ export function createLocalBackend(): Backend {
     },
     async signOut() {
       const s = load();
+      s.kept = (s.kept ?? []).filter((id) => id !== s.session);
       s.session = null;
+      save(s);
+    },
+    async savedAccounts() {
+      const s = load();
+      const ids = [...new Set([...(s.kept ?? []), ...(s.session ? [s.session] : [])])];
+      return ids.map((id) => s.profiles.find((p) => p.id === id)).filter((p): p is LocalProfile => !!p).map((p) => ({ id: p.id, name: p.name, username: p.username ?? null }));
+    },
+    async addAccount(rawUsername, password) {
+      const before = load().session;
+      await this.signIn(rawUsername, password);
+      const s = load();
+      s.kept = [...new Set([...(s.kept ?? []), ...(before ? [before] : []), ...(s.session ? [s.session] : [])])];
+      save(s);
+    },
+    async switchAccount(userId) {
+      const s = load();
+      if (!(s.kept ?? []).includes(userId)) throw new Error(t("Please sign in to that account again."));
+      if (s.session) s.kept = [...new Set([...(s.kept ?? []), s.session])];
+      s.session = userId;
+      save(s);
+    },
+    async forgetAccount(userId) {
+      const s = load();
+      s.kept = (s.kept ?? []).filter((id) => id !== userId);
       save(s);
     },
     async setLanguage(language) {
