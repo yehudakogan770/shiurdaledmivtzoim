@@ -29,7 +29,7 @@ function write(key: string, value: string, session = false) {
 /** The posters this account still has to see: on, not past their end date, under their count. */
 export function postersToShow(posters: Poster[], userId: string) {
   return posters
-    .filter((p) => p.active && (!p.ends || p.ends >= today()))
+    .filter((p) => p.active && (!p.starts || p.starts <= today()) && (!p.ends || p.ends >= today()))
     .filter((p) => p.times == null || Number(read(seenKey(userId, p.id)) || 0) < p.times)
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
 }

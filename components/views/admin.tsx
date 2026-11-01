@@ -6,7 +6,7 @@ import { ChevronDown, ChevronRight, ChevronUp, Download, ClipboardList, Eye, Eye
 import { TefillinIcon } from "../icons";
 import { bringBackFrom, categoryName, hiddenNowOrLater, hiddenRanges, hideFrom, orderedMivtzoim, reportColumns, type BuiltinType } from "@/lib/categories";
 import { dayWithParsha, weekTitle } from "@/lib/parsha";
-import { addDays, allWeeks, currentWeek } from "@/lib/dates";
+import { addDays, allWeeks, currentWeek, today } from "@/lib/dates";
 import type { Activity, HiddenRange, PersonalCategory, Profile } from "@/lib/types";
 import { ICON_CHOICES, iconForActivity, iconForCategory, iconForName } from "@/lib/category-icons";
 import { useData } from "@/lib/data";
@@ -1279,6 +1279,7 @@ function PostersCard() {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [times, setTimes] = useState("3");
+  const [starts, setStarts] = useState("");
   const [ends, setEnds] = useState("");
   const [busy, setBusy] = useState(false);
   const pick = (f: File | null) => {
@@ -1291,9 +1292,10 @@ function PostersCard() {
     if (!file) return;
     setBusy(true);
     try {
-      await actions.addPoster(file, times === "every" ? null : Number(times), ends || null);
-      notify("The poster is up. Everyone sees it the next time they open the site.");
+      await actions.addPoster(file, times === "every" ? null : Number(times), starts || null, ends || null);
+      notify(starts && starts > today() ? `The poster is set. It starts showing on ${starts}.` : "The poster is up. Everyone sees it the next time they open the site.");
       pick(null);
+      setStarts("");
       setEnds("");
     } catch (err) {
       notify((err as Error).message);
@@ -1312,6 +1314,7 @@ function PostersCard() {
           <input type="file" accept="image/*" hidden onChange={(e) => pick(e.target.files?.[0] ?? null)} />
         </label>
         <div className="grid grid-cols-2 gap-3 [&>*]:min-w-0">
+          <div className="col-span-2 grid">
           <Field label="Show it" htmlFor="poster-times">
             <Select id="poster-times" value={times} onChange={(e) => setTimes(e.target.value)}>
               <option value="1">Once</option>
@@ -1322,7 +1325,11 @@ function PostersCard() {
               <option value="every">Every time</option>
             </Select>
           </Field>
-          <Field label="Until (optional)" htmlFor="poster-ends">
+          </div>
+          <Field label="Starts (optional)" htmlFor="poster-starts">
+            <Input id="poster-starts" type="date" value={starts} onChange={(e) => setStarts(e.target.value)} />
+          </Field>
+          <Field label="Ends (optional)" htmlFor="poster-ends">
             <Input id="poster-ends" type="date" value={ends} onChange={(e) => setEnds(e.target.value)} />
           </Field>
         </div>
@@ -1334,14 +1341,17 @@ function PostersCard() {
       {list.length > 0 && (
         <ul className={cx(listClass, "border-t border-line/60")}>
           {list.map((p) => {
-            const over = !!p.ends && p.ends < new Date().toISOString().slice(0, 10);
+            const day = today();
+            const over = !!p.ends && p.ends < day;
+            const later = !!p.starts && p.starts > day;
             return (
               <li key={p.id} className="flex items-center gap-3 px-6 py-3">
                 <img src={p.image_url} alt="" className="h-16 w-12 shrink-0 rounded-lg object-cover" />
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-medium">{over ? "Ended" : p.active ? "Showing" : "Paused"}</span>
+                  <span className="block text-sm font-medium">{over ? "Ended" : !p.active ? "Paused" : later ? `Starts ${p.starts}` : "Showing"}</span>
                   <span className="block text-xs text-muted">
                     {howOften(p.times)}
+                    {p.starts ? ` · from ${p.starts}` : ""}
                     {p.ends ? ` · until ${p.ends}` : ""}
                   </span>
                 </span>

@@ -195,6 +195,8 @@ export interface Poster {
   image_url: string;
   /** How many times each account sees it; null for every time they open the site. */
   times: number | null;
+  /** The first day it shows (YYYY-MM-DD), or null to start right away. */
+  starts?: string | null;
   /** The last day it shows (YYYY-MM-DD), or null for no end. */
   ends: string | null;
   active: boolean;

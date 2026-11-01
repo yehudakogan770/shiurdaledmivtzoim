@@ -204,8 +204,8 @@ interface DataContextValue {
     /** The Owner: let an account see the weekly report, or stop it. */
     setReportViewer(userId: string, allowed: boolean): Promise<void>;
     /** The Owner: put up a poster (any picture; it's made smaller here). */
-    addPoster(picture: Blob, times: number | null, ends: string | null): Promise<void>;
-    updatePoster(id: string, patch: Partial<Pick<Poster, "active" | "times" | "ends">>): Promise<void>;
+    addPoster(picture: Blob, times: number | null, starts: string | null, ends: string | null): Promise<void>;
+    updatePoster(id: string, patch: Partial<Pick<Poster, "active" | "times" | "starts" | "ends">>): Promise<void>;
     deletePoster(id: string): Promise<void>;
     /** The Owner: the weekly report's items. */
     addReportItem(name: string): Promise<void>;
@@ -739,10 +739,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
             setViewerRows((v) => v.filter((x) => x.id !== row.id));
           }
         },
-        addPoster: async (picture, times, ends) => {
+        addPoster: async (picture, times, starts, ends) => {
           if (!b.uploadPosterImage) throw new Error(t("Posters aren't available here."));
+          if (starts && ends && ends < starts) throw new Error(t("The end date is before the start date."));
           const image_url = await b.uploadPosterImage(await posterImage(picture));
-          const saved = await b.insert("posters", { image_url, times, ends, active: true }).catch((e: Error) => {
+          // The start date is only sent when there is one, so posters still work before update 018.
+          const saved = await b.insert("posters", { image_url, times, ends, active: true, ...(starts ? { starts } : {}) }).catch((e: Error) => {
+            if (/starts/.test(e.message)) throw new Error(t("To use a start date, run database update 018 in Supabase first."));
             throw new Error(/posters|relation|schema cache/.test(e.message) ? t("Run database update 017 in Supabase first.") : e.message);
           });
           setPosters((list) => [...list, saved]);

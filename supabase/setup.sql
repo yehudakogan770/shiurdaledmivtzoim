@@ -954,3 +954,9 @@ create policy "Signed-in people see posters" on posters for select to authentica
 drop policy if exists "Owner manages posters" on posters;
 create policy "Owner manages posters" on posters for all using (public.is_owner()) with check (public.is_owner());
 grant select, insert, update, delete on posters to authenticated;
+
+-- ============================================================
+-- supabase/migrations/018_poster_start.sql
+-- ============================================================
+-- 018: A poster can have a starting date: it shows from that day on. Safe to run twice.
+alter table posters add column if not exists starts date;
