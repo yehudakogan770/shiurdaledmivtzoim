@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, Pencil, Plus, Search, ShieldCheck, Trash2, X } from "lucide-react";
 import { useData } from "@/lib/data";
+import { handle } from "@/lib/admin";
 import { addDays, allWeeks, currentWeek, FIRST_WEEK, formatShort } from "@/lib/dates";
 import { parshaName } from "@/lib/parsha";
 import { buildReportWorkbook } from "@/lib/report-export";
 import type { ReportCount, ReportItem } from "@/lib/types";
-import { Button, Card, Empty, IconButton, Input, PageHeader, Select, cx } from "../ui";
+import { Avatar, Button, Card, Empty, IconButton, Input, PageHeader, Select, cx } from "../ui";
 
 /**
  * The weekly report: the Owner sets up the items (Scrolls, Candles…), and each week the Owner,
@@ -73,6 +74,7 @@ export function ReportView() {
       <WeekBar week={week} onChange={setWeek} />
       <WeekTable week={week} items={items} counts={report.counts} />
       {isOwner && <ManageItems items={items} />}
+      {isOwner && <ManageAccess />}
     </div>
   );
 }
@@ -254,6 +256,78 @@ function ManageItems({ items }: { items: ReportItem[] }) {
           <Plus size={16} aria-hidden /> Add
         </Button>
       </form>
+    </Card>
+  );
+}
+
+/** The Owner: which accounts can use this page (see it and fill in the numbers). Admins always can. */
+function ManageAccess() {
+  const { people, reportViewers, actions, notify } = useData();
+  const [query, setQuery] = useState("");
+  const [busy, setBusy] = useState(false);
+  const allowed = people.filter((p) => reportViewers.includes(p.id)).sort((a, b) => a.name.localeCompare(b.name));
+  const q = query.trim().toLowerCase();
+  // Search by name, username or email; admins are left out since they always have it.
+  const matches = q
+    ? people
+        .filter((p) => p.role !== "admin" && !reportViewers.includes(p.id))
+        .filter((p) => [p.name, p.username, p.email].some((v) => v?.toLowerCase().includes(q)))
+        .slice(0, 6)
+    : [];
+  const set = async (id: string, name: string, on: boolean) => {
+    setBusy(true);
+    try {
+      await actions.setReportViewer(id, on);
+      notify(on ? `${name} can now use the weekly report.` : `${name} can no longer use the weekly report.`);
+      if (on) setQuery("");
+    } catch (e) {
+      notify((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const row = (p: { id: string; name: string; username?: string | null; email?: string | null; avatar_url?: string | null }) => (
+    <>
+      <Avatar name={p.name} id={p.id} src={p.avatar_url} size={32} />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-medium">{p.name}</span>
+        <span className="block truncate text-xs text-muted">{p.username ? handle(p.username) : p.email ?? ""}</span>
+      </span>
+    </>
+  );
+  return (
+    <Card>
+      <div className="px-6 pt-5 pb-3">
+        <h2 className="font-medium">Who can use this page</h2>
+        <p className="text-sm text-muted">They can see the report and fill in the numbers. Only you can change the items. Admins always can.</p>
+      </div>
+      {allowed.length > 0 ? (
+        <ul className="divide-y divide-line/60 border-y border-line/60">
+          {allowed.map((p) => (
+            <li key={p.id} className="flex items-center gap-3 py-2 ps-6 pe-3">
+              {row(p)}
+              <IconButton aria-label={`Remove ${p.name}`} disabled={busy} onClick={() => set(p.id, p.name, false)} className="h-9 w-9">
+                <X size={16} />
+              </IconButton>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="px-6 pb-2 text-sm text-muted">No other accounts yet.</p>
+      )}
+      <div className="grid gap-1 px-6 py-4">
+        <div className="relative">
+          <Search size={16} aria-hidden className="pointer-events-none absolute start-4 top-1/2 -translate-y-1/2 text-muted" />
+          <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Add an account: name, username or email" aria-label="Find an account" className="ps-10" />
+        </div>
+        {matches.map((p) => (
+          <button key={p.id} type="button" disabled={busy} onClick={() => set(p.id, p.name, true)} className="flex items-center gap-3 rounded-2xl px-2 py-2 text-start hover:bg-ink/5 disabled:opacity-50">
+            {row(p)}
+            <Plus size={18} aria-hidden className="shrink-0 text-accent" />
+          </button>
+        ))}
+        {q && matches.length === 0 && <p className="px-2 py-2 text-sm text-muted">No account found.</p>}
+      </div>
     </Card>
   );
 }
