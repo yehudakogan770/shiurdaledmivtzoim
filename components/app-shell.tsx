@@ -15,7 +15,6 @@ import { LoginView } from "./views/login";
 import { SiteFooter } from "./site-footer";
 import { EditModeProvider } from "@/lib/edit-mode";
 import { HebrewNamesGate, missingHebrewNames } from "./hebrew-names-gate";
-import { PhotosPromo } from "./photos-promo";
 import { t } from "@/lib/i18n";
 import { setAccountDesk, useAccountDesk } from "@/lib/account-desk";
 import { AccountDeskView } from "./views/account-desk";
@@ -454,8 +453,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
       {/* Everyone but the Owner fills in their Chavrusas' Hebrew names before using the site. */}
       {me && !isOwner && backend?.hasAuth && missingHebrewNames(me.partners) && <HebrewNamesGate key={me.id} />}
-      {/* Tells people they can add photos: the first three visits, not for the Owner, after the Hebrew names. */}
-      {me && !guest && !isOwner && !(backend?.hasAuth && missingHebrewNames(me.partners)) && <PhotosPromo key={me.id} />}
       {me && !guest && !isOwner && <WhoWentPrompt />}
       {/* The Owner's messages wait until the Hebrew names are filled in. */}
       {me && !guest && !isOwner && !(backend?.hasAuth && missingHebrewNames(me.partners)) && <MessagePrompt />}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useMemo, useRef, type ChangeEvent } from "react";
 import { ImagePlus, X } from "lucide-react";
 import { useData } from "@/lib/data";
 import { useNav } from "@/lib/nav";
@@ -8,52 +8,23 @@ import { pendingPhotos } from "@/lib/photos";
 import { t } from "@/lib/i18n";
 import { Modal } from "./ui";
 
-/** How many times each account sees it (counted on each phone). */
-const TIMES = 3;
-const seenKey = (id: string) => `sdm-photos-promo:${id}`;
-const SHOWN_THIS_VISIT = "sdm-photos-promo-shown";
-
-const store = {
-  get(k: string, session = false) {
-    try {
-      return (session ? sessionStorage : localStorage).getItem(k);
-    } catch {
-      return null;
-    }
-  },
-  set(k: string, v: string, session = false) {
-    try {
-      (session ? sessionStorage : localStorage).setItem(k, v);
-    } catch {
-      // Not remembered on this phone; it may show once more.
-    }
-  },
-};
+/** A poster whose picture is this built-in "Add photos" card instead of an uploaded image. */
+export const PHOTOS_PROMO = "builtin:photos-promo";
 
 /**
- * "Bring the week to life": tells people they can add their Mivtzoim photos. It shows the first
- * three times an account opens the site (once per visit). "Add photos" opens the photo picker
+ * "Bring the week to life": tells people they can add their Mivtzoim photos. It no longer shows by
+ * itself; the Owner puts it up as a poster (Admin → Poster). "Add photos" opens the photo picker
  * right away; the photos chosen are waiting on the Photos page, ready to send.
  */
-export function PhotosPromo() {
-  const { me, photos } = useData();
+export function PhotosPromoCard({ onClose }: { onClose(): void }) {
+  const { photos } = useData();
   const { go } = useNav();
-  const [open, setOpen] = useState(false);
   const input = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (!me || store.get(SHOWN_THIS_VISIT, true)) return;
-    const seen = Number(store.get(seenKey(me.id)) || 0);
-    if (seen >= TIMES) return;
-    store.set(seenKey(me.id), String(seen + 1));
-    store.set(SHOWN_THIS_VISIT, "1", true);
-    setOpen(true);
-  }, [me]);
+  const setOpen = (open: boolean) => !open && onClose();
 
   // A strip of the site's newest photos gliding past (twice over, so it loops without a jump).
   const strip = useMemo(() => photos.slice(0, 8), [photos]);
 
-  if (!open) return null;
 
   function pick(e: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);

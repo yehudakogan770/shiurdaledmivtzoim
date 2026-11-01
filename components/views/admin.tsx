@@ -2,7 +2,7 @@
 
 import { PhotoDriveCard } from "../photo-drive-card";
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
-import { ChevronDown, ChevronRight, ChevronUp, Download, ClipboardList, Eye, EyeOff, KeyRound, Flame, Megaphone, Pencil, Search, ShieldCheck, Sparkles, Trash2, Users, ChartColumn, X } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp, Download, ClipboardList, Eye, EyeOff, KeyRound, Flame, Megaphone, Pencil, Search, ShieldCheck, Sparkles, Trash2, Users, ChartColumn, ImagePlus, X } from "lucide-react";
 import { TefillinIcon } from "../icons";
 import { bringBackFrom, categoryName, hiddenNowOrLater, hiddenRanges, hideFrom, orderedMivtzoim, reportColumns, type BuiltinType } from "@/lib/categories";
 import { dayWithParsha, weekTitle } from "@/lib/parsha";
@@ -13,9 +13,10 @@ import { useData } from "@/lib/data";
 import { handle, isAdminIdentifier } from "@/lib/admin";
 import { chavrusasOf, encodeChavrusa, type Chavrusa } from "@/lib/chavrusa";
 import { DESTINATIONS } from "@/lib/messages";
+import { PHOTOS_PROMO } from "../photos-promo";
 import { useNav } from "@/lib/nav";
 import { ChavrusaFields, ChavrusaNames } from "../chavrusa-fields";
-import { Avatar, Badge, Button, Card, CardTitle, CategoryIcon, Empty, Field, IconButton, Input, Modal, PageHeader, Select, Textarea, cx, listClass } from "../ui";
+import { Avatar, Badge, Button, Card, Chip, CardTitle, CategoryIcon, Empty, Field, IconButton, Input, Modal, PageHeader, Select, Textarea, cx, listClass } from "../ui";
 import { sum } from "./dashboard";
 import { t, tn } from "@/lib/i18n";
 
@@ -1287,14 +1288,16 @@ function PostersCard() {
     setFile(f);
     setPreview(f ? URL.createObjectURL(f) : null);
   };
+  const [builtin, setBuiltin] = useState(false);
   async function publish(e: FormEvent) {
     e.preventDefault();
-    if (!file) return;
+    if (!file && !builtin) return;
     setBusy(true);
     try {
-      await actions.addPoster(file, times === "every" ? null : Number(times), starts || null, ends || null);
+      await actions.addPoster(builtin ? null : file, times === "every" ? null : Number(times), starts || null, ends || null);
       notify(starts && starts > today() ? `The poster is set. It starts showing on ${starts}.` : "The poster is up. Everyone sees it the next time they open the site.");
       pick(null);
+      setBuiltin(false);
       setStarts("");
       setEnds("");
     } catch (err) {
@@ -1309,10 +1312,27 @@ function PostersCard() {
     <Card>
       <CardTitle sub="A picture that pops up for everyone when they open the site.">Poster</CardTitle>
       <form onSubmit={publish} className="grid gap-3 px-6 pb-5">
+        <div className="flex flex-wrap gap-2">
+          <Chip selected={!builtin} onClick={() => setBuiltin(false)}>
+            Your picture
+          </Chip>
+          <Chip selected={builtin} onClick={() => setBuiltin(true)}>
+            &quot;Add photos&quot; reminder
+          </Chip>
+        </div>
+        {builtin ? (
+          <div className="flex items-center gap-3 rounded-2xl bg-sunken p-3 text-sm">
+            <span className="grid h-16 w-12 shrink-0 place-items-center rounded-lg text-white" style={{ background: "linear-gradient(135deg, #106a7a, #9fd3dc)" }}>
+              <ImagePlus size={20} aria-hidden />
+            </span>
+            <span className="text-muted">The built-in &quot;Bring the week to life&quot; card, with an Add photos button that opens their photo picker.</span>
+          </div>
+        ) : (
         <label className="grid cursor-pointer place-items-center overflow-hidden rounded-2xl border-2 border-dashed border-outline/60 bg-sunken p-3 text-sm text-muted">
           {preview ? <img src={preview} alt="" className="max-h-64 rounded-xl object-contain" /> : <span className="py-8">Tap to choose a picture</span>}
           <input type="file" accept="image/*" hidden onChange={(e) => pick(e.target.files?.[0] ?? null)} />
         </label>
+        )}
         <div className="grid grid-cols-2 gap-3 [&>*]:min-w-0">
           <div className="col-span-2 grid">
           <Field label="Show it" htmlFor="poster-times">
@@ -1327,14 +1347,14 @@ function PostersCard() {
           </Field>
           </div>
           <Field label="Starts (optional)" htmlFor="poster-starts">
-            <Input id="poster-starts" type="date" value={starts} onChange={(e) => setStarts(e.target.value)} />
+            <Input id="poster-starts" type="date" value={starts} onChange={(e) => setStarts(e.target.value)} className="min-w-0 px-3 text-sm" />
           </Field>
           <Field label="Ends (optional)" htmlFor="poster-ends">
-            <Input id="poster-ends" type="date" value={ends} onChange={(e) => setEnds(e.target.value)} />
+            <Input id="poster-ends" type="date" value={ends} onChange={(e) => setEnds(e.target.value)} className="min-w-0 px-3 text-sm" />
           </Field>
         </div>
         <p className="text-xs text-muted">Counted per account on each phone: once each time they open the site.</p>
-        <Button type="submit" disabled={!file || busy}>
+        <Button type="submit" disabled={(!file && !builtin) || busy}>
           {busy ? "Uploading…" : "Put up the poster"}
         </Button>
       </form>
@@ -1346,7 +1366,13 @@ function PostersCard() {
             const later = !!p.starts && p.starts > day;
             return (
               <li key={p.id} className="flex items-center gap-3 px-6 py-3">
-                <img src={p.image_url} alt="" className="h-16 w-12 shrink-0 rounded-lg object-cover" />
+                {p.image_url === PHOTOS_PROMO ? (
+                  <span className="grid h-16 w-12 shrink-0 place-items-center rounded-lg text-white" style={{ background: "linear-gradient(135deg, #106a7a, #9fd3dc)" }} title="Add photos reminder">
+                    <ImagePlus size={20} aria-hidden />
+                  </span>
+                ) : (
+                  <img src={p.image_url} alt="" className="h-16 w-12 shrink-0 rounded-lg object-cover" />
+                )}
                 <span className="min-w-0 flex-1">
                   <span className="block text-sm font-medium">{over ? "Ended" : !p.active ? "Paused" : later ? `Starts ${p.starts}` : "Showing"}</span>
                   <span className="block text-xs text-muted">

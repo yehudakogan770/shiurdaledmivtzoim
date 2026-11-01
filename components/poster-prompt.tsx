@@ -7,6 +7,7 @@ import { today } from "@/lib/dates";
 import { t } from "@/lib/i18n";
 import type { Poster } from "@/lib/types";
 import { Modal } from "./ui";
+import { PHOTOS_PROMO, PhotosPromoCard } from "./photos-promo";
 
 const seenKey = (userId: string, posterId: string) => `sdm-poster:${userId}:${posterId}`;
 const VISIT_KEY = "sdm-poster-visit";
@@ -64,6 +65,7 @@ export function PosterPrompt() {
 
   if (!shown) return null;
   const close = () => setShown(null);
+  if (shown.image_url === PHOTOS_PROMO) return <PhotosPromoCard onClose={close} />;
   return (
     <Modal onClose={close} blur>
       <div role="dialog" aria-modal="true" aria-label={t("Poster")} onClick={(e) => e.stopPropagation()} className="relative w-full max-w-md">
