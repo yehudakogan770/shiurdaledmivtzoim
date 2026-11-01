@@ -146,8 +146,80 @@ function HoverRail() {
 }
 
 /** Phones and tablets: a modal side panel opened from the three-bar button. */
-function ModalDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+function ModalDrawer({ open, onOpen, onClose }: { open: boolean; onOpen: () => void; onClose: () => void }) {
   const { path } = useNav();
+  const panel = useRef<HTMLElement>(null);
+  const shade = useRef<HTMLDivElement>(null);
+  const openRef = useRef(open);
+  openRef.current = open;
+
+  // Swipe in from the side of the screen to open the menu, and swipe it back to close it. The menu
+  // follows the finger, then finishes opening or closing on its own when the finger lifts.
+  useEffect(() => {
+    type Drag = { x0: number; y0: number; t0: number; from: 0 | 1; w: number; decided: boolean; p: number };
+    let drag: Drag | null = null;
+    const rtl = () => document.documentElement.dir === "rtl";
+    const place = (p: number) => {
+      const el = panel.current;
+      if (!el || !shade.current) return;
+      el.style.transition = shade.current.style.transition = "none";
+      el.style.transform = `translateX(${(rtl() ? 1 - p : p - 1) * 100}%)`;
+      shade.current.style.opacity = String(p);
+    };
+    const release = () => {
+      for (const el of [panel.current, shade.current]) if (el) el.style.transition = el.style.transform = el.style.opacity = "";
+    };
+    const start = (e: TouchEvent) => {
+      if (e.touches.length !== 1 || window.innerWidth >= 1024 || !panel.current) return;
+      // Not while a pop-up is open.
+      if (document.querySelector('[aria-modal="true"]')) return;
+      const t = e.touches[0];
+      const fromEdge = rtl() ? window.innerWidth - t.clientX : t.clientX;
+      if (!openRef.current && fromEdge > 32) return;
+      drag = { x0: t.clientX, y0: t.clientY, t0: Date.now(), from: openRef.current ? 1 : 0, w: panel.current.offsetWidth, decided: false, p: openRef.current ? 1 : 0 };
+    };
+    const move = (e: TouchEvent) => {
+      if (!drag) return;
+      const t = e.touches[0];
+      const dx = (t.clientX - drag.x0) * (rtl() ? -1 : 1);
+      const dy = t.clientY - drag.y0;
+      if (!drag.decided) {
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+        // Only a sideways swipe in the right direction moves the menu; anything else scrolls as usual.
+        if (Math.abs(dx) < Math.abs(dy) * 1.2 || (drag.from === 0 ? dx < 0 : dx > 0)) {
+          drag = null;
+          return;
+        }
+        drag.decided = true;
+      }
+      if (e.cancelable) e.preventDefault();
+      drag.p = Math.min(1, Math.max(0, drag.from + dx / drag.w));
+      place(drag.p);
+    };
+    const end = () => {
+      if (!drag?.decided) {
+        drag = null;
+        return;
+      }
+      // A quick flick counts even when it's short.
+      const quick = Date.now() - drag.t0 < 250 && Math.abs(drag.p - drag.from) * drag.w > 30;
+      const opened = quick ? drag.from === 0 : drag.p > 0.5;
+      drag = null;
+      release();
+      if (opened) onOpen();
+      else onClose();
+    };
+    document.addEventListener("touchstart", start, { passive: true });
+    document.addEventListener("touchmove", move, { passive: false });
+    document.addEventListener("touchend", end);
+    document.addEventListener("touchcancel", end);
+    return () => {
+      document.removeEventListener("touchstart", start);
+      document.removeEventListener("touchmove", move);
+      document.removeEventListener("touchend", end);
+      document.removeEventListener("touchcancel", end);
+    };
+  }, [onOpen, onClose]);
   useEffect(() => {
     onClose();
     // Close whenever the page changes.
@@ -167,10 +239,12 @@ function ModalDrawer({ open, onClose }: { open: boolean; onClose: () => void }) 
   return (
     <div className="lg:hidden" aria-hidden={!open}>
       <div
+        ref={shade}
         onClick={onClose}
         className={cx("fixed inset-0 z-40 bg-black/40 transition-opacity duration-200", open ? "opacity-100" : "pointer-events-none opacity-0")}
       />
       <aside
+        ref={panel}
         aria-label={t("Side panel")}
         inert={!open}
         className={cx(
@@ -268,6 +342,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const path = rawPath.length > 1 ? rawPath.replace(/\/+$/, "") : rawPath;
   const [menuOpen, setMenuOpen] = useState(false);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
+  const openMenu = useCallback(() => setMenuOpen(true), []);
   const desk = useAccountDesk();
 
   // Opening Create accounts turns the device into the account desk until the Owner's password is entered.
@@ -360,7 +435,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <EditModeProvider>
     <div className="min-h-screen bg-paper lg:flex">
       <HoverRail />
-      <ModalDrawer open={menuOpen} onClose={closeMenu} />
+      <ModalDrawer open={menuOpen} onOpen={openMenu} onClose={closeMenu} />
       <div className="min-w-0 flex-1">
         <TopAppBar onMenu={() => setMenuOpen(true)} />
         <div className="hidden justify-end px-8 pt-6 lg:flex">
