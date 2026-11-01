@@ -781,17 +781,34 @@ function WeekPicker({ week, onChange }: { week: string; onChange(week: string): 
     );
   }
 
-  const on = k % shown.length;
+  // With just two photos, each would come back while still showing underneath and jump in instead
+  // of fading, so they're cycled as four.
+  const slides = shown.length === 2 ? [...shown, ...shown] : shown;
+  const on = k % slides.length;
+  const prev = (k - 1 + slides.length) % slides.length;
   return (
     <section className="relative isolate min-h-64 overflow-hidden rounded-[28px] bg-ink text-white sm:min-h-80">
-      {shown.map((p, i) => (
-        <img
-          key={p.id}
-          src={p.url}
-          alt=""
-          className={cx("absolute inset-0 -z-10 h-full w-full object-cover transition-opacity duration-500", i === on ? "photo-zoom opacity-100" : "opacity-0")}
-        />
-      ))}
+      {/* The new photo fades in on top while the one before stays fully showing underneath, so the
+          change never dips to dark; each photo zooms out slowly and evenly, and resets only once hidden. */}
+      {slides.map((p, i) => {
+        const showing = i === on;
+        const under = !showing && i === prev && k > 0;
+        return (
+          <img
+            key={`${p.id}-${i}`}
+            src={p.url}
+            alt=""
+            decoding="async"
+            className="absolute inset-0 h-full w-full object-cover"
+            style={{
+              zIndex: showing ? -10 : under ? -11 : -12,
+              opacity: showing || under ? 1 : 0,
+              transform: showing || under ? "scale(1)" : "scale(1.06)",
+              transition: showing ? "opacity 900ms ease-in-out, transform 3000ms ease-out" : "none",
+            }}
+          />
+        );
+      })}
       <span className="absolute inset-0 -z-10 bg-gradient-to-b from-black/35 via-black/5 to-black/80" />
       {/* The whole photo opens the Photos page; the week menu and buttons on it still work. */}
       <Link href="/photos" className="absolute inset-0">

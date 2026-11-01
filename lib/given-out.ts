@@ -49,3 +49,35 @@ export function givenOut(activity: Activity[], builtins: Builtin[], shared: Pers
   });
   return { weeks, items };
 }
+
+/** One line of the weekly report: how many of one Mivtza went out in the chosen week, and around it. */
+export interface WeekLine {
+  key: string;
+  label: string;
+  count: number;
+  lastWeek: number;
+  /** Average of the 4 weeks before the chosen one. */
+  average: number;
+  /** For the coming week: the higher of this week and the average, rounded up to the next 5. */
+  suggested: number;
+}
+
+/** The weekly report for one week: each Mivtza's count, and each route's total. */
+export function weekReport(activity: Activity[], builtins: Builtin[], shared: PersonalCategory[], week: string, names: (userId: string) => string) {
+  const rows = activity.filter((a) => a.quantity > 0);
+  const inWeek = (w: string) => rows.filter((a) => activityWeek(a) === w);
+  const sum = (list: Activity[], match: (a: Activity) => boolean = () => true) => list.filter(match).reduce((n, a) => n + a.quantity, 0);
+  const now = inWeek(week);
+  const before = inWeek(addDays(week, -7));
+  const earlier = [1, 2, 3, 4].map((i) => addDays(week, -7 * i)).filter((w) => w >= FIRST_WEEK).map(inWeek);
+  const lines: WeekLine[] = reportColumns(builtins, shared, rows).map((c) => {
+    const count = sum(now, c.matches);
+    const average = earlier.length ? earlier.reduce((n, list) => n + sum(list, c.matches), 0) / earlier.length : 0;
+    const base = Math.max(count, average);
+    return { key: c.key, label: c.label, count, lastWeek: sum(before, c.matches), average, suggested: base > 0 ? Math.ceil(base / 5) * 5 : 0 };
+  });
+  const routes = [...new Set(now.map((a) => a.user_id))]
+    .map((id) => ({ id, name: names(id), total: sum(now.filter((a) => a.user_id === id)) }))
+    .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+  return { lines, routes, total: sum(now), lastTotal: sum(before) };
+}

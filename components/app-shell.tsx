@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { Eye, History, Images, LayoutDashboard, LogIn, LogOut, Map, Menu, ShieldCheck, Sunset, UserRound, UserRoundPlus, Wallet } from "lucide-react";
+import { Eye, History, Images, LayoutDashboard, LogIn, LogOut, Map, Menu, ShieldCheck, Sunset, UserRound, UserRoundPlus, ChartColumn } from "lucide-react";
 import { handle } from "@/lib/admin";
 import { useData } from "@/lib/data";
 import { displayName } from "@/lib/types";
@@ -33,8 +33,8 @@ const links = [
 const ADMIN_LINK = { href: "/admin", label: "Admin", short: "Admin", icon: ShieldCheck, match: ["/admin"] };
 /** The Owner only: hand the device to someone so they can make their own account. */
 const DESK_LINK = { href: "/accounts", label: "Create accounts", short: "Accounts", icon: UserRoundPlus, match: ["/accounts"] };
-/** The Owner only: money in and out, and the weekly supplies. */
-const FINANCE_LINK = { href: "/finances", label: "Finances", short: "Finances", icon: Wallet, match: ["/finances"] };
+/** The Owner only: how many of each Mivtza went out each week. */
+const REPORT_LINK = { href: "/report", label: "Weekly report", short: "Report", icon: ChartColumn, match: ["/report", "/finances"] };
 
 function isActive(path: string, match: string[]) {
   return match.some((m) => (m === "/" ? path === "/" : path === m || path.startsWith(m + "/")));
@@ -46,7 +46,7 @@ function PanelContent({ expanded, onNavigate }: { expanded: boolean; onNavigate?
   const { me, guest, backend, auth, settings, isAdmin, isOwner } = useData();
   // No Profile page for people without an account, or for the Owner (it doesn't log).
   const shown = guest || isOwner ? links.filter((l) => l.href !== "/profile") : links;
-  const items = isOwner ? [...shown, ADMIN_LINK, FINANCE_LINK, DESK_LINK] : isAdmin ? [...shown, ADMIN_LINK] : shown;
+  const items = isOwner ? [...shown, ADMIN_LINK, REPORT_LINK, DESK_LINK] : isAdmin ? [...shown, ADMIN_LINK] : shown;
   const label = cx("whitespace-nowrap transition-opacity duration-200", expanded ? "opacity-100" : "opacity-0");
   return (
     <div className="flex h-full flex-col px-3 py-4" onClick={(e) => (e.target as HTMLElement).closest("a") && onNavigate?.()}>

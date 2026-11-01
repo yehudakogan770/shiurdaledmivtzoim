@@ -17,7 +17,6 @@ import type {
   Route,
   RouteLocation,
   WeekAnswer,
-  FinanceEntry,
 } from "./types";
 import { DEFAULT_SETTINGS, type SignUpInput } from "./types";
 import { sendToDrive } from "./drive";
@@ -114,8 +113,6 @@ interface DataContextValue {
   photos: Photo[];
   /** Business card details by place, for this account's own places (all of them for the Owner). */
   cards: Record<string, LocationCard>;
-  /** The Owner's money in and out. null until database update 016 is run (or for anyone but the Owner). */
-  finances: { entries: FinanceEntry[] } | null;
   /** Every account; filled in for admins only. */
   people: Profile[];
   toast: string | null;
@@ -193,10 +190,6 @@ interface DataContextValue {
     uploadPhotos(photos: { full: Blob; thumb: Blob; width: number; height: number; color?: string; source?: Blob }[], onProgress?: (done: number) => void): Promise<void>;
     /** The person who shared it, or an admin. */
     deletePhoto(id: string): Promise<void>;
-    /** The Owner's finances. */
-    addFinance(entry: Omit<FinanceEntry, "id" | "created_at">): Promise<void>;
-    updateFinance(id: string, patch: Partial<Omit<FinanceEntry, "id" | "created_at" | "kind">>): Promise<void>;
-    deleteFinance(id: string): Promise<void>;
   };
 }
 
@@ -231,7 +224,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [people, setPeople] = useState<Profile[]>([]);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [cards, setCards] = useState<Record<string, LocationCard>>({});
-  const [finances, setFinances] = useState<DataContextValue["finances"]>(null);
   const [recovering, setRecovering] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -289,13 +281,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const names = await b.names([...ids]);
     names[user.id] = user.name || names[user.id];
     setPeople(everyone);
-    // Only the Owner has finances; the database refuses everyone else (and until update 016 is run).
-    if (isAdminIdentifier(user.email) || isAdminIdentifier(user.username)) {
-      b.list("finance_entries").then(
-        (entries) => setFinances({ entries: entries.map((e) => ({ ...e, amount: Number(e.amount) })) }),
-        () => setFinances(null),
-      );
-    } else setFinances(null);
     setData({ groups, members, routes, locations, stops, categories, activity, weeks, messages, names });
   }, []);
 
@@ -434,7 +419,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       people,
       photos,
       cards,
-      finances,
       toast,
       notify,
       refresh,
@@ -695,21 +679,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
             if (added.length) setPhotos((p) => [...added, ...p]);
           }
         },
-        addFinance: async (entry) => {
-          if (!(entry.amount > 0)) throw new Error(t("Enter an amount."));
-          const saved = await b.insert("finance_entries", { ...entry, amount: Math.round(entry.amount * 100) / 100 });
-          setFinances((f) => (f ? { ...f, entries: [...f.entries, { ...saved, amount: Number(saved.amount) }] } : f));
-        },
-        updateFinance: async (id, patch) => {
-          if (patch.amount !== undefined && !(patch.amount > 0)) throw new Error(t("Enter an amount."));
-          const fields = patch.amount !== undefined ? { ...patch, amount: Math.round(patch.amount * 100) / 100 } : patch;
-          await b.update("finance_entries", id, fields);
-          setFinances((f) => (f ? { ...f, entries: f.entries.map((e) => (e.id === id ? { ...e, ...fields } : e)) } : f));
-        },
-        deleteFinance: async (id) => {
-          setFinances((f) => (f ? { ...f, entries: f.entries.filter((e) => e.id !== id) } : f));
-          saveLater(() => b.remove("finance_entries", id));
-        },
         deletePhoto: async (id) => {
           const photo = photos.find((x) => x.id === id);
           if (!photo || !b.deletePhoto) return;
@@ -795,7 +764,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       actions: sampleOnly(value.actions),
       auth: { ...sampleOnly(value.auth), signIn, signUp, requestPasswordReset, updatePassword, finishRecovery, recovering },
     };
-  }, [backend, status, error, me, data, mine, settings, people, photos, cards, finances, recovering, toast, notify, refresh, load]);
+  }, [backend, status, error, me, data, mine, settings, people, photos, cards, recovering, toast, notify, refresh, load]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }
