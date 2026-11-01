@@ -45,6 +45,7 @@ function empty(): Store {
     report_viewers: [],
     report_items: [],
     report_counts: [],
+    posters: [],
   };
 }
 
@@ -129,6 +130,14 @@ export function createLocalBackend(): Backend {
       const p = s.profiles.find((x) => x.id === s.session);
       if (p) p.language = language;
       save(s);
+    },
+    async uploadPosterImage(image) {
+      return new Promise<string>((ok, fail) => {
+        const r = new FileReader();
+        r.onload = () => ok(String(r.result));
+        r.onerror = () => fail(r.error);
+        r.readAsDataURL(image);
+      });
     },
     async setAvatar(photo) {
       const s = load();

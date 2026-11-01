@@ -307,6 +307,15 @@ export function createSupabaseBackend(url: string, key: string): Backend {
       fail(error);
       return add((data ?? []) as Profile[]);
     },
+    async uploadPosterImage(image) {
+      const me = await uid();
+      const store = sb.storage.from("photos");
+      // In the Owner's own folder, the only place the database lets the Owner write.
+      const path = `${me}/poster-${Date.now()}.${image.type === "image/webp" ? "webp" : "jpg"}`;
+      const { error } = await store.upload(path, image, { contentType: image.type, cacheControl: "31536000", upsert: false });
+      if (error) throw new Error(t("The picture didn't upload: {reason}", { reason: error.message }));
+      return store.getPublicUrl(path).data.publicUrl;
+    },
     async setAvatar(photo) {
       const me = await uid();
       const store = sb.storage.from("photos");

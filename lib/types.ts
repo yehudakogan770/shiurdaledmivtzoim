@@ -189,6 +189,18 @@ export interface ReportCount {
   created_at: string;
 }
 
+/** A picture the Owner pops up for every account when they open the site. */
+export interface Poster {
+  id: string;
+  image_url: string;
+  /** How many times each account sees it; null for every time they open the site. */
+  times: number | null;
+  /** The last day it shows (YYYY-MM-DD), or null for no end. */
+  ends: string | null;
+  active: boolean;
+  created_at: string;
+}
+
 export interface Tables {
   profiles: Profile;
   groups: Group;
@@ -201,6 +213,7 @@ export interface Tables {
   report_viewers: ReportViewer;
   report_items: ReportItem;
   report_counts: ReportCount;
+  posters: Poster;
 }
 
 export type TableName = keyof Tables;

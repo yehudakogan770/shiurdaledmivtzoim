@@ -56,6 +56,11 @@ function draw(img: HTMLImageElement, max: number) {
   return canvas;
 }
 
+/** A poster: the whole picture, at most 1600 pixels on the long side (sharp on any phone). */
+export async function posterImage(file: Blob): Promise<Blob> {
+  return encode(draw(await loadImage(file), 1600), 0.85);
+}
+
 /** A profile photo: the middle square of the picture, 400×400 (about 30 KB). */
 export async function avatarPhoto(file: Blob): Promise<Blob> {
   const img = await loadImage(file);

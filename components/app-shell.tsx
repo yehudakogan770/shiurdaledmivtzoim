@@ -21,6 +21,7 @@ import { setAccountDesk, useAccountDesk } from "@/lib/account-desk";
 import { AccountDeskView } from "./views/account-desk";
 import { WhoWentPrompt } from "./week-question";
 import { MessagePrompt } from "./message-prompt";
+import { PosterPrompt } from "./poster-prompt";
 
 const links = [
   { href: "/", label: "Dashboard", short: "Home", icon: LayoutDashboard, match: ["/", "/dashboard"] },
@@ -456,6 +457,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       {me && !guest && !isOwner && <WhoWentPrompt />}
       {/* The Owner's messages wait until the Hebrew names are filled in. */}
       {me && !guest && !isOwner && !(backend?.hasAuth && missingHebrewNames(me.partners)) && <MessagePrompt />}
+      {/* The Owner's poster, after any other pop-up has closed. */}
+      {me && !guest && !isOwner && !(backend?.hasAuth && missingHebrewNames(me.partners)) && <PosterPrompt />}
       <Snackbar message={toast} />
     </div>
     </EditModeProvider>

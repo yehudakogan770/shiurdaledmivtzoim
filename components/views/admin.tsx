@@ -43,6 +43,7 @@ export function AdminView() {
         </div>
       )}
       <ReportLinkCard />
+      {isOwner && <PostersCard />}
       <PeopleCard />
       <ExportCard />
       {isOwner && <PhotoDriveCard />}
@@ -1266,5 +1267,95 @@ function ReportAccess({ person }: { person: Profile }) {
         className="h-6 w-11 shrink-0 cursor-pointer appearance-none rounded-full bg-outline/40 transition-colors before:block before:h-5 before:w-5 before:translate-x-0.5 before:rounded-full before:bg-white before:shadow before:transition-transform checked:bg-accent checked:before:translate-x-[1.375rem] disabled:opacity-50"
       />
     </label>
+  );
+}
+
+/**
+ * The Owner: a picture that pops up for every account when they open the site, as many times as
+ * chosen (or every time), until an end date if one is set.
+ */
+function PostersCard() {
+  const { posters, actions, notify } = useData();
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [times, setTimes] = useState("3");
+  const [ends, setEnds] = useState("");
+  const [busy, setBusy] = useState(false);
+  const pick = (f: File | null) => {
+    if (preview) URL.revokeObjectURL(preview);
+    setFile(f);
+    setPreview(f ? URL.createObjectURL(f) : null);
+  };
+  async function publish(e: FormEvent) {
+    e.preventDefault();
+    if (!file) return;
+    setBusy(true);
+    try {
+      await actions.addPoster(file, times === "every" ? null : Number(times), ends || null);
+      notify("The poster is up. Everyone sees it the next time they open the site.");
+      pick(null);
+      setEnds("");
+    } catch (err) {
+      notify((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  const list = [...posters].sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const howOften = (n: number | null) => (n == null ? "Every time they open the site" : n === 1 ? "Once per account" : `${n} times per account`);
+  return (
+    <Card>
+      <CardTitle sub="A picture that pops up for everyone when they open the site.">Poster</CardTitle>
+      <form onSubmit={publish} className="grid gap-3 px-6 pb-5">
+        <label className="grid cursor-pointer place-items-center overflow-hidden rounded-2xl border-2 border-dashed border-outline/60 bg-sunken p-3 text-sm text-muted">
+          {preview ? <img src={preview} alt="" className="max-h-64 rounded-xl object-contain" /> : <span className="py-8">Tap to choose a picture</span>}
+          <input type="file" accept="image/*" hidden onChange={(e) => pick(e.target.files?.[0] ?? null)} />
+        </label>
+        <div className="grid grid-cols-2 gap-3 [&>*]:min-w-0">
+          <Field label="Show it" htmlFor="poster-times">
+            <Select id="poster-times" value={times} onChange={(e) => setTimes(e.target.value)}>
+              <option value="1">Once</option>
+              <option value="2">2 times</option>
+              <option value="3">3 times</option>
+              <option value="5">5 times</option>
+              <option value="10">10 times</option>
+              <option value="every">Every time</option>
+            </Select>
+          </Field>
+          <Field label="Until (optional)" htmlFor="poster-ends">
+            <Input id="poster-ends" type="date" value={ends} onChange={(e) => setEnds(e.target.value)} />
+          </Field>
+        </div>
+        <p className="text-xs text-muted">Counted per account on each phone: once each time they open the site.</p>
+        <Button type="submit" disabled={!file || busy}>
+          {busy ? "Uploading…" : "Put up the poster"}
+        </Button>
+      </form>
+      {list.length > 0 && (
+        <ul className={cx(listClass, "border-t border-line/60")}>
+          {list.map((p) => {
+            const over = !!p.ends && p.ends < new Date().toISOString().slice(0, 10);
+            return (
+              <li key={p.id} className="flex items-center gap-3 px-6 py-3">
+                <img src={p.image_url} alt="" className="h-16 w-12 shrink-0 rounded-lg object-cover" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium">{over ? "Ended" : p.active ? "Showing" : "Paused"}</span>
+                  <span className="block text-xs text-muted">
+                    {howOften(p.times)}
+                    {p.ends ? ` · until ${p.ends}` : ""}
+                  </span>
+                </span>
+                <Button variant="secondary" className="h-9 px-3" onClick={() => actions.updatePoster(p.id, { active: !p.active })}>
+                  {p.active ? "Pause" : "Show"}
+                </Button>
+                <IconButton aria-label="Delete poster" onClick={() => confirm("Delete this poster?") && actions.deletePoster(p.id)}>
+                  <Trash2 size={18} />
+                </IconButton>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </Card>
   );
 }

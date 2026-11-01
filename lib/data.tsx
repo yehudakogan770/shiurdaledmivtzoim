@@ -19,10 +19,11 @@ import type {
   WeekAnswer,
   ReportItem,
   ReportCount,
+  Poster,
 } from "./types";
 import { DEFAULT_SETTINGS, type SignUpInput } from "./types";
 import { sendToDrive } from "./drive";
-import { avatarPhoto, printCopy } from "./photos";
+import { avatarPhoto, posterImage, printCopy } from "./photos";
 import { today, weekOf } from "./dates";
 import { parshaOfWeek } from "./parsha";
 import { newVersionOnline } from "./install";
@@ -121,6 +122,8 @@ interface DataContextValue {
   report: { items: ReportItem[]; counts: ReportCount[] } | null;
   /** The Owner: the accounts allowed to see the weekly report (besides admins). */
   reportViewers: string[];
+  /** The Owner's posters (empty until database update 017 is run). */
+  posters: Poster[];
   /** Every account; filled in for admins only. */
   people: Profile[];
   toast: string | null;
@@ -200,6 +203,10 @@ interface DataContextValue {
     deletePhoto(id: string): Promise<void>;
     /** The Owner: let an account see the weekly report, or stop it. */
     setReportViewer(userId: string, allowed: boolean): Promise<void>;
+    /** The Owner: put up a poster (any picture; it's made smaller here). */
+    addPoster(picture: Blob, times: number | null, ends: string | null): Promise<void>;
+    updatePoster(id: string, patch: Partial<Pick<Poster, "active" | "times" | "ends">>): Promise<void>;
+    deletePoster(id: string): Promise<void>;
     /** The Owner: the weekly report's items. */
     addReportItem(name: string): Promise<void>;
     renameReportItem(id: string, name: string): Promise<void>;
@@ -244,6 +251,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // Who may see the weekly report: rows of report_viewers (empty until database update 016 is run).
   const [viewerRows, setViewerRows] = useState<{ id: string; user_id: string }[]>([]);
   const [report, setReport] = useState<DataContextValue["report"]>(null);
+  const [posters, setPosters] = useState<Poster[]>([]);
   const [recovering, setRecovering] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -301,6 +309,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const names = await b.names([...ids]);
     names[user.id] = user.name || names[user.id];
     setPeople(everyone);
+    b.list("posters").then(setPosters, () => setPosters([]));
     // The Owner sees every row; anyone else only their own (the database decides).
     b.list("report_viewers").then(
       (rows) => {
@@ -457,6 +466,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       canSeeReport: me?.role === "admin" || viewerRows.some((v) => v.user_id === me?.id),
       reportViewers: viewerRows.map((v) => v.user_id),
       report,
+      posters,
       toast,
       notify,
       refresh,
@@ -729,6 +739,22 @@ export function DataProvider({ children }: { children: ReactNode }) {
             setViewerRows((v) => v.filter((x) => x.id !== row.id));
           }
         },
+        addPoster: async (picture, times, ends) => {
+          if (!b.uploadPosterImage) throw new Error(t("Posters aren't available here."));
+          const image_url = await b.uploadPosterImage(await posterImage(picture));
+          const saved = await b.insert("posters", { image_url, times, ends, active: true }).catch((e: Error) => {
+            throw new Error(/posters|relation|schema cache/.test(e.message) ? t("Run database update 017 in Supabase first.") : e.message);
+          });
+          setPosters((list) => [...list, saved]);
+        },
+        updatePoster: async (id, patch) => {
+          setPosters((list) => list.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+          saveLater(() => b.update("posters", id, patch));
+        },
+        deletePoster: async (id) => {
+          setPosters((list) => list.filter((x) => x.id !== id));
+          saveLater(() => b.remove("posters", id));
+        },
         addReportItem: async (name) => {
           if (!name.trim()) throw new Error(t("Give it a name."));
           const saved = await b.insert("report_items", { name: name.trim(), position: report?.items.length ?? 0 });
@@ -854,7 +880,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       actions: sampleOnly(value.actions),
       auth: { ...sampleOnly(value.auth), signIn, signUp, requestPasswordReset, updatePassword, finishRecovery, recovering },
     };
-  }, [backend, status, error, me, data, mine, settings, people, photos, cards, viewerRows, report, recovering, toast, notify, refresh, load]);
+  }, [backend, status, error, me, data, mine, settings, people, photos, cards, viewerRows, report, posters, recovering, toast, notify, refresh, load]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }
