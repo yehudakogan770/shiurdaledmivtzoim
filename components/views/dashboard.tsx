@@ -324,7 +324,7 @@ export function QuickLog({ week, userId }: { week: string; userId?: string }) {
   }
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
       {counters.map((c) => (
         <QuickButton
           key={c.key}
@@ -453,7 +453,7 @@ function QuickButton({ c, count, hint, sample, onAdd, onSubtract }: { c: Counter
   return (
     <div
       ref={box}
-      className={cx("relative aspect-square rounded-[28px]", c.soft)}
+      className={cx("relative aspect-square rounded-[28px] sm:aspect-auto sm:h-44", c.soft)}
       style={c.custom ? { background: `color-mix(in srgb, ${c.color} 18%, var(--card))` } : undefined}
     >
       {/* The whole square adds one; the number is this week's total. */}
