@@ -171,6 +171,24 @@ export interface ReportViewer {
   created_at: string;
 }
 
+/** Something the weekly report keeps track of (Scrolls, Candles…). The Owner sets these up. */
+export interface ReportItem {
+  id: string;
+  name: string;
+  position?: number | null;
+  created_at: string;
+}
+
+/** One item's numbers for one week (its Friday): how many sold, and how many are needed for the next. */
+export interface ReportCount {
+  id: string;
+  item_id: string;
+  week: string;
+  sold: number | null;
+  needed: number | null;
+  created_at: string;
+}
+
 export interface Tables {
   profiles: Profile;
   groups: Group;
@@ -181,6 +199,8 @@ export interface Tables {
   personal_categories: PersonalCategory;
   mivtzoim_activity: Activity;
   report_viewers: ReportViewer;
+  report_items: ReportItem;
+  report_counts: ReportCount;
 }
 
 export type TableName = keyof Tables;

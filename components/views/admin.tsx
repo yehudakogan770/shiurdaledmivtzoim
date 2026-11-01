@@ -1226,7 +1226,7 @@ function ReportLinkCard() {
           </span>
           <span className="min-w-0 flex-1">
             <span className="block text-lg font-medium">Weekly report</span>
-            <span className="block text-sm text-muted">How many of each Mivtza went out each week, and how many to get next week.</span>
+            <span className="block text-sm text-muted">How many of each item were sold each week, and how many are needed for next week.</span>
           </span>
           <ChevronRight size={20} aria-hidden className="text-muted rtl:rotate-180" />
         </div>
@@ -1235,7 +1235,7 @@ function ReportLinkCard() {
   );
 }
 
-/** The Owner: let this account see the weekly report (to look only). Admins can always see it. */
+/** The Owner: let this account see the weekly report and fill in its numbers. Admins always can. */
 function ReportAccess({ person }: { person: Profile }) {
   const { isOwner, reportViewers, actions, notify } = useData();
   const [busy, setBusy] = useState(false);
@@ -1244,8 +1244,8 @@ function ReportAccess({ person }: { person: Profile }) {
   return (
     <label className="flex items-center gap-3 rounded-2xl bg-card px-4 py-3">
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-medium">Can see the weekly report</span>
-        <span className="block text-xs text-muted">To look only. They can&apos;t change anything. Admins always see it.</span>
+        <span className="block text-sm font-medium">Can use the weekly report</span>
+        <span className="block text-xs text-muted">They can see it and fill in the numbers, nothing else. Admins always can.</span>
       </span>
       <input
         type="checkbox"
@@ -1256,7 +1256,7 @@ function ReportAccess({ person }: { person: Profile }) {
           setBusy(true);
           try {
             await actions.setReportViewer(person.id, e.target.checked);
-            notify(e.target.checked ? `${person.name} can now see the weekly report.` : `${person.name} can no longer see the weekly report.`);
+            notify(e.target.checked ? `${person.name} can now use the weekly report.` : `${person.name} can no longer use the weekly report.`);
           } catch (err) {
             notify((err as Error).message);
           } finally {

@@ -1,32 +1,22 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
-import { ChevronLeft, ChevronRight, Download, ShieldCheck } from "lucide-react";
+import { useState, type FormEvent } from "react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Download, Pencil, Plus, ShieldCheck, Trash2 } from "lucide-react";
 import { useData } from "@/lib/data";
-import { addDays, allWeeks, currentWeek, FIRST_WEEK, formatShort, today } from "@/lib/dates";
-import type { Activity } from "@/lib/types";
+import { addDays, allWeeks, currentWeek, FIRST_WEEK, formatShort } from "@/lib/dates";
 import { parshaName } from "@/lib/parsha";
-import { givenOut, weekReport } from "@/lib/given-out";
 import { buildReportWorkbook } from "@/lib/report-export";
-import { Button, Card, Empty, IconButton, PageHeader, Select, cx } from "../ui";
+import type { ReportCount, ReportItem } from "@/lib/types";
+import { Button, Card, Empty, IconButton, Input, PageHeader, Select, cx } from "../ui";
 
 /**
- * The Owner's weekly report: how many of each Mivtza went out in a week, compared with the week
- * before and the 4 before that, a suggestion for how many to get next week, and each route's total.
- * Plain tables, like a ledger, to look at only. For the Owner, admins, and accounts the Owner
- * allowed. English only.
+ * The weekly report: the Owner sets up the items (Scrolls, Candles…), and each week the Owner,
+ * admins and accounts the Owner allowed fill in how many were sold and how many are needed for
+ * next week. Plain tables, like a ledger. English only.
  */
 export function ReportView() {
-  const { canSeeReport, isAdmin, backend, data, people, builtins, shared, settings, notify } = useData();
+  const { canSeeReport, isOwner, report, settings, notify } = useData();
   const [week, setWeek] = useState(currentWeek());
-  // Everyone's entries come from the report's own database function, which works for the accounts
-  // the Owner allowed too; admins can fall back on what they already loaded.
-  const [source, setSource] = useState<{ activity: Activity[]; names: Record<string, string> } | null | "loading">("loading");
-  useEffect(() => {
-    if (!canSeeReport) return;
-    const got = backend?.reportActivity ? backend.reportActivity(FIRST_WEEK, addDays(today(), 1)) : Promise.resolve(null);
-    got.then(setSource, () => setSource(null));
-  }, [canSeeReport, backend]);
   if (!canSeeReport) {
     return (
       <Card>
@@ -36,26 +26,28 @@ export function ReportView() {
       </Card>
     );
   }
-  if (source === "loading") return <p className="px-1 py-10 text-center text-sm text-muted">Loading the report…</p>;
-  const all = source ?? (isAdmin ? { activity: data.activity, names: data.names } : null);
-  if (!all) {
+  if (!report) {
     return (
-      <Card>
-        <Empty title="The report can't load yet" icon={ShieldCheck}>
-          Ask the Owner to run database update 016 in Supabase.
-        </Empty>
-      </Card>
+      <div className="grid gap-3">
+        <PageHeader title="Weekly report" />
+        <Card>
+          <div className="grid gap-2 px-6 py-5 text-sm">
+            <p className="font-medium">One database update is needed first.</p>
+            <p className="text-muted">
+              {isOwner
+                ? "In Supabase, open SQL Editor → New query, paste the file supabase/migrations/016_report_viewers.sql and click Run. Then reload this page."
+                : "Ask the Owner to run database update 016 in Supabase."}
+            </p>
+          </div>
+        </Card>
+      </div>
     );
   }
-  const nameOf = (id: string) => people.find((p) => p.id === id)?.name || all.names[id] || data.names[id] || "Someone";
-  const report = weekReport(all.activity, builtins, shared, week, nameOf);
-  const weeks = allWeeks(); // newest first
-  const isThisWeek = week === currentWeek();
-  const change = report.total - report.lastTotal;
+  const items = [...report.items].sort((x, y) => (x.position ?? 0) - (y.position ?? 0) || x.created_at.localeCompare(y.created_at));
 
   async function download() {
     try {
-      const blob = await buildReportWorkbook(week, report, givenOut(all!.activity, builtins, shared, 8), settings.site_name);
+      const blob = await buildReportWorkbook(week, items, report!.counts, settings.site_name);
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
       link.download = `${settings.site_name} - Weekly report ${week}.xlsx`;
@@ -71,138 +63,213 @@ export function ReportView() {
     <div className="grid grid-cols-1 gap-3">
       <PageHeader
         title="Weekly report"
-        subtitle="How many of each Mivtza went out."
+        subtitle="How many of each item were sold, and how many are needed for next week."
         action={
           <Button variant="secondary" onClick={download}>
             <Download size={16} aria-hidden /> Export
           </Button>
         }
       />
+      <WeekBar week={week} onChange={setWeek} />
+      <WeekTable week={week} items={items} counts={report.counts} />
+      {isOwner && <ManageItems items={items} />}
+    </div>
+  );
+}
 
-      {/* The week: arrows for the week before or after, or pick any week. */}
-      <Card>
-        <div className="flex items-center gap-2 px-3 py-3">
-          <IconButton aria-label="Week before" disabled={addDays(week, -7) < FIRST_WEEK} onClick={() => setWeek(addDays(week, -7))}>
-            <ChevronLeft size={20} className="rtl:rotate-180" />
-          </IconButton>
-          <Select aria-label="Week" value={week} onChange={(e) => setWeek(e.target.value)} className="min-w-0 flex-1 py-2.5 text-sm">
-            {weeks.map((w) => (
-              <option key={w} value={w}>
-                {/* Short, so it fits across a phone: "Lech-Lecha · Oct 23". */}
-                {`${w === currentWeek() ? "This week · " : ""}${parshaName(w)} · ${formatShort(w)}`}
-              </option>
-            ))}
-          </Select>
-          <IconButton aria-label="Week after" disabled={isThisWeek} onClick={() => setWeek(addDays(week, 7))}>
-            <ChevronRight size={20} className="rtl:rotate-180" />
-          </IconButton>
-        </div>
-      </Card>
-
-      <Card>
-        <dl className="grid grid-cols-3 divide-x divide-line/60">
-          <Figure label="Total given out" value={report.total} />
-          <Figure label="Vs. last week" value={`${change > 0 ? "+" : ""}${change}`} tone={change > 0 ? "text-sage" : change < 0 ? "text-danger" : ""} />
-          <Figure label="Routes that logged" value={report.routes.length} />
-        </dl>
-        {isThisWeek && <p className="border-t border-line/60 px-6 py-2.5 text-xs text-muted">This week isn&apos;t over yet (it ends Friday), so these numbers will still grow.</p>}
-      </Card>
-
-      <div className="grid gap-3 xl:grid-cols-[3fr_2fr] [&>*]:min-w-0">
-        <Card>
-          <SectionTitle title="By Mivtza" sub="“Next week” is the higher of this week and the 4-week average, rounded up to the next 5." />
-          <Table
-            head={
-              <tr>
-                <th className={th}>Mivtza</th>
-                <th className={cx(th, "text-end")}>This week</th>
-                <th className={cx(th, "text-end")}>Last week</th>
-                <th className={cx(th, "text-end", wideOnly)}>Avg.</th>
-                <th className={cx(th, "text-end")}>Next week</th>
-              </tr>
-            }
-            foot={
-              <tr>
-                <td className={td}>Total</td>
-                <td className={cx(td, num)}>{report.total}</td>
-                <td className={cx(td, num)}>{report.lastTotal}</td>
-                <td className={cx(td, wideOnly)} />
-                <td className={td} />
-              </tr>
-            }
-          >
-            {report.lines.map((l) => (
-              <tr key={l.key}>
-                <td className={td}>{l.label}</td>
-                <td className={cx(td, num, "font-medium", l.count === 0 && "text-muted")}>{l.count}</td>
-                <td className={cx(td, num, "text-muted")}>{l.lastWeek}</td>
-                <td className={cx(td, num, wideOnly, "text-muted")}>{Math.round(l.average)}</td>
-                <td className={cx(td, num, "font-semibold")}>{l.suggested}</td>
-              </tr>
-            ))}
-          </Table>
-        </Card>
-
-        <Card>
-          <SectionTitle title="By route" sub="Everything each route logged this week." />
-          {report.routes.length === 0 ? (
-            <p className="px-6 pb-5 text-sm text-muted">Nothing logged this week.</p>
-          ) : (
-            <Table
-              head={
-                <tr>
-                  <th className={th}>Route</th>
-                  <th className={cx(th, "text-end")}>Total</th>
-                </tr>
-              }
-            >
-              {report.routes.map((r) => (
-                <tr key={r.id}>
-                  <td className={td}>{r.name}</td>
-                  <td className={cx(td, num)}>{r.total}</td>
-                </tr>
-              ))}
-            </Table>
-          )}
-        </Card>
+/** The week: arrows for the week before or after, or pick any week. */
+function WeekBar({ week, onChange }: { week: string; onChange(week: string): void }) {
+  const weeks = allWeeks(); // newest first
+  return (
+    <Card>
+      <div className="flex items-center gap-2 px-3 py-3">
+        <IconButton aria-label="Week before" disabled={addDays(week, -7) < FIRST_WEEK} onClick={() => onChange(addDays(week, -7))}>
+          <ChevronLeft size={20} className="rtl:rotate-180" />
+        </IconButton>
+        <Select aria-label="Week" value={week} onChange={(e) => onChange(e.target.value)} className="min-w-0 flex-1 py-2.5 text-sm">
+          {weeks.map((w) => (
+            <option key={w} value={w}>
+              {/* Short, so it fits across a phone: "Lech-Lecha · Oct 23". */}
+              {`${w === currentWeek() ? "This week · " : ""}${parshaName(w)} · ${formatShort(w)}`}
+            </option>
+          ))}
+        </Select>
+        <IconButton aria-label="Week after" disabled={week === currentWeek()} onClick={() => onChange(addDays(week, 7))}>
+          <ChevronRight size={20} className="rtl:rotate-180" />
+        </IconButton>
       </div>
-      <p className="px-1 text-xs text-muted">Counted from what everyone logged. Weeks run Friday to Friday. Water, snacks and bags aren&apos;t logged, so they aren&apos;t counted.</p>
-    </div>
+    </Card>
   );
 }
 
-function Figure({ label, value, tone }: { label: string; value: ReactNode; tone?: string }) {
+/** "Need next week" until someone fills it in: the higher of this week's and the 4-week average sales, rounded up to the next 5. */
+function suggestion(itemId: string, week: string, counts: ReportCount[]) {
+  const sold = (w: string) => counts.find((c) => c.item_id === itemId && c.week === w)?.sold;
+  const recent = [1, 2, 3, 4].map((i) => sold(addDays(week, -7 * i))).filter((n): n is number => n != null);
+  const base = Math.max(sold(week) ?? 0, recent.length ? recent.reduce((a, b) => a + b, 0) / recent.length : 0);
+  return base > 0 ? Math.ceil(base / 5) * 5 : null;
+}
+
+/** The week's sheet: one row per item, with boxes to fill in. Each box saves when you leave it. */
+function WeekTable({ week, items, counts }: { week: string; items: ReportItem[]; counts: ReportCount[] }) {
+  const { isOwner } = useData();
+  const get = (itemId: string, w: string) => counts.find((c) => c.item_id === itemId && c.week === w);
+  const soldTotal = items.reduce((n, x) => n + (get(x.id, week)?.sold ?? 0), 0);
+  const lastTotal = items.reduce((n, x) => n + (get(x.id, addDays(week, -7))?.sold ?? 0), 0);
+  if (items.length === 0) {
+    return (
+      <Card>
+        <p className="px-6 py-5 text-sm text-muted">{isOwner ? "No items yet. Add the first one below (for example Scrolls)." : "The Owner hasn't set up any items yet."}</p>
+      </Card>
+    );
+  }
   return (
-    <div className="px-4 py-4 sm:px-6">
-      <dt className="text-xs uppercase tracking-wide text-muted">{label}</dt>
-      <dd className={cx("tabular mt-1 text-2xl font-medium", tone)}>{value}</dd>
-    </div>
+    <Card>
+      <div className="px-6 pt-5 pb-3">
+        <h2 className="font-medium">Week of {formatShort(week)}</h2>
+        <p className="text-sm text-muted">Type a number and it saves. “Need next week” shows a suggestion in gray until someone fills it in.</p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-sm">
+          <thead className="border-b border-line text-xs uppercase tracking-wide text-muted">
+            <tr>
+              <th className={th}>Item</th>
+              <th className={cx(th, "text-end")}>Sold</th>
+              <th className={cx(th, "text-end", wideOnly)}>Last week</th>
+              <th className={cx(th, "text-end")}>Need next week</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line/60">
+            {items.map((x) => {
+              const row = get(x.id, week);
+              const last = get(x.id, addDays(week, -7))?.sold;
+              return (
+                <tr key={x.id}>
+                  <td className={td}>
+                    <span className="block font-medium">{x.name}</span>
+                    <span className="block text-xs text-muted sm:hidden">Last week: {last ?? "—"}</span>
+                  </td>
+                  <td className={cx(td, "text-end")}>
+                    <NumberBox key={`${x.id}-${week}-sold`} label={`${x.name} sold`} value={row?.sold ?? null} itemId={x.id} week={week} field="sold" />
+                  </td>
+                  <td className={cx(td, num, wideOnly, "text-muted")}>{last ?? "—"}</td>
+                  <td className={cx(td, "text-end")}>
+                    <NumberBox key={`${x.id}-${week}-needed`} label={`${x.name} needed next week`} value={row?.needed ?? null} placeholder={suggestion(x.id, week, counts)} itemId={x.id} week={week} field="needed" />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+          <tfoot className="border-t-2 border-line font-medium">
+            <tr>
+              <td className={td}>Total sold</td>
+              <td className={cx(td, num)}>{soldTotal}</td>
+              <td className={cx(td, num, wideOnly)}>{lastTotal}</td>
+              <td className={td} />
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </Card>
   );
 }
 
-function SectionTitle({ title, sub }: { title: string; sub?: string }) {
+/** One number to fill in. Saves when you leave the box (or press Enter); empty clears it. */
+function NumberBox({ label, value, placeholder, itemId, week, field }: { label: string; value: number | null; placeholder?: number | null; itemId: string; week: string; field: "sold" | "needed" }) {
+  const { actions, notify } = useData();
+  const [text, setText] = useState(value == null ? "" : String(value));
+  const save = () => {
+    const clean = text.trim();
+    const next = clean === "" ? null : Math.max(0, Math.round(Number(clean)));
+    if (next !== null && Number.isNaN(next)) return setText(value == null ? "" : String(value));
+    if (next === value) return;
+    actions.setReportCount(itemId, week, { [field]: next }).catch((e: Error) => notify(e.message));
+  };
   return (
-    <div className="px-6 pt-5 pb-3">
-      <h2 className="font-medium">{title}</h2>
-      {sub && <p className="text-sm text-muted">{sub}</p>}
-    </div>
+    <Input
+      aria-label={label}
+      type="number"
+      inputMode="numeric"
+      min="0"
+      value={text}
+      placeholder={placeholder != null ? String(placeholder) : "—"}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={save}
+      onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+      className="tabular ms-auto w-24 py-2 text-end"
+    />
   );
 }
 
-/** A plain table: a header row, then rows; numbers line up on the right. */
-function Table({ head, children, foot }: { head: ReactNode; children: ReactNode; foot?: ReactNode }) {
+/** The Owner: add, rename, reorder or remove the items. */
+function ManageItems({ items }: { items: ReportItem[] }) {
+  const { actions, notify } = useData();
+  const [name, setName] = useState("");
+  const [editing, setEditing] = useState<{ id: string; name: string } | null>(null);
+  const add = (e: FormEvent) => {
+    e.preventDefault();
+    actions.addReportItem(name).then(() => setName(""), (err: Error) => notify(err.message));
+  };
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-sm">
-        <thead className="border-b border-line text-start text-xs uppercase tracking-wide text-muted">{head}</thead>
-        <tbody className="divide-y divide-line/60">{children}</tbody>
-        {foot && <tfoot className="border-t-2 border-line font-medium">{foot}</tfoot>}
-      </table>
-    </div>
+    <Card>
+      <div className="px-6 pt-5 pb-3">
+        <h2 className="font-medium">Items</h2>
+        <p className="text-sm text-muted">Only you can change this list. Everyone who can use the report fills in the numbers.</p>
+      </div>
+      {items.length > 0 && (
+        <ul className="divide-y divide-line/60 border-y border-line/60">
+          {items.map((x, i) => (
+            <li key={x.id} className="flex items-center gap-1 py-1.5 ps-6 pe-3">
+              {editing?.id === x.id ? (
+                <form
+                  className="flex min-w-0 flex-1 gap-2"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    actions.renameReportItem(x.id, editing.name).then(() => setEditing(null), (err: Error) => notify(err.message));
+                  }}
+                >
+                  <Input autoFocus aria-label="Item name" value={editing.name} onChange={(e) => setEditing({ id: x.id, name: e.target.value })} className="py-2" />
+                  <Button type="submit" className="h-10 px-4">
+                    Save
+                  </Button>
+                </form>
+              ) : (
+                <>
+                  <span className="min-w-0 flex-1 truncate">{x.name}</span>
+                  <IconButton aria-label={`Move ${x.name} up`} disabled={i === 0} onClick={() => actions.moveReportItem(x.id, -1)} className="h-9 w-9">
+                    <ChevronUp size={18} />
+                  </IconButton>
+                  <IconButton aria-label={`Move ${x.name} down`} disabled={i === items.length - 1} onClick={() => actions.moveReportItem(x.id, 1)} className="h-9 w-9">
+                    <ChevronDown size={18} />
+                  </IconButton>
+                  <IconButton aria-label={`Rename ${x.name}`} onClick={() => setEditing({ id: x.id, name: x.name })} className="h-9 w-9">
+                    <Pencil size={16} />
+                  </IconButton>
+                  <IconButton
+                    aria-label={`Remove ${x.name}`}
+                    className="h-9 w-9"
+                    onClick={() => confirm(`Remove ${x.name}? All of its numbers, in every week, are deleted too.`) && actions.removeReportItem(x.id)}
+                  >
+                    <Trash2 size={16} />
+                  </IconButton>
+                </>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      <form onSubmit={add} className="flex gap-2 px-6 py-4">
+        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Add an item (e.g. Scrolls)" aria-label="New item" />
+        <Button type="submit" disabled={!name.trim()}>
+          <Plus size={16} aria-hidden /> Add
+        </Button>
+      </form>
+    </Card>
   );
 }
+
 const th = "px-2 py-2.5 text-start font-medium first:ps-6 last:pe-6 sm:px-4";
-const td = "px-2 py-2.5 first:ps-6 last:pe-6 sm:px-4";
+const td = "px-2 py-2 first:ps-6 last:pe-6 sm:px-4";
 const num = "tabular text-end whitespace-nowrap";
 /** Columns left out on phones, so the table fits without scrolling sideways. */
 const wideOnly = "hidden sm:table-cell";

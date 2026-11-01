@@ -43,6 +43,8 @@ function empty(): Store {
     personal_categories: [],
     mivtzoim_activity: [],
     report_viewers: [],
+    report_items: [],
+    report_counts: [],
   };
 }
 
@@ -353,13 +355,6 @@ export function createLocalBackend(): Backend {
       s.routes = s.routes.filter((x) => x.created_by !== userId);
       s.group_members = s.group_members.filter((x) => x.user_id !== userId);
       save(s);
-    },
-    async reportActivity(from, to) {
-      const s = load();
-      const me = s.profiles.find((x) => x.id === s.session);
-      if (!me || (roleOf(me) !== "admin" && !(s.report_viewers ?? []).some((v) => v.user_id === me.id))) return null;
-      const names = Object.fromEntries(s.profiles.map((p) => [p.id, displayName(p)]));
-      return { activity: s.mivtzoim_activity.filter((a) => a.quantity > 0 && a.activity_date >= from && a.activity_date <= to), names };
     },
     async listPeople() {
       return load().profiles.map(publicProfile);

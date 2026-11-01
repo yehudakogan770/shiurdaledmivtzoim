@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { displayName, type Activity, type LocationCard, type PersonalCategory, type Photo, type Profile, type TableName, type Tables } from "../types";
+import { displayName, type LocationCard, type PersonalCategory, type Photo, type Profile, type TableName, type Tables } from "../types";
 import { t } from "../i18n";
 import { NOT_ALLOWED, checkEmail, checkPassword, loginKey, normalizeUsername, type Backend, type CommunityRow } from "./index";
 
@@ -295,14 +295,6 @@ export function createSupabaseBackend(url: string, key: string): Backend {
     async communityActivity(from, to) {
       const { data, error } = await sb.rpc("community_activity", { p_from: from, p_to: to });
       return error ? null : (data as CommunityRow[]);
-    },
-    async reportActivity(from, to) {
-      const { data, error } = await sb.rpc("report_activity", { p_from: from, p_to: to });
-      if (error) return null;
-      const rows = data as (Omit<Activity, "group_id" | "route_id" | "location_id" | "notes"> & { route: string | null })[];
-      const names: Record<string, string> = {};
-      for (const r of rows) names[r.user_id] = r.route || names[r.user_id] || "Route";
-      return { activity: rows.map(({ route, ...a }) => ({ ...a, group_id: null, route_id: null, location_id: null, notes: null })), names };
     },
     async listPeople() {
       const withEmail = await sb.rpc("admin_people");

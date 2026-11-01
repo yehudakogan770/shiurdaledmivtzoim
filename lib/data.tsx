@@ -17,6 +17,8 @@ import type {
   Route,
   RouteLocation,
   WeekAnswer,
+  ReportItem,
+  ReportCount,
 } from "./types";
 import { DEFAULT_SETTINGS, type SignUpInput } from "./types";
 import { sendToDrive } from "./drive";
@@ -113,8 +115,10 @@ interface DataContextValue {
   photos: Photo[];
   /** Business card details by place, for this account's own places (all of them for the Owner). */
   cards: Record<string, LocationCard>;
-  /** Admins, and accounts the Owner allowed: can open the weekly report (to look, not change). */
+  /** Admins, and accounts the Owner allowed: can open the weekly report and fill in its numbers. */
   canSeeReport: boolean;
+  /** The weekly report's items and numbers; null until database update 016 is run (or not allowed). */
+  report: { items: ReportItem[]; counts: ReportCount[] } | null;
   /** The Owner: the accounts allowed to see the weekly report (besides admins). */
   reportViewers: string[];
   /** Every account; filled in for admins only. */
@@ -196,6 +200,13 @@ interface DataContextValue {
     deletePhoto(id: string): Promise<void>;
     /** The Owner: let an account see the weekly report, or stop it. */
     setReportViewer(userId: string, allowed: boolean): Promise<void>;
+    /** The Owner: the weekly report's items. */
+    addReportItem(name: string): Promise<void>;
+    renameReportItem(id: string, name: string): Promise<void>;
+    moveReportItem(id: string, by: -1 | 1): Promise<void>;
+    removeReportItem(id: string): Promise<void>;
+    /** Fill in an item's numbers for a week (empty clears a number). */
+    setReportCount(itemId: string, week: string, patch: { sold?: number | null; needed?: number | null }): Promise<void>;
   };
 }
 
@@ -232,6 +243,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [cards, setCards] = useState<Record<string, LocationCard>>({});
   // Who may see the weekly report: rows of report_viewers (empty until database update 016 is run).
   const [viewerRows, setViewerRows] = useState<{ id: string; user_id: string }[]>([]);
+  const [report, setReport] = useState<DataContextValue["report"]>(null);
   const [recovering, setRecovering] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -290,7 +302,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
     names[user.id] = user.name || names[user.id];
     setPeople(everyone);
     // The Owner sees every row; anyone else only their own (the database decides).
-    b.list("report_viewers").then(setViewerRows, () => setViewerRows([]));
+    b.list("report_viewers").then(
+      (rows) => {
+        setViewerRows(rows);
+        // The report's items and numbers, for those who may see them (the database refuses everyone else).
+        if (user.role !== "admin" && !rows.some((v) => v.user_id === user.id)) return setReport(null);
+        // A number still being saved would be wiped off the screen by older data, so wait for it.
+        if (unsaved.current > 0) return;
+        Promise.all([b.list("report_items"), b.list("report_counts")]).then(([items, counts]) => setReport({ items, counts }), () => setReport(null));
+      },
+      () => {
+        setViewerRows([]);
+        setReport(null);
+      },
+    );
     setData({ groups, members, routes, locations, stops, categories, activity, weeks, messages, names });
   }, []);
 
@@ -431,6 +456,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       cards,
       canSeeReport: me?.role === "admin" || viewerRows.some((v) => v.user_id === me?.id),
       reportViewers: viewerRows.map((v) => v.user_id),
+      report,
       toast,
       notify,
       refresh,
@@ -703,6 +729,46 @@ export function DataProvider({ children }: { children: ReactNode }) {
             setViewerRows((v) => v.filter((x) => x.id !== row.id));
           }
         },
+        addReportItem: async (name) => {
+          if (!name.trim()) throw new Error(t("Give it a name."));
+          const saved = await b.insert("report_items", { name: name.trim(), position: report?.items.length ?? 0 });
+          setReport((r) => (r ? { ...r, items: [...r.items, saved] } : r));
+        },
+        renameReportItem: async (id, name) => {
+          if (!name.trim()) throw new Error(t("Give it a name."));
+          setReport((r) => (r ? { ...r, items: r.items.map((x) => (x.id === id ? { ...x, name: name.trim() } : x)) } : r));
+          saveLater(() => b.update("report_items", id, { name: name.trim() }));
+        },
+        moveReportItem: async (id, by) => {
+          if (!report) return;
+          const list = [...report.items].sort((x, y) => (x.position ?? 0) - (y.position ?? 0) || x.created_at.localeCompare(y.created_at));
+          const i = list.findIndex((x) => x.id === id);
+          if (!list[i + by]) return;
+          [list[i], list[i + by]] = [list[i + by], list[i]];
+          const items = list.map((x, position) => ({ ...x, position }));
+          setReport({ ...report, items });
+          for (const x of items) if (report.items.find((y) => y.id === x.id)?.position !== x.position) saveLater(() => b.update("report_items", x.id, { position: x.position }));
+        },
+        removeReportItem: async (id) => {
+          setReport((r) => (r ? { items: r.items.filter((x) => x.id !== id), counts: r.counts.filter((c) => c.item_id !== id) } : r));
+          saveLater(() => b.remove("report_items", id));
+        },
+        setReportCount: async (itemId, week, patch) => {
+          const existing = report?.counts.find((c) => c.item_id === itemId && c.week === week);
+          if (existing) {
+            setReport((r) => (r ? { ...r, counts: r.counts.map((c) => (c.id === existing.id ? { ...c, ...patch } : c)) } : r));
+            saveLater(() => b.update("report_counts", realId(existing.id), patch));
+            return;
+          }
+          const tempId = `new-${newId()}`;
+          const row = { item_id: itemId, week, sold: patch.sold ?? null, needed: patch.needed ?? null };
+          setReport((r) => (r ? { ...r, counts: [...r.counts, { ...row, id: tempId, created_at: new Date().toISOString() }] } : r));
+          saveLater(async () => {
+            const saved = await b.insert("report_counts", row);
+            savedIds.current.set(tempId, saved.id);
+            setReport((r) => (r ? { ...r, counts: r.counts.map((c) => (c.id === tempId ? { ...c, id: saved.id } : c)) } : r));
+          });
+        },
         deletePhoto: async (id) => {
           const photo = photos.find((x) => x.id === id);
           if (!photo || !b.deletePhoto) return;
@@ -788,7 +854,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       actions: sampleOnly(value.actions),
       auth: { ...sampleOnly(value.auth), signIn, signUp, requestPasswordReset, updatePassword, finishRecovery, recovering },
     };
-  }, [backend, status, error, me, data, mine, settings, people, photos, cards, viewerRows, recovering, toast, notify, refresh, load]);
+  }, [backend, status, error, me, data, mine, settings, people, photos, cards, viewerRows, report, recovering, toast, notify, refresh, load]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }
