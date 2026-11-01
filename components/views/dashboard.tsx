@@ -804,7 +804,9 @@ function WeekPicker({ week, onChange }: { week: string; onChange(week: string): 
               zIndex: showing ? -10 : under ? -11 : -12,
               opacity: showing || under ? 1 : 0,
               transform: showing || under ? "scale(1)" : "scale(1.06)",
-              transition: showing ? "opacity 900ms ease-in-out, transform 3000ms ease-out" : "none",
+              // The zoom runs at an even pace for the photo's whole time on screen (2s shown + 0.9s fading
+              // under the next), so it never comes to a stop before the change.
+              transition: showing || under ? "opacity 900ms ease-in-out, transform 2900ms linear" : "none",
             }}
           />
         );

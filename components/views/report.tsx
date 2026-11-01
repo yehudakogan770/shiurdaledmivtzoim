@@ -3,8 +3,8 @@
 import { useState, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight, Download, ShieldCheck } from "lucide-react";
 import { useData } from "@/lib/data";
-import { addDays, allWeeks, currentWeek, FIRST_WEEK } from "@/lib/dates";
-import { weekTitle } from "@/lib/parsha";
+import { addDays, allWeeks, currentWeek, FIRST_WEEK, formatShort } from "@/lib/dates";
+import { parshaName } from "@/lib/parsha";
 import { givenOut, weekReport } from "@/lib/given-out";
 import { buildReportWorkbook } from "@/lib/report-export";
 import { Button, Card, Empty, IconButton, PageHeader, Select, cx } from "../ui";
@@ -67,7 +67,8 @@ export function ReportView() {
           <Select aria-label="Week" value={week} onChange={(e) => setWeek(e.target.value)} className="min-w-0 flex-1 py-2.5 text-sm">
             {weeks.map((w) => (
               <option key={w} value={w}>
-                {w === currentWeek() ? `This week · ${weekTitle(w)}` : weekTitle(w)}
+                {/* Short, so it fits across a phone: "Lech-Lecha · Oct 23". */}
+                {`${w === currentWeek() ? "This week · " : ""}${parshaName(w)} · ${formatShort(w)}`}
               </option>
             ))}
           </Select>
