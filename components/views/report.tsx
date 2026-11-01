@@ -114,8 +114,6 @@ function suggestion(itemId: string, week: string, counts: ReportCount[]) {
 function WeekTable({ week, items, counts }: { week: string; items: ReportItem[]; counts: ReportCount[] }) {
   const { isOwner } = useData();
   const get = (itemId: string, w: string) => counts.find((c) => c.item_id === itemId && c.week === w);
-  const soldTotal = items.reduce((n, x) => n + (get(x.id, week)?.sold ?? 0), 0);
-  const lastTotal = items.reduce((n, x) => n + (get(x.id, addDays(week, -7))?.sold ?? 0), 0);
   if (items.length === 0) {
     return (
       <Card>
@@ -160,14 +158,6 @@ function WeekTable({ week, items, counts }: { week: string; items: ReportItem[];
               );
             })}
           </tbody>
-          <tfoot className="border-t-2 border-line font-medium">
-            <tr>
-              <td className={td}>Total sold</td>
-              <td className={cx(td, num)}>{soldTotal}</td>
-              <td className={cx(td, num, wideOnly)}>{lastTotal}</td>
-              <td className={td} />
-            </tr>
-          </tfoot>
         </table>
       </div>
     </Card>
