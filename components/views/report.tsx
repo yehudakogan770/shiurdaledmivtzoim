@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight, Download, ShieldCheck } from "lucide-react";
 import { useData } from "@/lib/data";
-import { addDays, allWeeks, currentWeek, FIRST_WEEK, formatShort } from "@/lib/dates";
+import { addDays, allWeeks, currentWeek, FIRST_WEEK, formatShort, today } from "@/lib/dates";
+import type { Activity } from "@/lib/types";
 import { parshaName } from "@/lib/parsha";
 import { givenOut, weekReport } from "@/lib/given-out";
 import { buildReportWorkbook } from "@/lib/report-export";
@@ -12,29 +13,49 @@ import { Button, Card, Empty, IconButton, PageHeader, Select, cx } from "../ui";
 /**
  * The Owner's weekly report: how many of each Mivtza went out in a week, compared with the week
  * before and the 4 before that, a suggestion for how many to get next week, and each route's total.
- * Plain tables, like a ledger. English only (Owner screens).
+ * Plain tables, like a ledger, to look at only. For the Owner, admins, and accounts the Owner
+ * allowed. English only.
  */
 export function ReportView() {
-  const { isOwner, data, people, builtins, shared, settings, notify } = useData();
+  const { canSeeReport, isAdmin, backend, data, people, builtins, shared, settings, notify } = useData();
   const [week, setWeek] = useState(currentWeek());
-  if (!isOwner) {
+  // Everyone's entries come from the report's own database function, which works for the accounts
+  // the Owner allowed too; admins can fall back on what they already loaded.
+  const [source, setSource] = useState<{ activity: Activity[]; names: Record<string, string> } | null | "loading">("loading");
+  useEffect(() => {
+    if (!canSeeReport) return;
+    const got = backend?.reportActivity ? backend.reportActivity(FIRST_WEEK, addDays(today(), 1)) : Promise.resolve(null);
+    got.then(setSource, () => setSource(null));
+  }, [canSeeReport, backend]);
+  if (!canSeeReport) {
     return (
       <Card>
-        <Empty title="Owner only" icon={ShieldCheck}>
-          Only the site&apos;s Owner can see the weekly report.
+        <Empty title="Not available" icon={ShieldCheck}>
+          The weekly report is for the Owner, admins, and accounts the Owner allows.
         </Empty>
       </Card>
     );
   }
-  const nameOf = (id: string) => people.find((p) => p.id === id)?.name || data.names[id] || "Someone";
-  const report = weekReport(data.activity, builtins, shared, week, nameOf);
+  if (source === "loading") return <p className="px-1 py-10 text-center text-sm text-muted">Loading the report…</p>;
+  const all = source ?? (isAdmin ? { activity: data.activity, names: data.names } : null);
+  if (!all) {
+    return (
+      <Card>
+        <Empty title="The report can't load yet" icon={ShieldCheck}>
+          Ask the Owner to run database update 016 in Supabase.
+        </Empty>
+      </Card>
+    );
+  }
+  const nameOf = (id: string) => people.find((p) => p.id === id)?.name || all.names[id] || data.names[id] || "Someone";
+  const report = weekReport(all.activity, builtins, shared, week, nameOf);
   const weeks = allWeeks(); // newest first
   const isThisWeek = week === currentWeek();
   const change = report.total - report.lastTotal;
 
   async function download() {
     try {
-      const blob = await buildReportWorkbook(week, report, givenOut(data.activity, builtins, shared, 8), settings.site_name);
+      const blob = await buildReportWorkbook(week, report, givenOut(all!.activity, builtins, shared, 8), settings.site_name);
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
       link.download = `${settings.site_name} - Weekly report ${week}.xlsx`;
@@ -50,7 +71,7 @@ export function ReportView() {
     <div className="grid grid-cols-1 gap-3">
       <PageHeader
         title="Weekly report"
-        subtitle="How many of each Mivtza went out. Visible to the Owner only."
+        subtitle="How many of each Mivtza went out."
         action={
           <Button variant="secondary" onClick={download}>
             <Download size={16} aria-hidden /> Export

@@ -43,10 +43,10 @@ function isActive(path: string, match: string[]) {
 /** The side panel's contents. `expanded` shows labels; collapsed shows icons only. */
 function PanelContent({ expanded, onNavigate }: { expanded: boolean; onNavigate?: () => void }) {
   const { path, Link } = useNav();
-  const { me, guest, backend, auth, settings, isAdmin, isOwner } = useData();
+  const { me, guest, backend, auth, settings, isAdmin, isOwner, canSeeReport } = useData();
   // No Profile page for people without an account, or for the Owner (it doesn't log).
   const shown = guest || isOwner ? links.filter((l) => l.href !== "/profile") : links;
-  const items = isOwner ? [...shown, ADMIN_LINK, REPORT_LINK, DESK_LINK] : isAdmin ? [...shown, ADMIN_LINK] : shown;
+  const items = isOwner ? [...shown, ADMIN_LINK, REPORT_LINK, DESK_LINK] : isAdmin ? [...shown, ADMIN_LINK, REPORT_LINK] : canSeeReport ? [...shown, REPORT_LINK] : shown;
   const label = cx("whitespace-nowrap transition-opacity duration-200", expanded ? "opacity-100" : "opacity-0");
   return (
     <div className="flex h-full flex-col px-3 py-4" onClick={(e) => (e.target as HTMLElement).closest("a") && onNavigate?.()}>

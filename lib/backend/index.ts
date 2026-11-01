@@ -1,5 +1,5 @@
 import { t } from "../i18n";
-import type { LocationCard, PersonalCategory, Photo, Profile, SignUpInput, SiteSettings, TableName, Tables } from "../types";
+import type { Activity, LocationCard, PersonalCategory, Photo, Profile, SignUpInput, SiteSettings, TableName, Tables } from "../types";
 
 /**
  * Where the app keeps its data. The UI talks only to this interface, so the
@@ -77,6 +77,11 @@ export interface Backend {
   photoDriveUrl?(): Promise<string | null>;
   /** The Owner only: set or clear that address. */
   setPhotoDriveUrl?(url: string | null): Promise<void>;
+  /**
+   * Everyone's entries between two dates, with each route's name, for the weekly report. Admins and
+   * accounts the Owner allowed only; null when not allowed (or database update 016 isn't run).
+   */
+  reportActivity?(from: string, to: string): Promise<{ activity: Activity[]; names: Record<string, string> } | null>;
   /** Set this account's profile photo (already made small and square), or remove it with null. */
   setAvatar?(photo: Blob | null): Promise<string | null>;
   /** Save the language this account sees the site in. */

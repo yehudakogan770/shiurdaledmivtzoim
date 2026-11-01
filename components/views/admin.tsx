@@ -42,7 +42,7 @@ export function AdminView() {
           <SharedCategoriesCard />
         </div>
       )}
-      {isOwner && <ReportLinkCard />}
+      <ReportLinkCard />
       <PeopleCard />
       <ExportCard />
       {isOwner && <PhotoDriveCard />}
@@ -689,6 +689,7 @@ function PersonDetails({ person }: { person: Profile }) {
         <DeletePerson person={person} />
         <MessagePerson person={person} />
       </div>
+      <ReportAccess person={person} />
       <div className="overflow-hidden rounded-2xl bg-card">
         <p className="px-6 pt-4 pb-1 text-sm font-medium">{t("Entries ({n})", { n: rows.length })}</p>
         {rows.length === 0 ? (
@@ -1231,5 +1232,39 @@ function ReportLinkCard() {
         </div>
       </Card>
     </Link>
+  );
+}
+
+/** The Owner: let this account see the weekly report (to look only). Admins can always see it. */
+function ReportAccess({ person }: { person: Profile }) {
+  const { isOwner, reportViewers, actions, notify } = useData();
+  const [busy, setBusy] = useState(false);
+  if (!isOwner || person.role === "admin") return null;
+  const allowed = reportViewers.includes(person.id);
+  return (
+    <label className="flex items-center gap-3 rounded-2xl bg-card px-4 py-3">
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-medium">Can see the weekly report</span>
+        <span className="block text-xs text-muted">To look only. They can&apos;t change anything. Admins always see it.</span>
+      </span>
+      <input
+        type="checkbox"
+        role="switch"
+        checked={allowed}
+        disabled={busy}
+        onChange={async (e) => {
+          setBusy(true);
+          try {
+            await actions.setReportViewer(person.id, e.target.checked);
+            notify(e.target.checked ? `${person.name} can now see the weekly report.` : `${person.name} can no longer see the weekly report.`);
+          } catch (err) {
+            notify((err as Error).message);
+          } finally {
+            setBusy(false);
+          }
+        }}
+        className="h-6 w-11 shrink-0 cursor-pointer appearance-none rounded-full bg-outline/40 transition-colors before:block before:h-5 before:w-5 before:translate-x-0.5 before:rounded-full before:bg-white before:shadow before:transition-transform checked:bg-accent checked:before:translate-x-[1.375rem] disabled:opacity-50"
+      />
+    </label>
   );
 }

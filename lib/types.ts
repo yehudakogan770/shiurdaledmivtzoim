@@ -164,6 +164,13 @@ export interface WeekAnswer {
 }
 
 
+/** An account the Owner lets see the weekly report (admins see it anyway). */
+export interface ReportViewer {
+  id: string;
+  user_id: string;
+  created_at: string;
+}
+
 export interface Tables {
   profiles: Profile;
   groups: Group;
@@ -173,6 +180,7 @@ export interface Tables {
   route_locations: RouteLocation;
   personal_categories: PersonalCategory;
   mivtzoim_activity: Activity;
+  report_viewers: ReportViewer;
 }
 
 export type TableName = keyof Tables;

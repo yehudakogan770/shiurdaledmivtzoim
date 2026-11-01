@@ -113,6 +113,10 @@ interface DataContextValue {
   photos: Photo[];
   /** Business card details by place, for this account's own places (all of them for the Owner). */
   cards: Record<string, LocationCard>;
+  /** Admins, and accounts the Owner allowed: can open the weekly report (to look, not change). */
+  canSeeReport: boolean;
+  /** The Owner: the accounts allowed to see the weekly report (besides admins). */
+  reportViewers: string[];
   /** Every account; filled in for admins only. */
   people: Profile[];
   toast: string | null;
@@ -190,6 +194,8 @@ interface DataContextValue {
     uploadPhotos(photos: { full: Blob; thumb: Blob; width: number; height: number; color?: string; source?: Blob }[], onProgress?: (done: number) => void): Promise<void>;
     /** The person who shared it, or an admin. */
     deletePhoto(id: string): Promise<void>;
+    /** The Owner: let an account see the weekly report, or stop it. */
+    setReportViewer(userId: string, allowed: boolean): Promise<void>;
   };
 }
 
@@ -224,6 +230,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [people, setPeople] = useState<Profile[]>([]);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [cards, setCards] = useState<Record<string, LocationCard>>({});
+  // Who may see the weekly report: rows of report_viewers (empty until database update 016 is run).
+  const [viewerRows, setViewerRows] = useState<{ id: string; user_id: string }[]>([]);
   const [recovering, setRecovering] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -281,6 +289,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const names = await b.names([...ids]);
     names[user.id] = user.name || names[user.id];
     setPeople(everyone);
+    // The Owner sees every row; anyone else only their own (the database decides).
+    b.list("report_viewers").then(setViewerRows, () => setViewerRows([]));
     setData({ groups, members, routes, locations, stops, categories, activity, weeks, messages, names });
   }, []);
 
@@ -419,6 +429,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       people,
       photos,
       cards,
+      canSeeReport: me?.role === "admin" || viewerRows.some((v) => v.user_id === me?.id),
+      reportViewers: viewerRows.map((v) => v.user_id),
       toast,
       notify,
       refresh,
@@ -679,6 +691,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
             if (added.length) setPhotos((p) => [...added, ...p]);
           }
         },
+        setReportViewer: async (userId, allowed) => {
+          const row = viewerRows.find((v) => v.user_id === userId);
+          if (allowed && !row) {
+            const saved = await b.insert("report_viewers", { user_id: userId }).catch((e: Error) => {
+              throw new Error(/report_viewers|relation|schema cache/.test(e.message) ? t("Run database update 016 in Supabase first.") : e.message);
+            });
+            setViewerRows((v) => [...v, saved]);
+          } else if (!allowed && row) {
+            await b.remove("report_viewers", row.id);
+            setViewerRows((v) => v.filter((x) => x.id !== row.id));
+          }
+        },
         deletePhoto: async (id) => {
           const photo = photos.find((x) => x.id === id);
           if (!photo || !b.deletePhoto) return;
@@ -764,7 +788,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       actions: sampleOnly(value.actions),
       auth: { ...sampleOnly(value.auth), signIn, signUp, requestPasswordReset, updatePassword, finishRecovery, recovering },
     };
-  }, [backend, status, error, me, data, mine, settings, people, photos, cards, recovering, toast, notify, refresh, load]);
+  }, [backend, status, error, me, data, mine, settings, people, photos, cards, viewerRows, recovering, toast, notify, refresh, load]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }
