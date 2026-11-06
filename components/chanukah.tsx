@@ -8,6 +8,7 @@ import { isChanukahOn, useChanukah, type ChanukahState } from "@/lib/chanukah";
 import { zmanimPlace } from "@/lib/shkiah";
 import { locale, t } from "@/lib/i18n";
 import { MenorahIcon } from "./icons";
+import { Menorah3D } from "./menorah-3d";
 import { cx } from "./ui";
 
 /** Each night in Hebrew (it stays Hebrew in every language) and its English title. */
@@ -292,7 +293,7 @@ export function ChanukahHero() {
       )}
 
       {/* The week before, every candle burns; on the day of the first candle they wait for the lighting. */}
-      <Menorah lit={state.phase === "countdown" ? 8 : n} className="mt-3" />
+      <Menorah3D lit={state.phase === "countdown" ? 8 : n} className="mt-3" fallback={<Menorah lit={state.phase === "countdown" ? 8 : n} className="mt-3" />} />
 
       <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-accent">{t("The Shiur So Far")}</p>
       <div className="mx-auto mt-2 grid max-w-md grid-cols-3">
