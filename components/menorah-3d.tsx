@@ -368,11 +368,11 @@ function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, e
     along(new THREE.TorusGeometry(0.22, 0.07, 10, 28).rotateX(Math.PI / 2), joint.clone().addScaledVector(dir, -0.72), dir);
   }
 
-  // The candle cup at the top of each branch and of the stem, sitting on the wide flower, after the
-  // close-up: a small foot, a ring of beads, a narrow neck, then a bowl of six raised leaves whose
-  // pointed tips curl outward, with small leaves between them. Open on top, where the candle sits.
-  const flowerGeo = (hole: number) => {
-    const geo = lathe(
+  // The candle cup at the top of each branch and of the stem, sitting on the wide flower: a small
+  // foot, a narrow neck with a round knob, a smooth plain cup widening upward, and on top a flat
+  // round plate, wider than the cup, that the candle stands in (as in the photo).
+  const flowerGeo = (hole: number) =>
+    lathe(
       [
         [0, 0],
         [0.36, 0],
@@ -386,47 +386,20 @@ function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, e
         [0.55, 1.35],
         [0.75, 1.7],
         [0.88, 2.05],
-        [0.95, 2.35],
-        [0.86, 2.45],
-        [hole + 0.04, 2.38],
-        [hole, 2.25],
+        [0.94, 2.3],
+        // The flat round plate on top, wider than the cup, with a small raised edge.
+        [0.96, 2.36],
+        [1.28, 2.38],
+        [1.34, 2.46],
+        [1.3, 2.53],
+        [1.22, 2.5],
+        [hole + 0.1, 2.47],
+        [hole, 2.42],
         [hole, 1.35],
         [0, 1.35],
       ],
       96,
     );
-    const pos = geo.attributes.position;
-    for (let i = 0; i < pos.count; i++) {
-      const px = pos.getX(i);
-      const py = pos.getY(i);
-      const pz = pos.getZ(i);
-      const rr = Math.hypot(px, pz);
-      if (rr < hole + 0.05) continue;
-      const a = Math.atan2(pz, px);
-      let k = 1;
-      let lift = 0;
-      const leaf = Math.max(0, Math.cos(a * 6)); // six big leaves
-      const small = Math.max(0, Math.cos(a * 6 + Math.PI)); // six small leaves between them
-      // The leaves stand out from the bowl, with a fine line down the middle of each.
-      if (py > 1.05) {
-        const h = Math.min(1, (py - 1.05) / 1.2);
-        k += 0.1 * Math.pow(leaf, 2) * h + 0.05 * Math.pow(small, 2) * h - 0.03 * Math.pow(leaf, 40) * h;
-        // Fine teeth along the leaf edges.
-        k += 0.012 * Math.cos(a * 36) * h;
-      }
-      // The tips rise to points and curl outward.
-      if (py > 2.0) {
-        const w = (py - 2.0) / 0.45;
-        lift = (0.34 * Math.pow(leaf, 4) + 0.14 * Math.pow(small, 4) - 0.06) * w;
-        k += 0.14 * Math.pow(leaf, 2) * w * w;
-      }
-      // A ring of beads at the neck.
-      if (py > 0.45 && py < 0.85) k += 0.07 * Math.pow(Math.max(0, Math.cos(a * 16)), 2);
-      pos.setXYZ(i, px * k, py + lift, pz * k);
-    }
-    geo.computeVertexNormals();
-    return geo;
-  };
   // About 2 inches wide and 2.6 tall, as in the photo.
   const CUP = 1.08;
   const flower = flowerGeo(0.32);
