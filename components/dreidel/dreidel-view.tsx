@@ -19,8 +19,10 @@ export interface Spin {
  * One dreidel on screen, in 3D. Before any spin it turns slowly. Given a `spin`, it lifts a
  * little, spins fast on its point, slows, wobbles as it loses speed, and settles with that side
  * facing you; then `onLanded` is called. The result always comes from outside (a random pick, or
- * later the game's server), never from the animation. Swiping sideways (phone) or clicking
- * (computer) on it calls `onSpinRequest`.
+ * later the game's server), never from the animation.
+ *
+ * Like the menorah, drag it (finger or mouse) to turn it around and tilt it up or down; let go and
+ * it turns back by itself. A quick swipe, or a tap or click, spins it (calls `onSpinRequest`).
  */
 export function DreidelView({
   design,
@@ -39,6 +41,8 @@ export function DreidelView({
   const api = useRef<{ setDesign(d: DreidelDesign): void; play(s: Spin): void } | null>(null);
   const landed = useRef(onLanded);
   landed.current = onLanded;
+  const askSpin = useRef(onSpinRequest);
+  askSpin.current = onSpinRequest;
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   const pending = useRef<{ design: DreidelDesign; spin?: Spin | null }>({ design, spin });
@@ -54,7 +58,7 @@ export function DreidelView({
         const THREE = await import("three");
         const { RoomEnvironment } = await import("three/examples/jsm/environments/RoomEnvironment.js");
         if (cancelled) return;
-        const s = start(THREE, RoomEnvironment, el, (r) => landed.current?.(r), () => !cancelled && setReady(true));
+        const s = start(THREE, RoomEnvironment, el, (r) => landed.current?.(r), () => !cancelled && setReady(true), (d) => askSpin.current?.(d));
         api.current = s;
         stop = s.stop;
         s.setDesign(pending.current.design);
@@ -81,22 +85,9 @@ export function DreidelView({
     api.current?.play(spin);
   }, [spin, ready]);
 
-  // Swipe sideways on a phone or tablet, click on a computer.
-  const down = useRef<{ x: number; y: number; type: string } | null>(null);
   return (
-    <div
-      className={cx("relative mx-auto aspect-square w-full max-w-[420px] touch-pan-y select-none", onSpinRequest && "cursor-pointer", className)}
-      onPointerDown={(e) => (down.current = { x: e.clientX, y: e.clientY, type: e.pointerType })}
-      onPointerUp={(e) => {
-        const d = down.current;
-        down.current = null;
-        if (!d || !onSpinRequest) return;
-        const dx = e.clientX - d.x;
-        const dy = e.clientY - d.y;
-        if (d.type === "mouse" ? Math.hypot(dx, dy) < 12 || Math.abs(dx) > 30 : Math.abs(dx) > 28 && Math.abs(dx) > Math.abs(dy)) onSpinRequest(dx < 0 ? -1 : 1);
-      }}
-    >
-      <div ref={box} role="img" aria-label={t("A dreidel")} className="absolute inset-0" />
+    <div className={cx("relative mx-auto aspect-square w-full max-w-[420px] select-none", className)}>
+      <div ref={box} role="img" aria-label={t("A dreidel")} className={cx("absolute inset-0 touch-none", onSpinRequest ? "cursor-pointer" : "cursor-grab active:cursor-grabbing")} />
       {failed && <p className="absolute inset-x-0 top-1/2 text-center text-sm text-muted">{t("This phone can't show the 3D dreidel.")}</p>}
     </div>
   );
@@ -104,7 +95,7 @@ export function DreidelView({
 
 type Three = typeof import("three");
 
-function start(THREE: Three, RoomEnvironment: new () => T.Scene, el: HTMLDivElement, onLanded: (r: number) => void, onReady: () => void) {
+function start(THREE: Three, RoomEnvironment: new () => T.Scene, el: HTMLDivElement, onLanded: (r: number) => void, onReady: () => void, askSpin: (direction: 1 | -1) => void) {
   const { renderer, scene, dispose: disposeStage } = createStage(THREE, RoomEnvironment, el);
 
   // A soft shadow on the "floor" under the tip.
@@ -122,8 +113,15 @@ function start(THREE: Three, RoomEnvironment: new () => T.Scene, el: HTMLDivElem
   scene.add(shadow);
 
   const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
-  camera.position.set(0, 1.5, 5.6);
-  camera.lookAt(0, 0.98, 0);
+  const LOOK = new THREE.Vector3(0, 0.98, 0);
+  const DIST = Math.hypot(5.6, 1.5 - 0.98);
+  const BASE_PITCH = Math.atan2(1.5 - 0.98, 5.6);
+  const place = (pitch: number) => {
+    const e = BASE_PITCH + pitch;
+    camera.position.set(0, LOOK.y + Math.sin(e) * DIST, Math.cos(e) * DIST);
+    camera.lookAt(LOOK);
+  };
+  place(0);
   const resize = () => {
     const w = el.clientWidth || 300;
     const h = el.clientHeight || 300;
@@ -151,6 +149,65 @@ function start(THREE: Three, RoomEnvironment: new () => T.Scene, el: HTMLDivElem
     if (!raf && onScreen && document.visibilityState === "visible") raf = requestAnimationFrame(frame);
   };
 
+  // ---- Dragging, like the menorah: turn it around and tilt it, with a little momentum; let go
+  // and it turns back to where it was. A quick swipe, or a tap or click, spins it instead. ----
+  const TILT = THREE.MathUtils.degToRad(35);
+  const SENSE = 0.009; // radians per pixel dragged
+  const m = { yaw: 0, pitch: 0, vYaw: 0, vPitch: 0, dragging: false, id: -1, x: 0, y: 0, t: 0, x0: 0, y0: 0, t0: 0, vx: 0 };
+  const settled = () => !m.dragging && m.vYaw === 0 && m.vPitch === 0 && Math.abs(m.yaw) < 0.002 && Math.abs(m.pitch) < 0.002;
+  const onDown = (e: PointerEvent) => {
+    if (m.dragging) return;
+    Object.assign(m, { dragging: true, id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), x0: e.clientX, y0: e.clientY, t0: performance.now(), vx: 0, vYaw: 0, vPitch: 0 });
+    try {
+      el.setPointerCapture(e.pointerId);
+    } catch {
+      // Not every browser allows it; dragging still works.
+    }
+    wake();
+  };
+  const onMove = (e: PointerEvent) => {
+    if (!m.dragging || e.pointerId !== m.id) return;
+    const now = performance.now();
+    const dt = Math.max(1, now - m.t);
+    const dx = e.clientX - m.x;
+    // While it's spinning, only tilting; turning would fight the spin.
+    const dYaw = anim ? 0 : dx * SENSE;
+    // Dragging up looks down from above; dragging down looks up from below.
+    const dPitch = -(e.clientY - m.y) * SENSE * 0.8;
+    m.yaw += dYaw;
+    m.pitch = Math.max(-TILT, Math.min(TILT, m.pitch + dPitch));
+    m.vYaw = m.vYaw * 0.5 + (dYaw / dt) * 16 * 0.5;
+    m.vPitch = m.vPitch * 0.5 + (dPitch / dt) * 16 * 0.5;
+    m.vx = m.vx * 0.5 + (dx / dt) * 0.5;
+    m.x = e.clientX;
+    m.y = e.clientY;
+    m.t = now;
+    wake();
+  };
+  const onUp = (e: PointerEvent) => {
+    if (!m.dragging || e.pointerId !== m.id) return;
+    m.dragging = false;
+    const now = performance.now();
+    const dx = e.clientX - m.x0;
+    const dy = e.clientY - m.y0;
+    const paused = now - m.t > 90;
+    if (paused) m.vYaw = m.vPitch = m.vx = 0;
+    const tap = Math.hypot(dx, dy) < 10 && now - m.t0 < 400;
+    // A fast sideways flick (not a slow drag) is a spin.
+    // (Measured over the whole swipe, which works even when a busy phone skips some movements.)
+    const fast = Math.abs(dx) / Math.max(1, now - m.t0) > 0.45 || Math.abs(m.vx) > 0.9;
+    const flick = !paused && fast && Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2;
+    if (e.type === "pointerup" && !anim && (tap || flick)) {
+      m.vYaw = 0;
+      askSpin(tap ? 1 : dx < 0 ? -1 : 1);
+    }
+    wake();
+  };
+  el.addEventListener("pointerdown", onDown);
+  el.addEventListener("pointermove", onMove);
+  el.addEventListener("pointerup", onUp);
+  el.addEventListener("pointercancel", onUp);
+
   function frame(now: number) {
     raf = 0;
     let tilt = REST_TILT;
@@ -172,11 +229,27 @@ function start(THREE: Three, RoomEnvironment: new () => T.Scene, el: HTMLDivElem
         anim = null;
         onLanded(r);
       }
-    } else if (idle && !still) {
+    } else if (idle && !still && !m.dragging) {
       yaw += 0.006;
     }
+    if (!m.dragging) {
+      // Momentum that slows down, then it turns back and levels out by itself.
+      m.yaw += m.vYaw;
+      m.pitch = Math.max(-TILT, Math.min(TILT, m.pitch + m.vPitch));
+      m.vYaw *= 0.92;
+      m.vPitch *= 0.85;
+      if (Math.abs(m.vYaw) < 0.0004) m.vYaw = 0;
+      if (Math.abs(m.vPitch) < 0.0004) m.vPitch = 0;
+      // Back to where it was, the shortest way round (never a whole extra circle).
+      const home = Math.round(m.yaw / (Math.PI * 2)) * Math.PI * 2;
+      m.yaw += (home - m.yaw) * 0.045;
+      m.pitch += (0 - m.pitch) * 0.045;
+      if (m.vYaw === 0 && Math.abs(home - m.yaw) < 0.0015) m.yaw = 0;
+      if (m.vPitch === 0 && Math.abs(m.pitch) < 0.0015) m.pitch = 0;
+    }
+    place(m.pitch);
     if (model) {
-      model.spinner.rotation.y = yaw;
+      model.spinner.rotation.y = yaw + m.yaw;
       model.root.rotation.set(tilt, 0, lean);
       model.root.position.y = lift;
     }
@@ -187,7 +260,7 @@ function start(THREE: Three, RoomEnvironment: new () => T.Scene, el: HTMLDivElem
       first = false;
       onReady();
     }
-    if (anim || (idle && !still)) wake();
+    if (anim || (idle && !still) || !settled()) wake();
   }
 
   const io = new IntersectionObserver(([e]) => {
@@ -227,6 +300,10 @@ function start(THREE: Three, RoomEnvironment: new () => T.Scene, el: HTMLDivElem
       raf = -1;
       io.disconnect();
       ro.disconnect();
+      el.removeEventListener("pointerdown", onDown);
+      el.removeEventListener("pointermove", onMove);
+      el.removeEventListener("pointerup", onUp);
+      el.removeEventListener("pointercancel", onUp);
       document.removeEventListener("visibilitychange", wake);
       model?.dispose();
       shadowTex.dispose();

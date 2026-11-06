@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronLeft, Minus, Plus, Trash2, Trophy, UserPlus } from "lucide-react";
 import { randomLetter, savedDesign } from "@/lib/dreidel";
 import { applySpin, currentPlayer, DEFAULT_SETTINGS, endOnTime, newGame, playAgain, TIME_LIMITS, type GameSettings, type GameState, type Outcome } from "@/lib/dreidel-game";
-import { t, tn } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
 import { GeltShower } from "../gelt-shower";
 import { Input, cx } from "../ui";
 import { DreidelView, type Spin } from "./dreidel-view";
@@ -321,9 +321,7 @@ export function PlayerList({ state, turnId, you }: { state: GameState; turnId: s
           <span className="flex items-center gap-1.5 font-medium">
             <span className="truncate">{p.name}</span>
             {p.id === you && <span className="shrink-0 text-xs text-muted">{t("(you)")}</span>}
-            {Array.from({ length: p.tokens }, (_, i) => (
-              <Gelt key={i} size={16} title={t("Life token")} />
-            ))}
+            <Coins n={p.tokens} title={t("Life token")} />
           </span>
           <span className="block text-xs text-muted">{p.out ? t("Out") : p.id === turnId ? t("Their turn") : ""}</span>
         </span>
@@ -365,8 +363,10 @@ export function Results({ state, onAgain, onExit, waiting }: { state: GameState;
           <li key={p.id} className="flex items-center gap-3 rounded-[18px] border border-white/10 bg-white/5 px-3 py-2">
             {state.winners.includes(p.id) ? <Trophy size={20} className="shrink-0 text-accent" aria-label={t("Winner")} /> : <span className="w-5" />}
             <DreidelThumb design={p.design} size={36} />
-            <span className="min-w-0 flex-1 truncate font-medium">{p.name}</span>
-            <span className="text-xs text-muted">{tn(p.wins, "1 win", "{n} wins")}</span>
+            <span className="flex min-w-0 flex-1 items-center gap-1.5 font-medium">
+              <span className="truncate">{p.name}</span>
+              <Coins n={p.wins} title={t("Wins")} />
+            </span>
             <span className="flex items-center gap-1.5">
               <Gelt size={18} />
               <span className="tabular font-semibold">{p.coins}</span>
@@ -446,6 +446,20 @@ export function Stepper({ value, min, max, label, onChange }: { value: number; m
         <Plus size={18} />
       </button>
     </div>
+  );
+}
+
+/** One small coin for each (life token or win), overlapping; nothing at all for none. */
+export function Coins({ n, size = 16, title }: { n: number; size?: number; title: string }) {
+  if (n <= 0) return null;
+  return (
+    <span role="img" aria-label={`${title}: ${n}`} title={`${title}: ${n}`} className="flex shrink-0 items-center">
+      {Array.from({ length: n }, (_, i) => (
+        <span key={i} className="rounded-full shadow-[0_1px_2px_rgba(0,0,0,.35)]" style={{ marginInlineStart: i ? -size * 0.45 : 0 }}>
+          <Gelt size={size} />
+        </span>
+      ))}
+    </span>
   );
 }
 

@@ -266,6 +266,7 @@ const chanukah: Area = {
     "Only the host can start the game.": "רק המארח יכול להתחיל את המשחק.",
     "Only the host can start the next game.": "רק המארח יכול להתחיל את המשחק הבא.",
     "The game isn't on.": "המשחק לא פעיל.",
+    Wins: "ניצחונות",
   },
   fr: {
     "A menorah with {n} candles lit": "Une ménorah avec {n} bougies allumées",
@@ -530,6 +531,7 @@ const chanukah: Area = {
     "Only the host can start the game.": "Seul l'hôte peut commencer la partie.",
     "Only the host can start the next game.": "Seul l'hôte peut commencer la partie suivante.",
     "The game isn't on.": "La partie n'est pas en cours.",
+    Wins: "Victoires",
   },
   es: {
     "A menorah with {n} candles lit": "Una menorá con {n} velas encendidas",
@@ -794,6 +796,7 @@ const chanukah: Area = {
     "Only the host can start the game.": "Solo el anfitrión puede empezar la partida.",
     "Only the host can start the next game.": "Solo el anfitrión puede empezar la siguiente partida.",
     "The game isn't on.": "La partida no está en curso.",
+    Wins: "Victorias",
   },
 };
 

@@ -11,7 +11,7 @@ import { GeltShower } from "../gelt-shower";
 import { Input, cx } from "../ui";
 import { DreidelView, type Spin } from "./dreidel-view";
 import { DreidelGlobe } from "./globe";
-import { BackBar, Big, Gelt, Label, outcomeText, PlayerList, Results, SettingsForm } from "./local-game";
+import { BackBar, Big, Coins, Gelt, Label, outcomeText, PlayerList, Results, SettingsForm } from "./local-game";
 import { QrScan } from "./qr-scan";
 import { DreidelThumb } from "./thumb";
 
@@ -309,9 +309,7 @@ function Lobby({ net, session, game, reload, live, onLeave }: Props) {
               <span className="flex items-center gap-1.5 font-medium">
                 <span className="truncate">{p.name}</span>
                 {p.id === session.playerId && <span className="shrink-0 text-xs text-muted">{t("(you)")}</span>}
-                {Array.from({ length: p.tokens }, (_, i) => (
-                  <Gelt key={i} size={16} title={t("Life token")} />
-                ))}
+                <Coins n={p.tokens} title={t("Life token")} />
               </span>
             </span>
             {p.id === game.host && (

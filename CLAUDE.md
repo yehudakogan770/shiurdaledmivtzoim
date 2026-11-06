@@ -14,7 +14,7 @@ A website, live at **https://sdmivtzoim.com**, where bochurim on Shiur Daled log
 - **Pushing to `claude/zealous-brown-7i5ws4` (or `main`) deploys the LIVE site.** Before pushing a visible change, show sample images and wait for "go" / "go ahead" / "make it live".
 - **Never merge to `main`** unless asked. `main` also deploys and is far behind the working branch.
 - **Never change the site's colors.**
-- **Everything is glass** (frosted, see-through cards over soft color glows), never solid. Corners are "softly squared", as already set.
+- **One-piece look:** sections sit straight on the page (no boxes, no divider lines) over soft color glows; only buttons, tiles and boxes to type in stand apart, and those (and pop-ups) are glass, never solid. Settings (Profile) keeps a faint line between sections. Corners are "softly squared", as already set.
 - **Hebrew always stays Hebrew.** It is never translated or transliterated. Hebrew site text is capitalized as set.
 - **The Owner account (sdmivtzoim87@gmail.com) is always in English.** Choosing a language is only for regular users (English, Hebrew, French, Spanish).
 - Every user-visible string goes through `t()` / `tn()` from `lib/i18n`, with he/fr/es translations in `lib/i18n/strings/<area>.ts`. Owner-only screens can stay English.
