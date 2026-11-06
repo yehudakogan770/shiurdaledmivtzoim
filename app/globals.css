@@ -385,6 +385,32 @@ body::before {
   border: 1px solid var(--glass-edge);
   box-shadow: var(--glass-shadow);
 }
+/* One piece: the page's sections sit straight on the page, with no boxes or divider lines; only
+   buttons (and boxes to type in) stand apart. The sections reach out a little so their text lines
+   up with the page title. (Pop-ups sit outside <main>, so they keep their glass.) */
+main section.bg-card {
+  background: transparent !important;
+  border-color: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  margin-inline: -18px;
+}
+main {
+  overflow-x: clip;
+}
+main .divide-y > * {
+  border-color: transparent !important;
+}
+/* Settings (Profile): a faint line between sections, so each setting is easy to find. */
+main .settings-page section.bg-card {
+  border-radius: 0;
+  border-top: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+}
+/* No line above the first section (right under the page title). */
+main .settings-page .first-setting > section.bg-card {
+  border-top-color: transparent;
+}
 .bg-accent-soft,
 .bg-candle-soft {
   -webkit-backdrop-filter: blur(16px);

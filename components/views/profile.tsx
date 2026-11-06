@@ -49,7 +49,7 @@ export function ProfileView() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-3">
+    <div className="settings-page grid grid-cols-1 gap-3">
       <PageHeader title={t("Profile")} subtitle={t("Your account and the Mivtzoim you track.")} />
 
       {!isOwner && <ChanukahTestCard />}
@@ -219,7 +219,7 @@ function AccountCard() {
   );
 
   return (
-    <div ref={box} className="scroll-mt-24">
+    <div ref={box} className="first-setting scroll-mt-24">
     <Card>
       <CardTitle sub={t("Change your route name, Chavrusas and how you sign in")}>{t("Account settings")}</CardTitle>
       <div className="grid gap-4 px-6 pb-6">
@@ -261,7 +261,7 @@ function AccountCard() {
             )}
           </div>
         )}
-        <div className="grid grid-cols-2 gap-3 rounded-2xl bg-paper p-4 text-center">
+        <div className="grid grid-cols-2 gap-3 py-2 text-center">
           <div>
             <p className="tabular text-2xl font-medium">{sum(mine.activity)}</p>
             <p className="text-xs text-muted">{t("Mivtzoim")}</p>
