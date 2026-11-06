@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DESIGNS, LETTERS, randomLetter, saveDesign, savedDesign, type DreidelDesign } from "@/lib/dreidel";
+import { BASES, LETTERS, parseDesign, randomLetter, saveDesign, savedDesign, type DreidelDesign } from "@/lib/dreidel";
 import { isChanukahOn } from "@/lib/chanukah";
 import { t } from "@/lib/i18n";
 import { useChanukahNow } from "../chanukah";
@@ -40,6 +40,12 @@ export function DreidelView_() {
     setSpin({ id: Date.now(), result: randomLetter(), direction });
   };
   const letter = shown != null ? LETTERS[shown] : null;
+  const current = parseDesign(design);
+  const choose = (d: DreidelDesign) => {
+    setDesign(d);
+    saveDesign(d);
+    setShown(null);
+  };
 
   return (
     <div className="mx-auto max-w-xl text-center">
@@ -90,26 +96,41 @@ export function DreidelView_() {
       {/* Choosing a design (the 3D globe of dreidels comes next). */}
       <p className="mt-7 text-xs font-semibold uppercase tracking-[0.14em] text-accent">{t("Your Dreidel")}</p>
       <div className="-mx-4 mt-2 flex gap-2 overflow-x-auto px-4 pb-2">
-        {DESIGNS.map((d) => (
+        {BASES.map((b) => (
           <button
-            key={d.id}
+            key={b.id}
             type="button"
             disabled={spinning}
-            aria-pressed={design === d.id}
-            onClick={() => {
-              setDesign(d.id);
-              saveDesign(d.id);
-              setShown(null);
-            }}
+            aria-pressed={current.base.id === b.id}
+            onClick={() => choose(b.colors ? `${b.id}-${b.colors[0].id}` : b.id)}
             className={cx(
               "h-10 shrink-0 rounded-full px-4 text-sm whitespace-nowrap transition disabled:opacity-50",
-              design === d.id ? "bg-gradient-to-b from-[#ffe29a] to-[#f28a2e] font-semibold text-[#2a1300]" : "border border-white/15 bg-white/5",
+              current.base.id === b.id ? "bg-gradient-to-b from-[#ffe29a] to-[#f28a2e] font-semibold text-[#2a1300]" : "border border-white/15 bg-white/5",
             )}
           >
-            {t(d.name)}
+            {t(b.name)}
           </button>
         ))}
       </div>
+      {/* Five colors for the materials that come in colors. */}
+      {current.base.colors && (
+        <div className="mt-2 flex justify-center gap-3" role="radiogroup" aria-label={t("Color")}>
+          {current.base.colors.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              role="radio"
+              aria-checked={current.color?.id === c.id}
+              aria-label={t(c.name)}
+              title={t(c.name)}
+              disabled={spinning}
+              onClick={() => choose(`${current.base.id}-${c.id}`)}
+              className={cx("h-9 w-9 rounded-full border-2 transition disabled:opacity-50", current.color?.id === c.id ? "scale-110 border-white" : "border-white/20")}
+              style={{ background: c.hex }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
