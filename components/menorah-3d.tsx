@@ -205,6 +205,24 @@ function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, e
     add(new THREE.SphereGeometry(r * 1.02, 24, 16), gold, a.x, a.y, a.z);
     add(new THREE.SphereGeometry(r * 1.02, 24, 16), gold, b.x, b.y, b.z);
   };
+  // A straight branch rod with thin raised lines running along it (still perfectly straight).
+  const flutedRod = (a: V3, b: V3, r: number) => {
+    const dir = new THREE.Vector3().subVectors(b, a);
+    const geo = new THREE.CylinderGeometry(r, r, dir.length(), 48, 1);
+    const pos = geo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const px = pos.getX(i);
+      const pz = pos.getZ(i);
+      if (Math.hypot(px, pz) < r * 0.5) continue;
+      const k = 1 + 0.09 * Math.pow(Math.max(0, Math.cos(Math.atan2(pz, px) * 8)), 6);
+      pos.setXYZ(i, px * k, pos.getY(i), pz * k);
+    }
+    geo.computeVertexNormals();
+    const mesh = new THREE.Mesh(geo, gold);
+    mesh.position.copy(a).addScaledVector(dir, 0.5);
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+    group.add(mesh);
+  };
   const V = (x: number, y: number) => new THREE.Vector3(x, y, 0);
 
   // ---- The 770 menorah, built from the photo (sizes measured from it; the back is a best guess) ----
@@ -224,6 +242,22 @@ function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, e
   };
   // Shared shapes (made once, used many times).
   const ball = (r: number) => new THREE.SphereGeometry(r, 32, 20);
+  // A ball with raised leaves around it (where the branches join the stem).
+  const leafBall = (r: number) => {
+    const geo = new THREE.SphereGeometry(r, 64, 32);
+    const pos = geo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const px = pos.getX(i);
+      const py = pos.getY(i);
+      const pz = pos.getZ(i);
+      const a = Math.atan2(pz, px);
+      const band = Math.sqrt(Math.max(0, 1 - (py / r) ** 2));
+      const k = 1 + 0.08 * Math.pow(Math.max(0, Math.cos(a * 8)), 2) * band + 0.025 * Math.cos(a * 24) * band;
+      pos.setXYZ(i, px * k, py, pz * k);
+    }
+    geo.computeVertexNormals();
+    return geo;
+  };
   // A flower: a short bell, narrow at the bottom, flaring to a rolled lip at the top.
   const bell = lathe([[0, 0], [0.3, 0], [0.34, 0.08], [0.4, 0.28], [0.5, 0.48], [0.55, 0.58], [0.5, 0.66], [0.3, 0.64], [0, 0.63]], 48);
   // A wide collar with eight petals, like an open flower around the stem.
@@ -244,10 +278,18 @@ function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, e
   const ringGeo = (r: number, tube = 0.1) => new THREE.TorusGeometry(r, tube, 12, 40).rotateX(Math.PI / 2);
 
   // The base: a polished dome, a little taller than half a ball, with a decorated band at its rim.
-  add(lathe([[0, 1.3], [4.22, 1.3], [4.3, 1.42], [4.3, 2.3], [4.18, 2.42], [4.05, 2.55], [3.95, 3.1], [3.7, 3.85], [3.25, 4.6], [2.6, 5.25], [1.8, 5.75], [1.0, 6.05], [0.55, 6.15], [0, 6.18]], 96), gold);
+  // About 10 inches across, 8 front to back and 6 high.
+  const baseGroup = new THREE.Group();
+  baseGroup.scale.set(1.16, 1, 0.93);
+  group.add(baseGroup);
+  const toBase = (mesh: import("three").Object3D) => {
+    group.remove(mesh);
+    baseGroup.add(mesh);
+  };
+  toBase(add(lathe([[0, 1.3], [4.22, 1.3], [4.3, 1.42], [4.3, 2.3], [4.18, 2.42], [4.05, 2.55], [3.95, 3.1], [3.7, 3.85], [3.25, 4.6], [2.6, 5.25], [1.8, 5.75], [1.0, 6.05], [0.55, 6.15], [0, 6.18]], 96), gold));
   // The rim band: a row of small raised beads all the way around, between two rings.
-  add(ringGeo(4.32, 0.07), darkGold, 0, 1.42);
-  add(ringGeo(4.32, 0.07), darkGold, 0, 2.28);
+  toBase(add(ringGeo(4.32, 0.07), darkGold, 0, 1.42));
+  toBase(add(ringGeo(4.32, 0.07), darkGold, 0, 2.28));
   {
     const bead = new THREE.SphereGeometry(0.15, 12, 8);
     const beads = new THREE.InstancedMesh(bead, darkGold, 72);
@@ -257,7 +299,7 @@ function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, e
       mtx.makeTranslation(Math.cos(a) * 4.31, 1.85, Math.sin(a) * 4.31);
       beads.setMatrixAt(i, mtx);
     }
-    group.add(beads);
+    baseGroup.add(beads);
   }
   // Four cast feet (two show from the front, three from the side): a flared pad, a waist, a bulb.
   const footGeo = lathe([[0, 0], [0.62, 0], [0.66, 0.12], [0.48, 0.3], [0.26, 0.55], [0.22, 0.8], [0.36, 1.05], [0.42, 1.3], [0.34, 1.55], [0.24, 1.7], [0.3, 1.85], [0, 1.9]], 6 * 6);
@@ -276,7 +318,7 @@ function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, e
   }
   for (let i = 0; i < 4; i++) {
     const a = Math.PI / 4 + (i * Math.PI) / 2;
-    add(footGeo, gold, Math.cos(a) * 3.45, 0, Math.sin(a) * 3.45);
+    add(footGeo, gold, Math.cos(a) * 3.45 * 1.16, 0, Math.sin(a) * 3.45 * 0.93);
   }
 
   // The stem, from the dome to the shamash: thin sections between balls, collars and rings.
@@ -289,7 +331,7 @@ function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, e
   add(petalCollar(1.15), gold, 0, 11.8);
   add(ringGeo(0.4), darkGold, 0, 12.4);
   JOINT.forEach((y, i) => {
-    add(ball(0.72), gold, 0, y);
+    add(leafBall(0.75), gold, 0, y);
     // Rings above and below each joint ball.
     add(ringGeo(0.4), darkGold, 0, y + 0.82);
     add(ringGeo(0.4), darkGold, 0, y - 0.82);
@@ -313,7 +355,7 @@ function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, e
       along(bell, at, dir.clone().negate());
     }
     const rodStart = knop.clone().addScaledVector(dir, 0.95 + 3 * 0.66 + 0.4);
-    rod(rodStart, joint, 0.17);
+    flutedRod(rodStart, joint, 0.19);
     // A small collar where the rod leaves the flowers, and where it meets the joint ball.
     along(new THREE.TorusGeometry(0.24, 0.07, 10, 28).rotateX(Math.PI / 2), rodStart, dir);
     along(new THREE.TorusGeometry(0.22, 0.07, 10, 28).rotateX(Math.PI / 2), joint.clone().addScaledVector(dir, -0.72), dir);
@@ -370,9 +412,11 @@ function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, e
     geo.computeVertexNormals();
     return geo;
   };
-  const cup = cupGeo(0.33);
-  for (const x of xs) add(cup, gold, x, ROW);
-  add(cupGeo(0.35), gold, 0, SHAMASH_CUP);
+  // About 1.5 inches wide and 2 tall.
+  const CUP = 0.8;
+  const cup = cupGeo(0.32);
+  for (const x of xs) add(cup, gold, x, ROW).scale.setScalar(CUP);
+  add(cupGeo(0.33), gold, 0, SHAMASH_CUP).scale.setScalar(CUP);
 
   // ---- Candles: tall, thin yellow candles, a little uneven, with a melted dip and a wick ----
   const candles: { wax: import("three").MeshStandardMaterial; top: V3 }[] = [];
@@ -413,8 +457,9 @@ function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, e
     wick.rotation.z = (Math.random() - 0.5) * 0.25;
     candles.push({ wax, top: new THREE.Vector3(x, base + height + 0.28, 0) });
   };
-  xs.forEach((x, i) => candle(x, ROW + 1.4, 5.2, 0.3, i * 1.7));
-  candle(0, SHAMASH_CUP + 1.4, 5.6, 0.32, 20);
+  // About 0.45 inches across; 5.5 inches showing on the side candles, 6.5 on the center one.
+  xs.forEach((x, i) => candle(x, ROW + 1.35 * CUP, 5.5 + 1.0, 0.23, i * 1.7));
+  candle(0, SHAMASH_CUP + 1.35 * CUP, 6.5 + 1.0, 0.24, 20);
 
   // A soft shadow under the base.
   const sh = document.createElement("canvas");
@@ -474,8 +519,8 @@ function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, e
 
   // ---- Camera: same framing as the drawing ----
   const camera = new THREE.PerspectiveCamera(32, 1, 1, 400);
-  camera.position.set(0, 21.3, 73);
-  camera.lookAt(0, 18.3, 0);
+  camera.position.set(0, 22, 76);
+  camera.lookAt(0, 19, 0);
 
   const resize = () => {
     const w = el.clientWidth || 300;
@@ -495,8 +540,29 @@ function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, e
   const wake = () => {
     if (!raf && onScreen && document.visibilityState === "visible") raf = requestAnimationFrame(frame);
   };
+  // Two fingers pinch to zoom in and out (within limits); one finger turns it.
+  const touches = new Map<number, { x: number; y: number }>();
+  const pinch = { start: 0, from: 0 };
+  const spread = () => {
+    const [a, b] = [...touches.values()];
+    return Math.hypot(a.x - b.x, a.y - b.y);
+  };
   const onDown = (e: PointerEvent) => {
-    if (m.dragging) return;
+    touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (touches.size === 2) {
+      // A second finger: stop turning and start zooming.
+      m.dragging = false;
+      m.vYaw = m.vPitch = 0;
+      pinch.start = spread();
+      pinch.from = dist;
+      try {
+        el.setPointerCapture(e.pointerId);
+      } catch {
+        // Zooming still works.
+      }
+      return;
+    }
+    if (m.dragging || touches.size > 2) return;
     m.dragging = true;
     m.id = e.pointerId;
     m.x = e.clientX;
@@ -511,6 +577,12 @@ function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, e
     wake();
   };
   const onMove = (e: PointerEvent) => {
+    if (touches.has(e.pointerId)) touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (touches.size === 2 && pinch.start > 0) {
+      dist = Math.max(52, Math.min(100, pinch.from * (pinch.start / Math.max(20, spread()))));
+      wake();
+      return;
+    }
     if (!m.dragging || e.pointerId !== m.id) return;
     const now = performance.now();
     const dt = Math.max(1, now - m.t);
@@ -528,6 +600,8 @@ function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, e
     wake();
   };
   const onUp = (e: PointerEvent) => {
+    touches.delete(e.pointerId);
+    if (touches.size < 2) pinch.start = 0;
     if (e.pointerId !== m.id) return;
     m.dragging = false;
     // A pause before letting go means no momentum.
@@ -538,9 +612,10 @@ function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, e
   el.addEventListener("pointermove", onMove);
   el.addEventListener("pointerup", onUp);
   el.addEventListener("pointercancel", onUp);
-  const target = new THREE.Vector3(0, 18.3, 0);
-  const DIST = Math.hypot(73, 3);
-  const BASE_PITCH = Math.atan2(3, 73);
+  const target = new THREE.Vector3(0, 19, 0);
+  const DIST = Math.hypot(76, 3);
+  let dist = DIST;
+  const BASE_PITCH = Math.atan2(3, 76);
 
   // ---- The loop: runs only while the menorah is on screen and the page is in view ----
   const start = performance.now();
@@ -566,7 +641,7 @@ function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, e
     group.rotation.y = m.yaw;
     // Tilting moves the camera up or down around the menorah, keeping it centered.
     const el2 = BASE_PITCH + m.pitch;
-    camera.position.set(0, target.y + Math.sin(el2) * DIST, Math.cos(el2) * DIST);
+    camera.position.set(0, target.y + Math.sin(el2) * dist, Math.cos(el2) * dist);
     camera.lookAt(target);
     group.updateMatrixWorld(true);
 
