@@ -207,12 +207,12 @@ const PATTERNS: Record<Pattern, { color?: string; height: string; rough?: string
   marble: {
     color: `
       float t = p.x * 2.1 + p.y * 2.9 + p.z * 1.6 + dfbm(p * 2.2) * 5.5;
-      float v1 = 1.0 - smoothstep(0.0, 0.07, abs(sin(t * 1.5)));
+      float v1 = 1.0 - smoothstep(0.0, 0.14, abs(sin(t * 1.5)));
       float t2 = -p.x * 3.2 + p.y * 1.2 + p.z * 3.9 + dfbm(p * 3.6 + 7.0) * 4.5;
-      float v2 = 1.0 - smoothstep(0.0, 0.035, abs(sin(t2 * 2.1)));
+      float v2 = 1.0 - smoothstep(0.0, 0.07, abs(sin(t2 * 2.1)));
       vec3 base = mix(vec3(0.95, 0.955, 0.97), vec3(0.84, 0.86, 0.91), dfbm(p * 3.0));
-      vec3 col = mix(base, vec3(0.22, 0.33, 0.60), v1 * 0.85);
-      col = mix(col, vec3(0.52, 0.57, 0.68), v2 * 0.55);
+      vec3 col = mix(base, vec3(0.16, 0.26, 0.56), v1 * 0.95);
+      col = mix(col, vec3(0.40, 0.46, 0.62), v2 * 0.75);
       return col;`,
     height: `return dn3(p * 40.0) * 0.08;`,
   },
@@ -539,7 +539,7 @@ export async function buildDreidel(THREE: Three, design: DreidelDesign): Promise
       break;
     case "frosted":
       main = withPattern(
-        phys({ color: new THREE.Color("#e9edf8"), metalness: 0, roughness: 0.5, transmission: 0.55, thickness: 0.9, ior: 1.5, attenuationColor: new THREE.Color("#f0f4ff"), attenuationDistance: 1.2, envMapIntensity: 1.3, sheen: 0.5, sheenColor: new THREE.Color("#ffffff"), sheenRoughness: 0.6 }),
+        phys({ color: new THREE.Color(color?.hex ?? "#e9edf8"), metalness: 0, roughness: 0.5, transmission: 0.55, thickness: 0.9, ior: 1.5, attenuationColor: new THREE.Color(color?.hex ?? "#f0f4ff"), attenuationDistance: 1.2, envMapIntensity: 1.3, sheen: 0.5, sheenColor: new THREE.Color("#ffffff"), sheenRoughness: 0.6 }),
         "frost",
         0.004,
       );

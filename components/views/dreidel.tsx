@@ -1,14 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BASES, LETTERS, parseDesign, randomLetter, saveDesign, savedDesign, type DreidelDesign } from "@/lib/dreidel";
+import { LETTERS, parseDesign, randomLetter, saveDesign, savedDesign, type DreidelDesign } from "@/lib/dreidel";
 import { isChanukahOn } from "@/lib/chanukah";
 import { t } from "@/lib/i18n";
 import { useChanukahNow } from "../chanukah";
 import { DreidelView, type Spin } from "../dreidel/dreidel-view";
+import { DreidelGlobe } from "../dreidel/globe";
 import { GeltShower } from "../gelt-shower";
 import { DreidelIcon } from "../icons";
-import { Empty, cx } from "../ui";
+import { Empty } from "../ui";
 
 /**
  * The Dreidel section, open during Chanukah (from the countdown week). Spin a dreidel just for fun
@@ -23,6 +24,7 @@ export function DreidelView_() {
   const [shown, setShown] = useState<number | null>(null);
   const [gelt, setGelt] = useState(0);
   const [touch, setTouch] = useState(true);
+  const [choosing, setChoosing] = useState(false);
 
   useEffect(() => {
     setDesign(savedDesign());
@@ -93,43 +95,29 @@ export function DreidelView_() {
         <span className="relative">{t("Spin")}</span>
       </button>
 
-      {/* Choosing a design (the 3D globe of dreidels comes next). */}
+      {/* Your dreidel: its name, and the globe to choose another. */}
       <p className="mt-7 text-xs font-semibold uppercase tracking-[0.14em] text-accent">{t("Your Dreidel")}</p>
-      <div className="-mx-4 mt-2 flex gap-2 overflow-x-auto px-4 pb-2">
-        {BASES.map((b) => (
-          <button
-            key={b.id}
-            type="button"
-            disabled={spinning}
-            aria-pressed={current.base.id === b.id}
-            onClick={() => choose(b.colors ? `${b.id}-${b.colors[0].id}` : b.id)}
-            className={cx(
-              "h-10 shrink-0 rounded-full px-4 text-sm whitespace-nowrap transition disabled:opacity-50",
-              current.base.id === b.id ? "bg-gradient-to-b from-[#ffe29a] to-[#f28a2e] font-semibold text-[#2a1300]" : "border border-white/15 bg-white/5",
-            )}
-          >
-            {t(b.name)}
-          </button>
-        ))}
-      </div>
-      {/* Five colors for the materials that come in colors. */}
-      {current.base.colors && (
-        <div className="mt-2 flex justify-center gap-3" role="radiogroup" aria-label={t("Color")}>
-          {current.base.colors.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              role="radio"
-              aria-checked={current.color?.id === c.id}
-              aria-label={t(c.name)}
-              title={t(c.name)}
-              disabled={spinning}
-              onClick={() => choose(`${current.base.id}-${c.id}`)}
-              className={cx("h-9 w-9 rounded-full border-2 transition disabled:opacity-50", current.color?.id === c.id ? "scale-110 border-white" : "border-white/20")}
-              style={{ background: c.hex }}
-            />
-          ))}
-        </div>
+      <p className="mt-1 text-lg font-medium">
+        {t(current.base.name)}
+        {current.color && <span className="text-muted"> · {t(current.color.name)}</span>}
+      </p>
+      <button
+        type="button"
+        disabled={spinning}
+        onClick={() => setChoosing(true)}
+        className="mx-auto mt-3 flex h-12 w-full max-w-md items-center justify-center rounded-[18px] border border-white/15 bg-gradient-to-b from-white/15 to-white/5 font-medium shadow-[inset_0_1px_0_rgba(255,255,255,.25)] disabled:opacity-50"
+      >
+        {t("Choose a Different Dreidel")}
+      </button>
+      {choosing && (
+        <DreidelGlobe
+          value={design}
+          onClose={() => setChoosing(false)}
+          onChoose={(d) => {
+            choose(d);
+            setChoosing(false);
+          }}
+        />
       )}
     </div>
   );

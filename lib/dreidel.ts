@@ -44,7 +44,17 @@ export const BASES: { id: DreidelBase; name: string; colors?: DreidelColor[] }[]
     ],
   },
   { id: "glass", name: "Glass" },
-  { id: "frosted", name: "Frosted Glass" },
+  {
+    id: "frosted",
+    name: "Frosted Glass",
+    colors: [
+      { id: "clear", name: "Clear", hex: "#f4f6ff" },
+      { id: "blue", name: "Blue", hex: "#b9d2ff" },
+      { id: "pink", name: "Pink", hex: "#ffc4dc" },
+      { id: "green", name: "Green", hex: "#c2efd2" },
+      { id: "amber", name: "Amber", hex: "#ffd596" },
+    ],
+  },
   { id: "marble", name: "Marble" },
   { id: "stone", name: "Stone" },
   { id: "food", name: "Food" },
