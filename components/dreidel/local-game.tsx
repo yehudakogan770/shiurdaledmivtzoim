@@ -477,7 +477,7 @@ export function Gelt({ size = 20, title }: { size?: number; title?: string }) {
       </defs>
       <circle cx="12" cy="12" r="11" fill="url(#gelt-g)" stroke="#8a5a14" strokeWidth="0.8" />
       <circle cx="12" cy="12" r="8.4" fill="none" stroke="#8a5a14" strokeOpacity="0.5" strokeWidth="0.7" strokeDasharray="0.9 1.1" />
-      <path d="M12 7.2v8.6M8.9 18h6.2M7.6 9.4l4.4 4.2 4.4-4.2M9.4 9.4l2.6 2.5 2.6-2.5" fill="none" stroke="#7a4d10" strokeWidth="0.9" strokeLinecap="round" />
+      <path d="M12 7.2v8.6M8.9 18h6.2M6.6 9.4l5.4 5.1 5.4-5.1M8.4 9.4l3.6 3.4 3.6-3.4M10.2 9.4l1.8 1.7 1.8-1.7" fill="none" stroke="#7a4d10" strokeWidth="0.8" strokeLinecap="round" />
     </svg>
   );
 }
