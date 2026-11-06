@@ -54,9 +54,9 @@ create policy "Anyone sees dreidel games" on dreidel_games for select using (tru
 drop policy if exists "Anyone sees dreidel players" on dreidel_players;
 create policy "Anyone sees dreidel players" on dreidel_players for select using (true);
 grant select on dreidel_games to anon, authenticated;
--- Everything about a player except their private key.
+-- Everything about a player except their private key and age (age only decides the turn order).
 revoke all on dreidel_players from anon, authenticated;
-grant select (id, game_id, name, age, design, coins, out, tokens, wins, joined_at, last_seen) on dreidel_players to anon, authenticated;
+grant select (id, game_id, name, design, coins, out, tokens, wins, joined_at, last_seen) on dreidel_players to anon, authenticated;
 
 -- Live updates: every change touches the game row, so phones only need to watch that.
 do $$
@@ -175,14 +175,14 @@ begin
   return jsonb_build_object('gameId', g.id, 'playerId', me.id, 'secret', me.secret, 'code', g.code);
 end $$;
 
--- In the waiting room: change your name, age or dreidel.
+-- In the waiting room: change your name, age or dreidel (no age given keeps the one you had).
 create or replace function public.dreidel_update_me(p_player uuid, p_secret uuid, p_name text, p_age int, p_design text)
 returns void language plpgsql security definer set search_path = public as $$
 declare me dreidel_players := public.dreidel_check(p_player, p_secret); g dreidel_games;
 begin
   select * into g from dreidel_games where id = me.game_id;
   if g.status = 'waiting' then
-    update dreidel_players set name = public.dreidel_name_clean(p_name), age = case when p_age between 0 and 120 then p_age end, design = left(coalesce(p_design, 'gold'), 40) where id = me.id;
+    update dreidel_players set name = public.dreidel_name_clean(p_name), age = coalesce(case when p_age between 0 and 120 then p_age end, age), design = left(coalesce(p_design, 'gold'), 40) where id = me.id;
   else
     -- During a game, only the dreidel can change.
     update dreidel_players set design = left(coalesce(p_design, 'gold'), 40) where id = me.id;

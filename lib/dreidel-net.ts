@@ -148,7 +148,7 @@ type GameRow = {
   spin_letter: number | null;
   game_no: number;
 };
-type PlayerRow = { id: string; name: string; age: number | null; design: string; coins: number; out: boolean; tokens: number; wins: number; last_seen: string };
+type PlayerRow = { id: string; name: string; design: string; coins: number; out: boolean; tokens: number; wins: number; last_seen: string };
 
 /** The database update hasn't been run yet, or another problem: a message people can read. */
 function friendly(error: { message: string; code?: string }) {
@@ -188,7 +188,7 @@ async function supabaseNet(url: string, key: string): Promise<DreidelNet> {
       const [g, p] = await Promise.all([
         sb.from("dreidel_games").select("id, code, host, status, settings, pot, turn_order, turn, ends_at, winners, last, spins, spin_letter, game_no").eq("id", gameId).maybeSingle(),
         // Every column but the private key (which can't be read anyway).
-        sb.from("dreidel_players").select("id, name, age, design, coins, out, tokens, wins, last_seen").eq("game_id", gameId).order("joined_at"),
+        sb.from("dreidel_players").select("id, name, design, coins, out, tokens, wins, last_seen").eq("game_id", gameId).order("joined_at"),
       ]);
       if (g.error) throw friendly(g.error);
       if (p.error) throw friendly(p.error);
@@ -209,7 +209,7 @@ async function supabaseNet(url: string, key: string): Promise<DreidelNet> {
         spins: row.spins,
         spinLetter: row.spin_letter,
         game: row.game_no,
-        players: ((p.data ?? []) as PlayerRow[]).map((x) => ({ id: x.id, name: x.name, age: x.age, design: x.design, coins: x.coins, out: x.out, tokens: x.tokens, wins: x.wins, lastSeen: Date.parse(x.last_seen) })),
+        players: ((p.data ?? []) as PlayerRow[]).map((x) => ({ id: x.id, name: x.name, age: null, design: x.design, coins: x.coins, out: x.out, tokens: x.tokens, wins: x.wins, lastSeen: Date.parse(x.last_seen) })),
       };
     },
     subscribe(gameId, onChange) {
@@ -323,7 +323,7 @@ function localNet(): DreidelNet {
       };
     },
     async updateMe(s, me) {
-      as(s, (g, p) => Object.assign(p, g.status === "waiting" ? { name: clean(me.name), age: me.age, design: me.design } : { design: me.design }));
+      as(s, (g, p) => Object.assign(p, g.status === "waiting" ? { name: clean(me.name), age: me.age ?? p.age, design: me.design } : { design: me.design }));
     },
     async setSettings(s, settings) {
       as(s, (g, me) => {

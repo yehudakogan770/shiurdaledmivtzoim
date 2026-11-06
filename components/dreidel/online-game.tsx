@@ -313,7 +313,6 @@ function Lobby({ net, session, game, reload, live, onLeave }: Props) {
                   <Gelt key={i} size={16} title={t("Life token")} />
                 ))}
               </span>
-              <span className="block text-xs text-muted">{p.age != null ? t("Age {n}", { n: p.age }) : ""}</span>
             </span>
             {p.id === game.host && (
               <span className="flex items-center gap-1 text-xs text-accent">

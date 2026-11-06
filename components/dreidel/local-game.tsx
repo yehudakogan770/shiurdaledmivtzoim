@@ -325,7 +325,7 @@ export function PlayerList({ state, turnId, you }: { state: GameState; turnId: s
               <Gelt key={i} size={16} title={t("Life token")} />
             ))}
           </span>
-          <span className="block text-xs text-muted">{p.out ? t("Out") : p.id === turnId ? t("Their turn") : p.age != null ? t("Age {n}", { n: p.age }) : ""}</span>
+          <span className="block text-xs text-muted">{p.out ? t("Out") : p.id === turnId ? t("Their turn") : ""}</span>
         </span>
         <span className="flex items-center gap-1.5">
           <Gelt size={20} />
