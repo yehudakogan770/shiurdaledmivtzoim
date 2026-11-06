@@ -62,6 +62,9 @@ export function ChanukahTheme() {
 
 // Times are shown in the time zone of the place the zmanim are for.
 const zone = () => zmanimPlace().getTimeZone();
+/** Tonight's time: the earliest time to light (nightfall), or on Friday, the time to light by before Shabbos. */
+const lightingText = (d: Date) =>
+  d.getDay() === 5 ? t("Light before Shabbos, by {time}", { time: fmtTime(d) }) : t("Earliest lighting time tonight: {time}", { time: fmtTime(d) });
 const fmtTime = (d: Date) => new Intl.DateTimeFormat(locale(), { hour: "numeric", minute: "2-digit", timeZone: zone() }).format(d);
 const fmtDay = (d: Date) => new Intl.DateTimeFormat(locale(), { weekday: "long", month: "long", day: "numeric", timeZone: zone() }).format(d);
 const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
@@ -121,11 +124,7 @@ export function ChanukahHero() {
             <span className="chanukah-gold">{t(NIGHTS[n - 1])}</span>
           </h2>
           <p className="mt-2 text-sm text-muted">
-            {next && sameDay(next, state.now) && state.now < next
-              ? t("Tonight's candles go on at {time}", { time: fmtTime(next) })
-              : last
-                ? t("Tonight's candles went on at {time}", { time: fmtTime(last) })
-                : null}
+            {next && sameDay(next, state.now) && state.now < next ? lightingText(next) : last ? lightingText(last) : null}
           </p>
         </>
       ) : (

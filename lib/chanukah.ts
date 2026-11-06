@@ -6,8 +6,9 @@ import { zmanimPlace } from "./shkiah";
 
 /**
  * Chanukah on the site. From Friday 5am a week before the first candle, the site turns Chanukah
- * (purple night, gold candlelight) and counts down. Each night's candle lights at shkiah, on Friday
- * at candle-lighting time (18 minutes before shkiah), and on Motzei Shabbos when Shabbos ends.
+ * (purple night, gold candlelight) and counts down. Each night's earliest lighting time is nightfall
+ * (tzeis); on Friday the candles go on before Shabbos (by candle-lighting time, 18 minutes before
+ * shkiah), and on Motzei Shabbos when Shabbos ends.
  * After the last day the site goes back to normal by itself.
  *
  * The Owner (and accounts the Owner picks) can turn on test mode on their phone and see any moment
@@ -35,19 +36,21 @@ export interface ChanukahState {
 }
 
 const CANDLE_MINUTES = 18;
+/** Nightfall (tzeis): the sun 6° below the horizon, as the Chabad calendar has it. */
+const NIGHTFALL_ANGLE = 6;
 /** When Shabbos ends: the sun 8.5° below the horizon, as the Chabad calendar has it. */
 const SHABBOS_ENDS_ANGLE = 8.5;
 
 const at = (d: Date, h: number, m = 0) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m);
 const plusDays = (d: Date, n: number) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 
-/** When the candles are lit on the evening of this day. */
+/** The earliest time to light on the evening of this day (on Friday, the time to light by). */
 export function lightingTime(day: Date, place: GeoLocation = zmanimPlace()): Date {
   const z = new Zmanim(place, day, false);
   const dow = day.getDay();
   if (dow === 5) return new Date(z.shkiah().getTime() - CANDLE_MINUTES * 60_000);
   if (dow === 6) return z.tzeit(SHABBOS_ENDS_ANGLE);
-  return z.shkiah();
+  return z.tzeit(NIGHTFALL_ANGLE);
 }
 
 /** Sunset today, for the Day / Night switch. */
