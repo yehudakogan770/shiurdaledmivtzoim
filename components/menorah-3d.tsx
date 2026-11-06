@@ -11,7 +11,7 @@ import { cx } from "./ui";
  * yellow candles, and nine live flames, each with its own seed, speed, size and
  * brightness so they never move together, each giving its own small flickering light onto the
  * gold and wax. Drag it (finger or mouse) to spin it all the way around and tilt it up to 35° up or
- * down; let go and it keeps turning a little, then slows to a stop. Touches on it turn it and never
+ * down; let go and it keeps turning a little, then slowly turns back to the front. Touches on it turn it and never
  * scroll the page; the rest of the page scrolls as usual.
  *
  * `lit` is how many candles burn (from the right as you face it); the shamash burns whenever any
@@ -610,6 +610,7 @@ function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, e
   const at = new THREE.Vector3();
   const lift = new THREE.Vector3(0, 0.9, 0.4);
   let first = true;
+  let lastYaw = 0;
   function frame() {
     raf = 0;
     const now = performance.now();
@@ -622,9 +623,17 @@ function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, e
       m.vPitch *= 0.85;
       if (Math.abs(m.vYaw) < 0.0004) m.vYaw = 0;
       if (Math.abs(m.vPitch) < 0.0004) m.vPitch = 0;
+      // Then it slowly turns back to the front and levels out, the shortest way round (never a
+      // whole extra circle). Grabbing it again stops this and it follows the finger.
+      const front = Math.round(m.yaw / (Math.PI * 2)) * Math.PI * 2;
+      m.yaw += (front - m.yaw) * 0.035;
+      m.pitch += (0 - m.pitch) * 0.035;
+      if (m.vYaw === 0 && Math.abs(front - m.yaw) < 0.0015) m.yaw = front;
+      if (m.vPitch === 0 && Math.abs(m.pitch) < 0.0015) m.pitch = 0;
     }
     // Turning pushes the flames the other way a little, like carrying a real candle.
-    const spin = m.dragging ? m.vYaw : m.vYaw;
+    const spin = m.yaw - lastYaw;
+    lastYaw = m.yaw;
     m.wind += (Math.max(-0.6, Math.min(0.6, -spin * 6)) - m.wind) * 0.1;
     group.rotation.y = m.yaw;
     // Tilting moves the camera up or down around the menorah, keeping it centered.
@@ -661,7 +670,8 @@ function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, e
       onReady();
     }
     // Keep going while flames burn or it's still turning.
-    const moving = m.dragging || m.vYaw !== 0 || m.vPitch !== 0 || Math.abs(m.wind) > 0.01;
+    const home = Math.abs(m.yaw - Math.round(m.yaw / (Math.PI * 2)) * Math.PI * 2) < 0.0015 && m.pitch === 0;
+    const moving = m.dragging || m.vYaw !== 0 || m.vPitch !== 0 || !home || Math.abs(m.wind) > 0.01;
     if ((lit > 0 && !still) || moving) wake();
   }
   const io = new IntersectionObserver(([e]) => {
