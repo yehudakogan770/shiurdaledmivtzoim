@@ -22,7 +22,9 @@ import { WhoWentPrompt } from "./week-question";
 import { MessagePrompt } from "./message-prompt";
 import { PosterPrompt } from "./poster-prompt";
 import { AccountSwitcher } from "./account-switcher";
-import { ChanukahTheme } from "./chanukah";
+import { ChanukahTheme, useChanukahNow } from "./chanukah";
+import { isChanukahOn } from "@/lib/chanukah";
+import { DreidelIcon } from "./icons";
 import { lockPage } from "@/lib/page-lock";
 
 const links = [
@@ -32,6 +34,9 @@ const links = [
   { href: "/photos", label: "Photos", short: "Photos", icon: Images, match: ["/photos"] },
   { href: "/profile", label: "Profile", short: "Profile", icon: UserRound, match: ["/profile"] },
 ];
+
+/** During Chanukah (from the countdown week): the dreidel. */
+const DREIDEL_LINK = { href: "/dreidel", label: "Dreidel", short: "Dreidel", icon: DreidelIcon, match: ["/dreidel"] };
 
 const ADMIN_LINK = { href: "/admin", label: "Admin", short: "Admin", icon: ShieldCheck, match: ["/admin"] };
 /** The Owner only: hand the device to someone so they can make their own account. */
@@ -48,7 +53,9 @@ function PanelContent({ expanded, onNavigate }: { expanded: boolean; onNavigate?
   const { path, Link } = useNav();
   const { me, guest, backend, auth, settings, isAdmin, isOwner, canSeeReport } = useData();
   // No Profile page for people without an account, or for the Owner (it doesn't log).
-  const shown = guest || isOwner ? links.filter((l) => l.href !== "/profile") : links;
+  const chanukah = isChanukahOn(useChanukahNow());
+  const base = chanukah ? [...links.slice(0, 1), DREIDEL_LINK, ...links.slice(1)] : links;
+  const shown = guest || isOwner ? base.filter((l) => l.href !== "/profile") : base;
   const items = isOwner ? [...shown, ADMIN_LINK, REPORT_LINK, DESK_LINK] : isAdmin ? [...shown, ADMIN_LINK, REPORT_LINK] : canSeeReport ? [...shown, REPORT_LINK] : shown;
   const label = cx("whitespace-nowrap transition-opacity duration-200", expanded ? "opacity-100" : "opacity-0");
   return (

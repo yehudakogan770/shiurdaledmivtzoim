@@ -99,3 +99,14 @@ export function MenorahIcon({ size = 24, className, strokeWidth = 1.15 }: { size
     </svg>
   );
 }
+
+/** A dreidel: square body, a point underneath, a straight handle. */
+export function DreidelIcon({ size = 24, className, strokeWidth = 2 }: { size?: number; className?: string; strokeWidth?: number }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={className}>
+      <path d="M12 2.5v4.5" />
+      <path d="M6.5 7h11v8.5L12 21.5l-5.5-6z" />
+      <path d="M10 10.5v3.2a1 1 0 0 0 1 1h2" />
+    </svg>
+  );
+}
