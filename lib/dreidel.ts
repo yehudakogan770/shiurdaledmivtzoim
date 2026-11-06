@@ -48,7 +48,7 @@ export const BASES: { id: DreidelBase; name: string; colors?: DreidelColor[] }[]
     id: "frosted",
     name: "Frosted Glass",
     colors: [
-      { id: "clear", name: "Clear", hex: "#f4f6ff" },
+      { id: "clear", name: "Colorless", hex: "#f4f6ff" },
       { id: "blue", name: "Blue", hex: "#b9d2ff" },
       { id: "pink", name: "Pink", hex: "#ffc4dc" },
       { id: "green", name: "Green", hex: "#c2efd2" },

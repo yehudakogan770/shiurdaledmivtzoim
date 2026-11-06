@@ -7,6 +7,8 @@ import { t } from "@/lib/i18n";
 import { useChanukahNow } from "../chanukah";
 import { DreidelView, type Spin } from "../dreidel/dreidel-view";
 import { DreidelGlobe } from "../dreidel/globe";
+import { LocalGame } from "../dreidel/local-game";
+import { Users } from "lucide-react";
 import { GeltShower } from "../gelt-shower";
 import { DreidelIcon } from "../icons";
 import { Empty } from "../ui";
@@ -25,6 +27,7 @@ export function DreidelView_() {
   const [gelt, setGelt] = useState(0);
   const [touch, setTouch] = useState(true);
   const [choosing, setChoosing] = useState(false);
+  const [mode, setMode] = useState<"spin" | "local">("spin");
 
   useEffect(() => {
     setDesign(savedDesign());
@@ -34,6 +37,8 @@ export function DreidelView_() {
   if (!isChanukahOn(state)) {
     return <Empty title={t("The dreidel opens for Chanukah")} icon={DreidelIcon}>{t("Come back the week before Chanukah to spin the dreidel.")}</Empty>;
   }
+
+  if (mode === "local") return <LocalGame onExit={() => setMode("spin")} />;
 
   const go = (direction: 1 | -1 = 1) => {
     if (spinning) return;
@@ -55,6 +60,19 @@ export function DreidelView_() {
       <h1 className="pt-2 text-[2.2rem] leading-tight">
         <span className="chanukah-gold">{t("Dreidel")}</span>
       </h1>
+      {state.phase === "night" && (
+        <div className="mx-auto mt-4 grid max-w-md gap-3">
+          <button
+            type="button"
+            onClick={() => setMode("local")}
+            className="relative flex h-14 w-full items-center justify-center gap-2 overflow-hidden rounded-[20px] bg-gradient-to-b from-[#ffe29a] via-[#ffbd52] to-[#f28a2e] text-[1.05rem] font-semibold text-[#2a1300] shadow-[0_10px_30px_rgba(255,140,50,.3),inset_0_1px_0_rgba(255,255,255,.75)] active:scale-[0.98] before:absolute before:inset-x-0 before:top-0 before:h-1/2 before:bg-gradient-to-b before:from-white/40 before:to-transparent"
+          >
+            <Users size={20} className="relative" aria-hidden />
+            <span className="relative">{t("Play on This Phone")}</span>
+          </button>
+          <p className="text-xs text-muted">{t("Or spin just for fun below.")}</p>
+        </div>
+      )}
       {state.phase !== "night" && (
         <p className="mx-auto mt-2 max-w-sm rounded-2xl bg-white/10 px-4 py-2 text-sm">{t("Come back on Chanukah to play dreidel with your friends.")}</p>
       )}
