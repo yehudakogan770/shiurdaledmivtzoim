@@ -9,7 +9,8 @@ import { chavrusasOf } from "@/lib/chavrusa";
 import { isNightNow } from "@/lib/chanukah";
 import { toISODate } from "@/lib/dates";
 import { t, tn } from "@/lib/i18n";
-import { Menorah, useChanukahNow } from "../chanukah";
+import { useChanukahNow } from "../chanukah";
+import { Menorah3D, MenorahStill } from "../menorah-3d";
 import { MenorahIcon } from "../icons";
 import { Empty, Input, Textarea, cx } from "../ui";
 
@@ -117,7 +118,7 @@ function ChanukahForm({ editing }: { editing?: ChanukahEntry }) {
   if (done) {
     return (
       <div className="mx-auto max-w-md pt-6 text-center">
-        <Menorah lit={8} className="max-w-[260px]" />
+        <Menorah3D lit={8} className="max-w-[260px]" fallback={<MenorahStill />} />
         <h1 className="mt-3 text-[2rem] leading-tight">
           <span className="chanukah-gold">{editing ? t("Saved") : t("Logged! Keep Lighting Up the City")}</span>
         </h1>

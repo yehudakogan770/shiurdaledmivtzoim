@@ -104,6 +104,16 @@ function wander(seed: number) {
   };
 }
 
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
+
+/** A still picture of the same 770 menorah (front view, candles not lit): while the 3D one loads, or where 3D can't run. */
+export function MenorahStill({ className }: { className?: string }) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={`${BASE_PATH}/menorah-770.webp`} alt="" draggable={false} className={cx("mx-auto block aspect-square w-full max-w-[340px] select-none", className)} />
+  );
+}
+
 export function Menorah3D({ lit, fallback, className }: { lit: number; fallback: ReactNode; className?: string }) {
   const box = useRef<HTMLDivElement>(null);
   const litRef = useRef(lit);
