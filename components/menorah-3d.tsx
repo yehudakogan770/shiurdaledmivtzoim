@@ -1,158 +1,492 @@
 "use client";
 
-import { useEffect, useRef, useState, type PointerEvent } from "react";
-import { MENORAH_FRAMES, MENORAH_MAX_ANGLE, MENORAH_WICKS } from "@/lib/menorah-frames";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { t } from "@/lib/i18n";
 import { cx } from "./ui";
 
-const BASE = process.env.NEXT_PUBLIC_BASE_PATH || "";
-const src = (i: number) => `${BASE}/menorah/f-${String(i).padStart(2, "0")}.webp`;
-const MID = (MENORAH_FRAMES - 1) / 2;
+/**
+ * The menorah in real 3D (three.js, drawn on the phone's graphics chip): polished gold with real
+ * reflections, nine wax candles, and nine live flames, each with its own seed, speed, size and
+ * brightness so they never move together, each giving its own small flickering light onto the
+ * gold and wax. Drag it (finger or mouse) to spin it all the way around and tilt it up to 35° up or
+ * down; let go and it keeps turning a little, then slows to a stop. Touches on it turn it and never
+ * scroll the page; the rest of the page scrolls as usual.
+ *
+ * `lit` is how many candles burn (from the right as you face it); the shamash burns whenever any
+ * candle does. While it loads, or on a phone without 3D, `fallback` shows instead.
+ */
 
-/** Loads all 49 pictures once (shared by every menorah on the page); false if any fails. */
-let loading: Promise<boolean> | null = null;
-function loadFrames() {
-  loading ??= Promise.all(
-    Array.from({ length: MENORAH_FRAMES }, (_, i) => {
-      const img = new Image();
-      img.src = src(i);
-      return img.decode().then(() => true);
-    }),
-  ).then(
-    () => true,
-    () => false,
-  );
-  return loading;
+// ---- The flame: one program, nine flames, each with its own numbers ----
+const FLAME_VERT = `
+varying vec2 vUv;
+void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }
+`;
+const FLAME_FRAG = `
+precision highp float;
+varying vec2 vUv;
+uniform float uTime;
+uniform float uSeed;
+uniform float uSpeed;
+uniform float uH;
+uniform float uW;
+uniform float uBright;
+uniform float uSway;
+uniform float uOn;
+
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123); }
+float noise(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
+}
+float fbm(vec2 p) {
+  float v = 0.0, a = 0.5;
+  for (int k = 0; k < 4; k++) { v += a * noise(p); p = p * 2.03 + vec2(17.1, 9.2); a *= 0.5; }
+  return v;
 }
 
-const reducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+void main() {
+  if (uOn < 0.5) discard;
+  // The plane is 3 wide and 5 tall (candle widths); the wick top sits low in the middle.
+  vec2 p = (vUv - vec2(0.5, 0.2)) * vec2(3.0, 5.0);
+  float t = uTime * uSpeed + uSeed * 37.0;
+  float flick = fbm(vec2(t * 2.7, uSeed * 7.3));
+  float H = uH;
+  float W = uW;
 
-/**
- * The 3D menorah that turns side to side, up to 40° each way: drag it with a finger, or scroll the
- * page. When you let go or stop scrolling it slowly turns back to straight. It flips through 49
- * pictures of a 3D model, so it looks solid from every angle, and draws that night's flames on top
- * (lit from the right as you face it; the shamash whenever any candle burns), flickering.
- * Until the pictures load (or if they can't), the flat drawing shows instead.
- */
-export function Menorah3D({ lit, fallback, className }: { lit: number; fallback: React.ReactNode; className?: string }) {
-  const [ready, setReady] = useState(false);
-  const [frame, setFrame] = useState(Math.round(MID));
+  // Warm light around the flame.
+  vec2 gc = p - vec2(uSway * 0.3, H * 0.42);
+  float glowD = length(gc * vec2(1.0, 0.8));
+  vec3 col = vec3(1.0, 0.6, 0.25) * exp(-glowD * 1.4) * 0.16 * uBright;
+  col += vec3(1.0, 0.78, 0.45) * exp(-glowD * 3.6) * 0.18 * uBright;
+
+  // The tip sways more than the base; ragged, rising detail along the edges.
+  float v = clamp((p.y + 0.12) / (H + 0.12), 0.0, 1.0);
+  float x = p.x - uSway * pow(v, 1.8) * W * 1.6 - (flick - 0.5) * 0.08 * v;
+  float edge = fbm(vec2(x * 3.1 + uSeed, v * 3.4 - t * 3.6));
+  float prof = W * 2.25 * pow(v, 0.48) * pow(1.0 - v, 0.95);
+  prof *= 0.86 + 0.32 * edge;
+  float d = abs(x) / max(prof, 0.0001);
+  float inside = (p.y + 0.12 > 0.0 && v < 1.0) ? 1.0 : 0.0;
+  float body = smoothstep(1.05, 0.5, d) * inside;
+  body *= smoothstep(1.0, 0.72, v + 0.12 * (edge - 0.5));
+
+  // White-hot low in the middle, then yellow, gold, orange, deep orange at the soft edge.
+  float heat = (1.0 - smoothstep(0.0, 0.95, d)) * (1.0 - smoothstep(0.25, 0.9, v)) * smoothstep(0.0, 0.14, v);
+  vec3 c = mix(vec3(1.0, 0.42, 0.08), vec3(1.0, 0.74, 0.28), smoothstep(0.0, 0.55, body));
+  c = mix(c, vec3(1.0, 0.9, 0.55), smoothstep(0.15, 0.55, heat));
+  c = mix(c, vec3(1.0, 0.98, 0.92), smoothstep(0.45, 0.85, heat));
+  float blue = (1.0 - smoothstep(0.0, 0.2, v)) * smoothstep(0.25, 0.9, d) * body;
+  c = mix(c, vec3(0.25, 0.4, 1.0), blue * 0.55);
+  col += c * body * (1.05 + 0.6 * heat) * uBright;
+
+  // Fade out toward the edges of the flame's plane, so no square edge ever shows.
+  float fade = smoothstep(0.0, 0.22, vUv.x) * smoothstep(1.0, 0.78, vUv.x) * smoothstep(0.0, 0.12, vUv.y) * smoothstep(1.0, 0.75, vUv.y);
+  col *= fade;
+  col = 1.0 - exp(-col * 1.6);
+  float a = clamp(max(col.r, max(col.g, col.b)), 0.0, 1.0);
+  gl_FragColor = vec4(col, a);
+}
+`;
+
+/** Smooth random wandering, for each flame's sway, height and brightness (never lines up with the others). */
+function wander(seed: number) {
+  const pts = Array.from({ length: 64 }, (_, i) => Math.abs(Math.sin(seed * 9.13 + i * 12.9898) * 43758.5453) % 1);
+  return (x: number) => {
+    const i = Math.floor(x);
+    const f = x - i;
+    const a = pts[((i % 64) + 64) % 64];
+    const b = pts[(((i + 1) % 64) + 64) % 64];
+    const u = f * f * (3 - 2 * f);
+    return a + (b - a) * u;
+  };
+}
+
+export function Menorah3D({ lit, fallback, className }: { lit: number; fallback: ReactNode; className?: string }) {
   const box = useRef<HTMLDivElement>(null);
-  const motion = useRef({ angle: 0, target: 0, lastInput: 0, dragging: false, startX: 0, startAngle: 0, raf: 0 });
+  const litRef = useRef(lit);
+  litRef.current = lit;
+  const [ready, setReady] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    let alive = true;
-    loadFrames().then((ok) => alive && setReady(ok));
+    const el = box.current;
+    if (!el) return;
+    let stop = () => {};
+    let cancelled = false;
+    (async () => {
+      try {
+        const THREE = await import("three");
+        const { RoomEnvironment } = await import("three/examples/jsm/environments/RoomEnvironment.js");
+        if (cancelled) return;
+        stop = build(THREE, RoomEnvironment, el, litRef, () => !cancelled && setReady(true));
+      } catch (e) {
+        console.warn("The 3D menorah could not start:", (e as Error).message);
+        if (!cancelled) setFailed(true);
+      }
+    })();
     return () => {
-      alive = false;
+      cancelled = true;
+      stop();
     };
   }, []);
 
-  useEffect(() => {
-    if (!ready || reducedMotion()) return;
-    const m = motion.current;
-    const clamp = (a: number) => Math.max(-MENORAH_MAX_ANGLE, Math.min(MENORAH_MAX_ANGLE, a));
-    const tick = () => {
-      // A moment after the last touch or scroll, ease back to straight, slowly.
-      if (!m.dragging && performance.now() - m.lastInput > 220) m.target *= 0.965;
-      m.angle += (m.target - m.angle) * 0.12;
-      setFrame(Math.round(MID + (m.angle / MENORAH_MAX_ANGLE) * MID));
-      if (Math.abs(m.angle) < 0.05 && Math.abs(m.target) < 0.05 && !m.dragging) {
-        m.angle = m.target = 0;
-        setFrame(Math.round(MID));
-        m.raf = 0;
-        return;
-      }
-      m.raf = requestAnimationFrame(tick);
-    };
-    const wake = () => {
-      m.lastInput = performance.now();
-      if (!m.raf) m.raf = requestAnimationFrame(tick);
-    };
-    let lastY = window.scrollY;
-    const onScroll = () => {
-      const dy = window.scrollY - lastY;
-      lastY = window.scrollY;
-      // Only while the menorah is on screen.
-      const r = box.current?.getBoundingClientRect();
-      if (!r || r.bottom < 0 || r.top > window.innerHeight) return;
-      m.target = clamp(m.target + dy * 0.12);
-      wake();
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    (box.current as HTMLDivElement & { wake?: () => void }).wake = wake;
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      cancelAnimationFrame(m.raf);
-      m.raf = 0;
-    };
-  }, [ready]);
-
-  if (!ready) return <>{fallback}</>;
-
-  const drag = {
-    onPointerDown: (e: PointerEvent<HTMLDivElement>) => {
-      const m = motion.current;
-      m.dragging = true;
-      m.startX = e.clientX;
-      m.startAngle = m.target;
-      e.currentTarget.setPointerCapture(e.pointerId);
-      (box.current as HTMLDivElement & { wake?: () => void }).wake?.();
-    },
-    onPointerMove: (e: PointerEvent<HTMLDivElement>) => {
-      const m = motion.current;
-      if (!m.dragging) return;
-      const width = box.current?.clientWidth || 300;
-      m.target = Math.max(-MENORAH_MAX_ANGLE, Math.min(MENORAH_MAX_ANGLE, m.startAngle + ((e.clientX - m.startX) / width) * 90));
-      (box.current as HTMLDivElement & { wake?: () => void }).wake?.();
-    },
-    onPointerUp: () => {
-      motion.current.dragging = false;
-      motion.current.lastInput = performance.now();
-    },
-  };
-
-  const wicks = MENORAH_WICKS[frame] ?? MENORAH_WICKS[Math.round(MID)];
   return (
-    <div
-      ref={box}
-      {...drag}
-      onPointerCancel={drag.onPointerUp}
-      role="img"
-      aria-label={lit ? t("A menorah with {n} candles lit", { n: lit }) : t("A menorah, not lit yet")}
-      className={cx("relative mx-auto aspect-square w-full max-w-[340px] cursor-grab touch-pan-y select-none active:cursor-grabbing", className)}
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src(frame)} alt="" draggable={false} className="pointer-events-none h-full w-full" />
-      {wicks.map(([x, y, s], i) => {
-        const on = i === 8 ? lit > 0 : i >= 8 - lit;
-        if (!on) return null;
-        // A flame is about 2.4 units tall where 1 unit is `s` of the picture.
-        const h = s * 2.6 * 100;
-        return (
-          <span key={i} className="pointer-events-none absolute" style={{ left: `${x * 100}%`, top: `${y * 100}%`, height: `${h}%`, width: `${h * 0.5}%`, transform: "translate(-50%, -96%)" }}>
-            <svg viewBox="0 0 20 40" className="absolute inset-0 h-full w-full overflow-visible">
-              <defs>
-                <radialGradient id={`mg-${i}`}>
-                  <stop offset="0" stopColor="#ffcf73" stopOpacity=".75" />
-                  <stop offset=".45" stopColor="#ff8a3d" stopOpacity=".2" />
-                  <stop offset="1" stopColor="#ff5a2a" stopOpacity="0" />
-                </radialGradient>
-                <linearGradient id={`mf-${i}`} x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0" stopColor="#fff6d8" />
-                  <stop offset=".55" stopColor="#ffc34d" />
-                  <stop offset="1" stopColor="#ff6a2b" />
-                </linearGradient>
-              </defs>
-              <circle className="flame-glow" style={{ animationDelay: `${-i * 0.37}s` }} cx="10" cy="24" r="26" fill={`url(#mg-${i})`} />
-              <g className="flame" style={{ animationDelay: `${-i * 0.29}s`, animationDuration: `${1.4 + (i % 3) * 0.25}s` }}>
-                <path d="M10 1 C17 13 16 31 10 39 C4 31 3 13 10 1Z" fill={`url(#mf-${i})`} />
-                <ellipse cx="10" cy="28" rx="2.6" ry="6" fill="#fff" opacity=".85" />
-              </g>
-            </svg>
-          </span>
-        );
-      })}
+    <div className={cx("relative mx-auto w-full max-w-[340px]", className)}>
+      {(!ready || failed) && fallback}
+      <div
+        ref={box}
+        role="img"
+        aria-label={lit ? t("A menorah with {n} candles lit", { n: lit }) : t("A menorah, not lit yet")}
+        className={cx("aspect-square w-full cursor-grab touch-none select-none active:cursor-grabbing", !ready && "absolute inset-0 opacity-0", failed && "hidden")}
+      />
     </div>
   );
+}
+
+type Three = typeof import("three");
+type V3 = import("three").Vector3;
+
+function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, el: HTMLDivElement, litRef: { current: number }, onReady: () => void) {
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, premultipliedAlpha: true, powerPreference: "high-performance" });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.0;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.setClearColor(0x000000, 0);
+  const canvas = renderer.domElement;
+  canvas.style.width = "100%";
+  canvas.style.height = "100%";
+  canvas.style.display = "block";
+  el.appendChild(canvas);
+
+  const scene = new THREE.Scene();
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.environment = env;
+
+  // ---- Materials ----
+  // A little unevenness in the polish, so the gold reads as real metal.
+  const grain = document.createElement("canvas");
+  grain.width = grain.height = 128;
+  const gctx = grain.getContext("2d")!;
+  const img = gctx.createImageData(128, 128);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const v = 150 + Math.random() * 60;
+    img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+    img.data[i + 3] = 255;
+  }
+  gctx.putImageData(img, 0, 0);
+  const grainTex = new THREE.CanvasTexture(grain);
+  grainTex.wrapS = grainTex.wrapT = THREE.RepeatWrapping;
+  grainTex.repeat.set(3, 3);
+  const gold = new THREE.MeshPhysicalMaterial({ color: 0xd9a443, metalness: 1, roughness: 0.2, roughnessMap: grainTex, clearcoat: 0.35, clearcoatRoughness: 0.15, envMapIntensity: 1.35 });
+  const darkGold = gold.clone();
+  darkGold.color = new THREE.Color(0xb8862f);
+
+  const group = new THREE.Group();
+  scene.add(group);
+  const add = (geo: import("three").BufferGeometry, mat: import("three").Material, x = 0, y = 0, z = 0) => {
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, y, z);
+    group.add(mesh);
+    return mesh;
+  };
+  const lathe = (profile: [number, number][], segments = 64) => new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r, y)), segments);
+  // A straight round rod between two points, with round joints.
+  const rod = (a: V3, b: V3, r: number) => {
+    const dir = new THREE.Vector3().subVectors(b, a);
+    const mesh = new THREE.Mesh(new THREE.CylinderGeometry(r, r, dir.length(), 32), gold);
+    mesh.position.copy(a).addScaledVector(dir, 0.5);
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+    group.add(mesh);
+    add(new THREE.SphereGeometry(r * 1.02, 24, 16), gold, a.x, a.y, a.z);
+    add(new THREE.SphereGeometry(r * 1.02, 24, 16), gold, b.x, b.y, b.z);
+  };
+  const V = (x: number, y: number) => new THREE.Vector3(x, y, 0);
+
+  // ---- The menorah (same proportions as the drawing) ----
+  // A solid round base with a rounded edge and a raised step.
+  add(lathe([[0, 0], [6.9, 0], [7.15, 0.08], [7.25, 0.3], [7.25, 0.62], [7.12, 0.86], [6.8, 0.95], [2.2, 1.0], [1.9, 1.15], [1.6, 1.3], [0, 1.32]], 96), gold);
+  add(lathe([[0, 1.3], [1.15, 1.3], [1.2, 1.4], [1.1, 1.85], [0.8, 1.95], [0, 1.95]], 48), darkGold);
+  // The stem, all the way up to the shamash.
+  rod(V(0, 1.9), V(0, 21.15), 0.56);
+  const cupTop = 19.4;
+  const cupBottom = 18.2;
+  const armTop = 18.0;
+  const xs = [-4, -3, -2, -1, 1, 2, 3, 4].map((k) => Math.sign(k) * (2.8 + (Math.abs(k) - 1) * 3.4));
+  for (let k = 1; k <= 4; k++) {
+    const dx = 2.8 + (k - 1) * 3.4;
+    const dy = dx * 1.05;
+    rod(V(-dx, armTop), V(0, armTop - dy), 0.36);
+    rod(V(0, armTop - dy), V(dx, armTop), 0.36);
+    // A small collar where each pair of branches meets the stem.
+    add(new THREE.TorusGeometry(0.62, 0.12, 12, 40), darkGold, 0, armTop - dy).rotation.x = Math.PI / 2;
+  }
+  // A cup: a short cylinder with a rolled lip, open on top.
+  // `hole` is the opening the candle sits in, just wider than the candle.
+  const cupGeo = (r: number, h: number, hole: number) =>
+    lathe([[0, 0], [r * 0.7, 0], [r * 0.95, 0.08], [r, 0.3], [r, h - 0.18], [r * 1.08, h - 0.06], [r * 1.05, h], [hole + 0.06, h], [hole, h - 0.08], [hole, h - 0.6], [0, h - 0.6]], 48);
+  for (const x of xs) add(cupGeo(1.1, cupTop - cupBottom, 0.47), gold, x, cupBottom);
+  const shamashCupBottom = 21.15;
+  add(cupGeo(1.2, 1.25, 0.5), gold, 0, shamashCupBottom);
+
+  // ---- Candles: wax, a little uneven, rounded top edge with a melted dip, and a wick ----
+  const candles: { wax: import("three").MeshStandardMaterial; top: V3 }[] = [];
+  const candle = (x: number, base: number, height: number, r: number, seed: number) => {
+    const prof: [number, number][] = [
+      [0, 0],
+      [r, 0],
+      [r, height - 0.18],
+      [r * 0.96, height - 0.05],
+      [r * 0.82, height],
+      [r * 0.45, height - 0.06],
+      [r * 0.18, height - 0.12],
+      [0, height - 0.13],
+    ];
+    const geo = lathe(prof, 40);
+    // Slightly imperfect: a gentle wobble around and along the candle.
+    const pos = geo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const px = pos.getX(i);
+      const py = pos.getY(i);
+      const pz = pos.getZ(i);
+      const a = Math.atan2(pz, px);
+      const k = 1 + 0.025 * Math.sin(a * 3 + seed) * Math.sin(py * 1.7 + seed * 2) + 0.012 * Math.sin(a * 7 + py * 3 + seed);
+      pos.setXYZ(i, px * k, py, pz * k);
+    }
+    geo.computeVertexNormals();
+    const wax = new THREE.MeshStandardMaterial({
+      color: new THREE.Color().setHSL(0.11, 0.35 + Math.random() * 0.1, 0.9 + Math.random() * 0.04),
+      roughness: 0.48,
+      metalness: 0,
+      emissive: new THREE.Color(0xff9a3c),
+      emissiveIntensity: 0,
+    });
+    add(geo, wax, x, base);
+    // The wick: thin, dark, a slight bend.
+    const wick = add(new THREE.CylinderGeometry(0.035, 0.045, 0.5, 8), new THREE.MeshStandardMaterial({ color: 0x1d140c, roughness: 0.9 }), x, base + height + 0.08);
+    wick.rotation.z = (Math.random() - 0.5) * 0.25;
+    candles.push({ wax, top: new THREE.Vector3(x, base + height + 0.3, 0) });
+  };
+  xs.forEach((x, i) => candle(x, cupTop - 0.6, 3.15, 0.42, i * 1.7));
+  candle(0, shamashCupBottom + 1.25 - 0.6, 3.75, 0.45, 20);
+
+  // A soft shadow under the base.
+  const sh = document.createElement("canvas");
+  sh.width = sh.height = 128;
+  const sg = sh.getContext("2d")!;
+  const grd = sg.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, "rgba(0,0,0,0.6)");
+  grd.addColorStop(0.6, "rgba(0,0,0,0.25)");
+  grd.addColorStop(1, "rgba(0,0,0,0)");
+  sg.fillStyle = grd;
+  sg.fillRect(0, 0, 128, 128);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(19, 19), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(sh), transparent: true, depthWrite: false }));
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.y = 0.01;
+  scene.add(floor);
+
+  // ---- Lights: a soft key light, a cool rim, and one small light per flame ----
+  scene.add(new THREE.AmbientLight(0x6a5aa0, 0.25));
+  const key = new THREE.DirectionalLight(0xfff0d8, 1.3);
+  key.position.set(-12, 30, 22);
+  scene.add(key);
+  const rim = new THREE.DirectionalLight(0x8a7cff, 0.6);
+  rim.position.set(14, 18, -20);
+  scene.add(rim);
+
+  // ---- The nine flames ----
+  const PLANE = 0.84; // world size of one flame unit (one candle width)
+  const flamePlane = new THREE.PlaneGeometry(3 * PLANE, 5 * PLANE);
+  const flames = candles.map((c, i) => {
+    const mat = new THREE.ShaderMaterial({
+      vertexShader: FLAME_VERT,
+      fragmentShader: FLAME_FRAG,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.CustomBlending,
+      blendSrc: THREE.OneFactor,
+      blendDst: THREE.OneMinusSrcAlphaFactor,
+      uniforms: {
+        uTime: { value: 0 },
+        uSeed: { value: Math.random() * 100 },
+        uSpeed: { value: 0.8 + Math.random() * 0.42 },
+        uH: { value: 2.0 },
+        uW: { value: 0.34 },
+        uBright: { value: 1 },
+        uSway: { value: 0 },
+        uOn: { value: 0 },
+      },
+    });
+    const mesh = new THREE.Mesh(flamePlane, mat);
+    mesh.renderOrder = 10;
+    scene.add(mesh);
+    const light = new THREE.PointLight(0xffa64d, 0, 7, 2);
+    scene.add(light);
+    const seed = Math.random() * 1000;
+    return { mat, mesh, light, wick: c.top, wax: c.wax, index: i, sway: wander(seed), height: wander(seed + 1), bright: wander(seed + 2), look: { h: 0.9 + Math.random() * 0.2, w: 0.9 + Math.random() * 0.2, b: 0.85 + Math.random() * 0.23 } };
+  });
+
+  // ---- Camera: same framing as the drawing ----
+  const camera = new THREE.PerspectiveCamera(32, 1, 1, 400);
+  camera.position.set(0, 16.5, 61);
+  camera.lookAt(0, 13.4, 0);
+
+  const resize = () => {
+    const w = el.clientWidth || 300;
+    renderer.setSize(w, w, false);
+  };
+  resize();
+  const ro = new ResizeObserver(resize);
+  ro.observe(el);
+
+  // ---- Turning: drag to spin all the way around and tilt up or down, with a little momentum ----
+  const still = !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const TILT = THREE.MathUtils.degToRad(35);
+  const SENSE = 0.009; // radians per pixel dragged
+  const m = { yaw: 0, pitch: 0, vYaw: 0, vPitch: 0, dragging: false, x: 0, y: 0, t: 0, wind: 0, id: -1 };
+  let raf = 0;
+  let onScreen = true;
+  const wake = () => {
+    if (!raf && onScreen && document.visibilityState === "visible") raf = requestAnimationFrame(frame);
+  };
+  const onDown = (e: PointerEvent) => {
+    if (m.dragging) return;
+    m.dragging = true;
+    m.id = e.pointerId;
+    m.x = e.clientX;
+    m.y = e.clientY;
+    m.t = performance.now();
+    m.vYaw = m.vPitch = 0;
+    try {
+      el.setPointerCapture(e.pointerId);
+    } catch {
+      // Not every browser allows it; dragging still works.
+    }
+    wake();
+  };
+  const onMove = (e: PointerEvent) => {
+    if (!m.dragging || e.pointerId !== m.id) return;
+    const now = performance.now();
+    const dt = Math.max(1, now - m.t);
+    const dYaw = (e.clientX - m.x) * SENSE;
+    // Dragging up looks down from above; dragging down looks up from below.
+    const dPitch = -(e.clientY - m.y) * SENSE * 0.8;
+    m.yaw += dYaw;
+    m.pitch = Math.max(-TILT, Math.min(TILT, m.pitch + dPitch));
+    // Speed per frame (16ms), smoothed, for the momentum after letting go.
+    m.vYaw = m.vYaw * 0.5 + (dYaw / dt) * 16 * 0.5;
+    m.vPitch = m.vPitch * 0.5 + (dPitch / dt) * 16 * 0.5;
+    m.x = e.clientX;
+    m.y = e.clientY;
+    m.t = now;
+    wake();
+  };
+  const onUp = (e: PointerEvent) => {
+    if (e.pointerId !== m.id) return;
+    m.dragging = false;
+    // A pause before letting go means no momentum.
+    if (performance.now() - m.t > 90) m.vYaw = m.vPitch = 0;
+    wake();
+  };
+  el.addEventListener("pointerdown", onDown);
+  el.addEventListener("pointermove", onMove);
+  el.addEventListener("pointerup", onUp);
+  el.addEventListener("pointercancel", onUp);
+  const target = new THREE.Vector3(0, 13.4, 0);
+  const DIST = 61.1;
+  const BASE_PITCH = Math.atan2(16.5 - 13.4, 61);
+
+  // ---- The loop: runs only while the menorah is on screen and the page is in view ----
+  const start = performance.now();
+  const at = new THREE.Vector3();
+  const lift = new THREE.Vector3(0, 0.9, 0.4);
+  let first = true;
+  function frame() {
+    raf = 0;
+    const now = performance.now();
+    const time = still ? 4 : (now - start) / 1000;
+    if (!m.dragging) {
+      // Momentum that slows down naturally, without spinning on and on.
+      m.yaw += m.vYaw;
+      m.pitch = Math.max(-TILT, Math.min(TILT, m.pitch + m.vPitch));
+      m.vYaw *= 0.92;
+      m.vPitch *= 0.85;
+      if (Math.abs(m.vYaw) < 0.0004) m.vYaw = 0;
+      if (Math.abs(m.vPitch) < 0.0004) m.vPitch = 0;
+    }
+    // Turning pushes the flames the other way a little, like carrying a real candle.
+    const spin = m.dragging ? m.vYaw : m.vYaw;
+    m.wind += (Math.max(-0.6, Math.min(0.6, -spin * 6)) - m.wind) * 0.1;
+    group.rotation.y = m.yaw;
+    // Tilting moves the camera up or down around the menorah, keeping it centered.
+    const el2 = BASE_PITCH + m.pitch;
+    camera.position.set(0, target.y + Math.sin(el2) * DIST, Math.cos(el2) * DIST);
+    camera.lookAt(target);
+    group.updateMatrixWorld(true);
+
+    const lit = litRef.current;
+    for (const f of flames) {
+      const on = f.index === 8 ? lit > 0 : f.index >= 8 - lit;
+      const u = f.mat.uniforms;
+      u.uOn.value = on ? 1 : 0;
+      at.copy(f.wick).applyMatrix4(group.matrixWorld);
+      // The flame plane hangs from the wick, which sits 20% up the plane.
+      f.mesh.position.set(at.x, at.y + 5 * PLANE * 0.3, at.z);
+      f.mesh.quaternion.copy(camera.quaternion);
+      const tt = time * u.uSpeed.value;
+      const breathe = f.height(tt * 0.6);
+      const bright = f.look.b * (0.82 + 0.3 * f.bright(tt * 1.7));
+      u.uTime.value = time;
+      u.uH.value = 2.35 * f.look.h * (0.86 + 0.28 * breathe);
+      u.uW.value = 0.46 * f.look.w * (1.08 - 0.18 * breathe);
+      u.uBright.value = bright;
+      u.uSway.value = (f.sway(tt * 0.8) - 0.5) * 0.8 + m.wind;
+      f.light.position.copy(at).add(lift);
+      f.light.intensity = on ? 9 * bright : 0;
+      // The wax glows a little from inside near its own flame.
+      f.wax.emissiveIntensity = on ? 0.1 * bright : 0;
+    }
+    renderer.render(scene, camera);
+    if (first) {
+      first = false;
+      onReady();
+    }
+    // Keep going while flames burn or it's still turning.
+    const moving = m.dragging || m.vYaw !== 0 || m.vPitch !== 0 || Math.abs(m.wind) > 0.01;
+    if ((lit > 0 && !still) || moving) wake();
+  }
+  const io = new IntersectionObserver(([e]) => {
+    onScreen = e.isIntersecting;
+    wake();
+  });
+  io.observe(el);
+  document.addEventListener("visibilitychange", wake);
+  // The night can change while the page is open.
+  const nightCheck = setInterval(wake, 5000);
+  wake();
+
+  return () => {
+    cancelAnimationFrame(raf);
+    raf = -1; // never wake again
+    clearInterval(nightCheck);
+    io.disconnect();
+    ro.disconnect();
+    document.removeEventListener("visibilitychange", wake);
+    el.removeEventListener("pointerdown", onDown);
+    el.removeEventListener("pointermove", onMove);
+    el.removeEventListener("pointerup", onUp);
+    el.removeEventListener("pointercancel", onUp);
+    scene.traverse((o) => {
+      const mesh = o as import("three").Mesh;
+      mesh.geometry?.dispose?.();
+      (mesh.material as import("three").Material | undefined)?.dispose?.();
+    });
+    grainTex.dispose();
+    env.dispose();
+    pmrem.dispose();
+    renderer.dispose();
+    canvas.remove();
+  };
 }
