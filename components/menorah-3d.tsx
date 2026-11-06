@@ -207,94 +207,172 @@ function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, e
   };
   const V = (x: number, y: number) => new THREE.Vector3(x, y, 0);
 
-  // ---- The 770 menorah, built from the photo (proportions measured from it; the back is a best guess) ----
-  // Units: the whole menorah is about 26 tall to the row of cups and 26 wide.
-  const ROW = 24.5; // bottom of the eight cups (they sit in one level row)
-  const xs = [-13.15, -10.3, -7.45, -4.6, 4.6, 7.45, 10.3, 13.15];
-  const SHAMASH_CUP = 27.1; // the shamash cup, a little higher, on top of the stem
+  // ---- The 770 menorah, built from the photo (sizes measured from it; the back is a best guess) ----
+  // Each branch, from the top: a goblet cup, a large ball (knop), three stacked flowers (bells), then
+  // a long thin rod to a ball on the stem. The innermost branch joins highest, the outermost lowest.
+  const ROW = 25.1; // bottom of the eight cups, in one level row
+  const SPREAD = [4.58, 7.49, 10.24, 13.15]; // each cup's distance from the middle
+  const JOINT = [21.5, 19.15, 16.8, 14.42]; // where each pair of branches meets the stem
+  const SHAMASH_CUP = 27.55;
+  const xs = [-SPREAD[3], -SPREAD[2], -SPREAD[1], -SPREAD[0], SPREAD[0], SPREAD[1], SPREAD[2], SPREAD[3]];
+  const up = new THREE.Vector3(0, 1, 0);
+  // Place a shape so its own up points along `dir`.
+  const along = (geo: import("three").BufferGeometry, at: V3, dir: V3, mat: import("three").Material = gold) => {
+    const mesh = add(geo, mat, at.x, at.y, at.z);
+    mesh.quaternion.setFromUnitVectors(up, dir.clone().normalize());
+    return mesh;
+  };
+  // Shared shapes (made once, used many times).
+  const ball = (r: number) => new THREE.SphereGeometry(r, 32, 20);
+  // A flower: a short bell, narrow at the bottom, flaring to a rolled lip at the top.
+  const bell = lathe([[0, 0], [0.3, 0], [0.34, 0.08], [0.4, 0.28], [0.5, 0.48], [0.55, 0.58], [0.5, 0.66], [0.3, 0.64], [0, 0.63]], 48);
+  // A wide collar with eight petals, like an open flower around the stem.
+  const petalCollar = (r: number) => {
+    const geo = lathe([[0, 0], [0.4, 0], [0.55, 0.05], [r * 0.85, 0.12], [r, 0.2], [r * 0.95, 0.27], [0.55, 0.3], [0.4, 0.38], [0, 0.38]], 64);
+    const pos = geo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const px = pos.getX(i);
+      const pz = pos.getZ(i);
+      const rr = Math.hypot(px, pz);
+      if (rr < 0.6) continue;
+      const k = 1 + 0.12 * Math.cos(Math.atan2(pz, px) * 8) * ((rr - 0.6) / (r - 0.6));
+      pos.setXYZ(i, px * k, pos.getY(i) + 0.05 * Math.cos(Math.atan2(pz, px) * 8), pz * k);
+    }
+    geo.computeVertexNormals();
+    return geo;
+  };
+  const ringGeo = (r: number, tube = 0.1) => new THREE.TorusGeometry(r, tube, 12, 40).rotateX(Math.PI / 2);
 
-  // The base: a polished dome on four small feet (three show from the front).
-  add(lathe([[0, 1.55], [4.45, 1.55], [4.5, 1.7], [4.45, 1.85], [4.2, 1.95], [4.05, 2.4], [3.75, 3.2], [3.25, 4.0], [2.55, 4.7], [1.7, 5.25], [1.05, 5.55], [0.75, 5.75], [0.55, 6.05], [0, 6.1]], 96), gold);
+  // The base: a polished dome, a little taller than half a ball, with a decorated band at its rim.
+  add(lathe([[0, 1.3], [4.22, 1.3], [4.3, 1.42], [4.3, 2.3], [4.18, 2.42], [4.05, 2.55], [3.95, 3.1], [3.7, 3.85], [3.25, 4.6], [2.6, 5.25], [1.8, 5.75], [1.0, 6.05], [0.55, 6.15], [0, 6.18]], 96), gold);
+  // The rim band: a row of small raised beads all the way around, between two rings.
+  add(ringGeo(4.32, 0.07), darkGold, 0, 1.42);
+  add(ringGeo(4.32, 0.07), darkGold, 0, 2.28);
+  {
+    const bead = new THREE.SphereGeometry(0.15, 12, 8);
+    const beads = new THREE.InstancedMesh(bead, darkGold, 72);
+    const mtx = new THREE.Matrix4();
+    for (let i = 0; i < 72; i++) {
+      const a = (i / 72) * Math.PI * 2;
+      mtx.makeTranslation(Math.cos(a) * 4.31, 1.85, Math.sin(a) * 4.31);
+      beads.setMatrixAt(i, mtx);
+    }
+    group.add(beads);
+  }
+  // Four cast feet (two show from the front, three from the side): a flared pad, a waist, a bulb.
+  const footGeo = lathe([[0, 0], [0.62, 0], [0.66, 0.12], [0.48, 0.3], [0.26, 0.55], [0.22, 0.8], [0.36, 1.05], [0.42, 1.3], [0.34, 1.55], [0.24, 1.7], [0.3, 1.85], [0, 1.9]], 6 * 6);
+  {
+    // Six-sided pads, like the cast feet in the photo.
+    const pos = footGeo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const py = pos.getY(i);
+      if (py > 0.35) continue;
+      const px = pos.getX(i);
+      const pz = pos.getZ(i);
+      const k = 1 + 0.1 * Math.cos(Math.atan2(pz, px) * 6);
+      pos.setXYZ(i, px * k, py, pz * k);
+    }
+    footGeo.computeVertexNormals();
+  }
   for (let i = 0; i < 4; i++) {
     const a = Math.PI / 4 + (i * Math.PI) / 2;
-    const fx = Math.cos(a) * 3.55;
-    const fz = Math.sin(a) * 3.55;
-    // A short leg ending in a ball foot.
-    add(lathe([[0, 0], [0.5, 0], [0.62, 0.22], [0.55, 0.5], [0.34, 0.75], [0.3, 1.2], [0.42, 1.45], [0.5, 1.6], [0, 1.6]], 32), darkGold, fx, 0, fz);
-    add(new THREE.SphereGeometry(0.42, 24, 16), gold, fx * 1.04, 0.42, fz * 1.04);
+    add(footGeo, gold, Math.cos(a) * 3.45, 0, Math.sin(a) * 3.45);
   }
 
-  // The stem: thick, from the dome up to the shamash cup, with decorative balls and rings.
-  rod(V(0, 5.9), V(0, SHAMASH_CUP + 0.1), 0.42);
-  const knop = (y: number, r: number) => add(new THREE.SphereGeometry(r, 32, 20), gold, 0, y);
-  const ring = (y: number, r: number) => {
-    add(new THREE.TorusGeometry(r, 0.13, 12, 40), darkGold, 0, y).rotation.x = Math.PI / 2;
-  };
-  knop(7.6, 0.66);
-  ring(8.45, 0.55);
-  knop(9.3, 0.7);
-  ring(10.2, 0.5);
-  knop(22.3, 0.55);
-  ring(23.3, 0.48);
-  ring(SHAMASH_CUP - 0.25, 0.5);
+  // The stem, from the dome to the shamash: thin sections between balls, collars and rings.
+  rod(V(0, 6.1), V(0, SHAMASH_CUP - 0.2), 0.33);
+  add(lathe([[0, 0], [0.7, 0], [0.62, 0.18], [0.45, 0.3], [0.42, 0.55], [0.5, 0.65], [0, 0.66]], 40), darkGold, 0, 6.05); // where the stem meets the dome
+  add(petalCollar(1.15), gold, 0, 6.6);
+  along(bell, V(0, 9.95), new THREE.Vector3(0, -1, 0)); // a hanging bud
+  add(ball(0.72), gold, 0, 10.7);
+  add(ringGeo(0.42), darkGold, 0, 11.45);
+  add(petalCollar(1.15), gold, 0, 11.8);
+  add(ringGeo(0.4), darkGold, 0, 12.4);
+  JOINT.forEach((y, i) => {
+    add(ball(0.72), gold, 0, y);
+    // Rings above and below each joint ball.
+    add(ringGeo(0.4), darkGold, 0, y + 0.82);
+    add(ringGeo(0.4), darkGold, 0, y - 0.82);
+    if (i > 0) add(ringGeo(0.38, 0.08), darkGold, 0, (y + JOINT[i - 1]) / 2);
+  });
+  // Under the shamash: three stacked flowers and a ball, the same as under each branch's cup.
+  for (let k = 0; k < 3; k++) add(bell, gold, 0, 23.25 + k * 0.72);
+  add(ball(0.72), gold, 0, 26.8);
 
-  // Four straight branches each side at 45°, joining the stem at a ball, each with a short chain
-  // of small balls just under its cup.
+  // The eight branches.
   for (const x of xs) {
+    const sgn = Math.sign(x);
     const dx = Math.abs(x);
-    const joint = V(0, ROW - dx);
-    const top = V(x, ROW);
-    rod(joint, top, 0.24);
-    const dir = new THREE.Vector3().subVectors(joint, top).normalize();
-    for (let b = 1; b <= 3; b++) {
-      const p = top.clone().addScaledVector(dir, 0.35 + b * 0.5);
-      add(new THREE.SphereGeometry(0.34 - b * 0.03, 20, 14), gold, p.x, p.y, p.z);
+    const joint = V(0, JOINT[SPREAD.indexOf(dx)]);
+    const knop = V(x - sgn * 0.62, ROW - 0.5);
+    const dir = new THREE.Vector3().subVectors(joint, knop).normalize(); // down and in, toward the stem
+    add(ball(0.72), gold, knop.x, knop.y);
+    // Three flowers stacked down the branch, their open ends toward the cup.
+    for (let k = 0; k < 3; k++) {
+      const at = knop.clone().addScaledVector(dir, 0.95 + k * 0.66 + 0.6);
+      along(bell, at, dir.clone().negate());
     }
-  }
-  for (const dx of [4.6, 7.45, 10.3, 13.15]) {
-    knop(ROW - dx, 0.62);
-    ring(ROW - dx + 0.68, 0.36);
+    const rodStart = knop.clone().addScaledVector(dir, 0.95 + 3 * 0.66 + 0.4);
+    rod(rodStart, joint, 0.17);
+    // A small collar where the rod leaves the flowers, and where it meets the joint ball.
+    along(new THREE.TorusGeometry(0.24, 0.07, 10, 28).rotateX(Math.PI / 2), rodStart, dir);
+    along(new THREE.TorusGeometry(0.22, 0.07, 10, 28).rotateX(Math.PI / 2), joint.clone().addScaledVector(dir, -0.72), dir);
   }
 
-  // A tulip-shaped cup on a small neck, with a scalloped rim, open where the candle sits.
+  // The goblet cups: a small foot and neck, a ball, a waist, then a body with raised lobes that
+  // flares to a scalloped, petal-shaped rim. Open on top, where the candle sits.
   const cupGeo = (hole: number) => {
     const geo = lathe(
       [
         [0, 0],
-        [0.26, 0],
-        [0.34, 0.14],
-        [0.22, 0.36],
-        [0.3, 0.52],
-        [0.56, 0.72],
-        [0.8, 1.04],
-        [0.92, 1.36],
-        [0.96, 1.62],
-        [0.86, 1.7],
-        [hole + 0.04, 1.62],
-        [hole, 1.5],
-        [hole, 1.05],
-        [0, 1.05],
+        [0.36, 0],
+        [0.4, 0.1],
+        [0.24, 0.26],
+        [0.22, 0.4],
+        [0.42, 0.58],
+        [0.44, 0.72],
+        [0.3, 0.9],
+        [0.32, 1.05],
+        [0.55, 1.35],
+        [0.75, 1.7],
+        [0.88, 2.05],
+        [0.95, 2.35],
+        [0.86, 2.45],
+        [hole + 0.04, 2.38],
+        [hole, 2.25],
+        [hole, 1.35],
+        [0, 1.35],
       ],
-      72,
+      96,
     );
-    // Six petals around the rim.
     const pos = geo.attributes.position;
     for (let i = 0; i < pos.count; i++) {
       const px = pos.getX(i);
       const py = pos.getY(i);
       const pz = pos.getZ(i);
-      if (py < 1.2 || Math.hypot(px, pz) < hole + 0.05) continue;
+      const rr = Math.hypot(px, pz);
+      if (rr < hole + 0.05) continue;
       const a = Math.atan2(pz, px);
-      const w = (py - 1.2) / 0.5;
-      const petal = Math.cos(a * 6);
-      pos.setXYZ(i, px * (1 + 0.05 * petal * w), py + 0.14 * petal * w, pz * (1 + 0.05 * petal * w));
+      let k = 1;
+      let lift = 0;
+      // Raised lobes around the body.
+      if (py > 1.05 && py < 2.2) k += 0.07 * Math.max(0, Math.cos(a * 8)) * Math.sin(((py - 1.05) / 1.15) * Math.PI);
+      // Eight petals around the rim.
+      if (py > 2.0) {
+        const w = (py - 2.0) / 0.45;
+        k += 0.06 * Math.cos(a * 8) * w;
+        lift = 0.18 * Math.cos(a * 8) * w;
+      }
+      // Small bumps on the ball under the cup.
+      if (py > 0.45 && py < 0.85) k += 0.05 * Math.cos(a * 12);
+      pos.setXYZ(i, px * k, py + lift, pz * k);
     }
     geo.computeVertexNormals();
     return geo;
   };
-  const cup = cupGeo(0.34);
+  const cup = cupGeo(0.33);
   for (const x of xs) add(cup, gold, x, ROW);
-  add(cupGeo(0.36), gold, 0, SHAMASH_CUP);
+  add(cupGeo(0.35), gold, 0, SHAMASH_CUP);
 
   // ---- Candles: tall, thin yellow candles, a little uneven, with a melted dip and a wick ----
   const candles: { wax: import("three").MeshStandardMaterial; top: V3 }[] = [];
@@ -335,8 +413,8 @@ function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, e
     wick.rotation.z = (Math.random() - 0.5) * 0.25;
     candles.push({ wax, top: new THREE.Vector3(x, base + height + 0.28, 0) });
   };
-  xs.forEach((x, i) => candle(x, ROW + 1.1, 5.2, 0.3, i * 1.7));
-  candle(0, SHAMASH_CUP + 1.1, 5.6, 0.32, 20);
+  xs.forEach((x, i) => candle(x, ROW + 1.4, 5.2, 0.3, i * 1.7));
+  candle(0, SHAMASH_CUP + 1.4, 5.6, 0.32, 20);
 
   // A soft shadow under the base.
   const sh = document.createElement("canvas");
