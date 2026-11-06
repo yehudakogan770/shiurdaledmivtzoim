@@ -15,8 +15,10 @@
     "@supabase/supabase-js": "^2.117.1",
     "@types/three": "^0.169.0",
     "exceljs": "^4.4.0",
+    "jsqr": "^1.4.0",
     "lucide-react": "^1.48.0",
     "next": "^16.3.6",
+    "qrcode": "^1.5.4",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "tesseract.js": "^7.0.0",
@@ -25,6 +27,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.6.2",
+    "@types/qrcode": "^1.5.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "esbuild": "^0.25.12",

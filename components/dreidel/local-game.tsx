@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ChevronLeft, Minus, Plus, Trash2, Trophy, UserPlus } from "lucide-react";
 import { randomLetter, savedDesign } from "@/lib/dreidel";
-import { applySpin, currentPlayer, DEFAULT_SETTINGS, endOnTime, newGame, playAgain, TIME_LIMITS, type GameSettings, type GameState } from "@/lib/dreidel-game";
+import { applySpin, currentPlayer, DEFAULT_SETTINGS, endOnTime, newGame, playAgain, TIME_LIMITS, type GameSettings, type GameState, type Outcome } from "@/lib/dreidel-game";
 import { t, tn } from "@/lib/i18n";
 import { GeltShower } from "../gelt-shower";
 import { Input, cx } from "../ui";
@@ -124,28 +124,7 @@ function Setup({ saved, onChange, onBack, onStart }: { saved: Saved; onChange(s:
       </button>
       <p className="mt-1.5 px-1 text-xs text-muted">{t("Tap a dreidel to choose a different one.")}</p>
 
-      <Label>{t("Coins")}</Label>
-      <Row label={t("Coins for each player")}>
-        <Stepper value={settings.startCoins} min={1} max={500} onChange={(v) => setS({ startCoins: v })} label={t("Coins for each player")} />
-      </Row>
-      <Row label={t("Coins in the pot to start")}>
-        <Stepper value={settings.startPot} min={0} max={500} onChange={(v) => setS({ startPot: v })} label={t("Coins in the pot to start")} />
-      </Row>
-
-      <Label>{t("Time Limit")}</Label>
-      <div className="flex flex-wrap gap-2">
-        {TIME_LIMITS.map((m) => (
-          <button
-            key={m}
-            type="button"
-            aria-pressed={settings.minutes === m}
-            onClick={() => setS({ minutes: m })}
-            className={cx("h-11 rounded-full px-4 text-sm transition", settings.minutes === m ? gold : "border border-white/15 bg-white/5")}
-          >
-            <span className="relative">{m ? t("{n} min", { n: m }) : t("Until there's a winner")}</span>
-          </button>
-        ))}
-      </div>
+      <SettingsForm settings={settings} onChange={setS} />
 
       <div className="mt-7">
         <Big disabled={!ready} onClick={onStart}>
@@ -164,6 +143,45 @@ function Setup({ saved, onChange, onBack, onStart }: { saved: Saved; onChange(s:
         />
       )}
     </div>
+  );
+}
+
+/** Coins and time limit. Read-only for players who aren't the host. */
+export function SettingsForm({ settings, onChange, readOnly }: { settings: GameSettings; onChange(patch: Partial<GameSettings>): void; readOnly?: boolean }) {
+  const setS = onChange;
+  if (readOnly)
+    return (
+      <div className="mt-2 grid gap-1 rounded-[18px] border border-white/10 bg-white/5 px-4 py-3 text-start text-sm">
+        <span>{t("Coins for each player")}: <b className="tabular">{settings.startCoins}</b></span>
+        <span>{t("Coins in the pot to start")}: <b className="tabular">{settings.startPot}</b></span>
+        <span>{t("Time Limit")}: <b>{settings.minutes ? t("{n} min", { n: settings.minutes }) : t("Until there's a winner")}</b></span>
+      </div>
+    );
+  return (
+    <>
+  <Label>{t("Coins")}</Label>
+  <Row label={t("Coins for each player")}>
+    <Stepper value={settings.startCoins} min={1} max={500} onChange={(v) => setS({ startCoins: v })} label={t("Coins for each player")} />
+  </Row>
+  <Row label={t("Coins in the pot to start")}>
+    <Stepper value={settings.startPot} min={0} max={500} onChange={(v) => setS({ startPot: v })} label={t("Coins in the pot to start")} />
+  </Row>
+
+  <Label>{t("Time Limit")}</Label>
+  <div className="flex flex-wrap gap-2">
+    {TIME_LIMITS.map((m) => (
+      <button
+        key={m}
+        type="button"
+        aria-pressed={settings.minutes === m}
+        onClick={() => setS({ minutes: m })}
+        className={cx("h-11 rounded-full px-4 text-sm transition", settings.minutes === m ? gold : "border border-white/15 bg-white/5")}
+      >
+        <span className="relative">{m ? t("{n} min", { n: m }) : t("Until there's a winner")}</span>
+      </button>
+    ))}
+  </div>
+    </>
   );
 }
 
@@ -221,18 +239,7 @@ function Game({ state, onChange, onExit }: { state: GameState; onChange(s: GameS
     pending.current = null;
     const before = stateRef.current;
     const after = applySpin(before, letter);
-    const o = after.last!;
-    const who = nameOf(o.playerId);
-    const lines: string[] = [];
-    if (letter === 0) lines.push(t("{name} got Nun: nothing happens.", { name: who }));
-    if (letter === 1) lines.push(t("{name} got Gimmel and takes the whole pot: {n}!", { name: who, n: o.took }), t("Everyone puts 1 back in."));
-    if (letter === 2) lines.push(t("{name} got Hey and takes half the pot: {n}.", { name: who, n: o.took }));
-    if (letter === 3) lines.push(o.out ? t("{name} got Shin and can't put in 2: {name} is out.", { name: who }) : o.usedToken ? t("{name} got Shin and used a life token to stay in.", { name: who }) : t("{name} got Shin and puts 2 in the pot.", { name: who }));
-    for (const r of o.refill) {
-      if (r.out) lines.push(t("{name} couldn't put 1 in and is out.", { name: nameOf(r.playerId) }));
-      if (r.usedToken) lines.push(t("{name} used a life token to stay in.", { name: nameOf(r.playerId) }));
-    }
-    setMessage(lines.join(" "));
+    setMessage(outcomeText(after.last!, nameOf));
     if (letter === 1) setGelt((n) => n + 1);
     onChange(after);
     setSpinning(false);
@@ -243,7 +250,6 @@ function Game({ state, onChange, onExit }: { state: GameState; onChange(s: GameS
   if (state.status === "over" && over) return <Results state={state} onAgain={() => onChange(playAgain(state))} onExit={onExit} />;
 
   const left = state.endsAt ? Math.max(0, state.endsAt - now) : null;
-  const ordered = state.order.map((id) => state.players.find((p) => p.id === id)!);
   const myTurn = showing === turnPlayer.id;
 
   return (
@@ -275,43 +281,67 @@ function Game({ state, onChange, onExit }: { state: GameState; onChange(s: GameS
         {myTurn ? t("Spin, {name}", { name: turnPlayer.name }) : t("Next: {name}", { name: turnPlayer.name })}
       </Big>
 
-      {/* Players */}
-      <ul className="mt-6 grid gap-2 text-start">
-        {ordered.map((p) => (
-          <li
-            key={p.id}
-            className={cx(
-              "flex items-center gap-3 rounded-[18px] border px-3 py-2 transition",
-              p.id === turnPlayer.id && !p.out ? "border-[#ffbd52]/70 bg-[#ffbd52]/10" : "border-white/10 bg-white/5",
-              p.out && "opacity-45",
-            )}
-          >
-            <DreidelThumb design={p.design} size={40} />
-            <span className="min-w-0 flex-1">
-              <span className="flex items-center gap-1.5 font-medium">
-                <span className="truncate">{p.name}</span>
-                {Array.from({ length: p.tokens }, (_, i) => (
-                  <Gelt key={i} size={16} title={t("Life token")} />
-                ))}
-              </span>
-              <span className="block text-xs text-muted">{p.out ? t("Out") : p.id === turnPlayer.id ? t("Their turn") : p.age != null ? t("Age {n}", { n: p.age }) : ""}</span>
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Gelt size={20} />
-              <span key={p.coins} className="tally-pop tabular text-lg font-semibold">
-                {p.coins}
-              </span>
-            </span>
-          </li>
-        ))}
-      </ul>
+      <PlayerList state={state} turnId={turnPlayer.id} />
       <p className="mt-3 text-xs text-muted">{t("A small gold coin by a name is a life token: it saves that player once from going out.")}</p>
     </div>
   );
 }
 
+/** What a spin did, in words. */
+export function outcomeText(o: Outcome, nameOf: (id: string) => string) {
+  const who = nameOf(o.playerId);
+  const lines: string[] = [];
+  if (o.letter === 0) lines.push(t("{name} got Nun: nothing happens.", { name: who }));
+  if (o.letter === 1) lines.push(t("{name} got Gimmel and takes the whole pot: {n}!", { name: who, n: o.took }), t("Everyone puts 1 back in."));
+  if (o.letter === 2) lines.push(t("{name} got Hey and takes half the pot: {n}.", { name: who, n: o.took }));
+  if (o.letter === 3) lines.push(o.out ? t("{name} got Shin and can't put in 2: {name} is out.", { name: who }) : o.usedToken ? t("{name} got Shin and used a life token to stay in.", { name: who }) : t("{name} got Shin and puts 2 in the pot.", { name: who }));
+  for (const r of o.refill) {
+    if (r.out) lines.push(t("{name} couldn't put 1 in and is out.", { name: nameOf(r.playerId) }));
+    if (r.usedToken) lines.push(t("{name} used a life token to stay in.", { name: nameOf(r.playerId) }));
+  }
+  return lines.join(" ");
+}
+
+/** The players in turn order: their dreidel, life tokens and coins. `you` marks this phone's player. */
+export function PlayerList({ state, turnId, you }: { state: GameState; turnId: string; you?: string }) {
+  const ordered = state.order.map((id) => state.players.find((p) => p.id === id)).filter((p) => p != null);
+  return (
+  <ul className="mt-6 grid gap-2 text-start">
+    {ordered.map((p) => (
+      <li
+        key={p.id}
+        className={cx(
+          "flex items-center gap-3 rounded-[18px] border px-3 py-2 transition",
+          p.id === turnId && !p.out ? "border-[#ffbd52]/70 bg-[#ffbd52]/10" : "border-white/10 bg-white/5",
+          p.out && "opacity-45",
+        )}
+      >
+        <DreidelThumb design={p.design} size={40} />
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-1.5 font-medium">
+            <span className="truncate">{p.name}</span>
+            {p.id === you && <span className="shrink-0 text-xs text-muted">{t("(you)")}</span>}
+            {Array.from({ length: p.tokens }, (_, i) => (
+              <Gelt key={i} size={16} title={t("Life token")} />
+            ))}
+          </span>
+          <span className="block text-xs text-muted">{p.out ? t("Out") : p.id === turnId ? t("Their turn") : p.age != null ? t("Age {n}", { n: p.age }) : ""}</span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <Gelt size={20} />
+          <span key={p.coins} className="tally-pop tabular text-lg font-semibold">
+            {p.coins}
+          </span>
+        </span>
+      </li>
+    ))}
+  </ul>
+  );
+}
+
 // ---- The end ----
-function Results({ state, onAgain, onExit }: { state: GameState; onAgain(): void; onExit(): void }) {
+/** Without onAgain (on many phones, for everyone but the host), `waiting` is shown instead. */
+export function Results({ state, onAgain, onExit, waiting }: { state: GameState; onAgain?: () => void; onExit(): void; waiting?: string }) {
   const winners = state.players.filter((p) => state.winners.includes(p.id));
   const ranked = [...state.players].sort((a, b) => b.coins - a.coins || Number(a.out) - Number(b.out));
   return (
@@ -345,7 +375,7 @@ function Results({ state, onAgain, onExit }: { state: GameState; onAgain(): void
         ))}
       </ul>
       <div className="mt-6 grid gap-3">
-        <Big onClick={onAgain}>{t("Play Again")}</Big>
+        {onAgain ? <Big onClick={onAgain}>{t("Play Again")}</Big> : <p className="text-sm text-muted">{waiting}</p>}
         <Big ghost onClick={onExit}>
           {t("Done")}
         </Big>
@@ -355,10 +385,10 @@ function Results({ state, onAgain, onExit }: { state: GameState; onAgain(): void
 }
 
 // ---- Small pieces ----
-const gold =
+export const gold =
   "relative overflow-hidden bg-gradient-to-b from-[#ffe29a] via-[#ffbd52] to-[#f28a2e] font-semibold text-[#2a1300] shadow-[inset_0_1px_0_rgba(255,255,255,.7)] before:absolute before:inset-x-0 before:top-0 before:h-1/2 before:bg-gradient-to-b before:from-white/40 before:to-transparent";
 
-function Big({ children, onClick, disabled, ghost }: { children: ReactNode; onClick(): void; disabled?: boolean; ghost?: boolean }) {
+export function Big({ children, onClick, disabled, ghost }: { children: ReactNode; onClick(): void; disabled?: boolean; ghost?: boolean }) {
   return (
     <button
       type="button"
@@ -374,7 +404,7 @@ function Big({ children, onClick, disabled, ghost }: { children: ReactNode; onCl
   );
 }
 
-function BackBar({ onBack, title, right }: { onBack(): void; title: string; right?: ReactNode }) {
+export function BackBar({ onBack, title, right }: { onBack(): void; title: string; right?: ReactNode }) {
   return (
     <div className="flex items-center gap-2 pt-1">
       <button type="button" onClick={onBack} aria-label={t("Back")} className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/15 bg-white/5">
@@ -386,11 +416,11 @@ function BackBar({ onBack, title, right }: { onBack(): void; title: string; righ
   );
 }
 
-function Label({ children }: { children: ReactNode }) {
+export function Label({ children }: { children: ReactNode }) {
   return <p className="mt-7 mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-accent">{children}</p>;
 }
 
-function Row({ label, children }: { label: string; children: ReactNode }) {
+export function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex items-center gap-3 py-2">
       <span className="min-w-0 flex-1">{label}</span>
@@ -399,7 +429,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function Stepper({ value, min, max, label, onChange }: { value: number; min: number; max: number; label: string; onChange(v: number): void }) {
+export function Stepper({ value, min, max, label, onChange }: { value: number; min: number; max: number; label: string; onChange(v: number): void }) {
   return (
     <div className="flex h-12 shrink-0 items-center rounded-full border border-white/15 bg-white/5" role="group" aria-label={label}>
       <button type="button" aria-label={t("Less")} disabled={value <= min} onClick={() => onChange(Math.max(min, value - 1))} className="grid h-12 w-11 place-items-center text-accent disabled:opacity-30">

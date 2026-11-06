@@ -8,7 +8,9 @@ import { useChanukahNow } from "../chanukah";
 import { DreidelView, type Spin } from "../dreidel/dreidel-view";
 import { DreidelGlobe } from "../dreidel/globe";
 import { LocalGame } from "../dreidel/local-game";
-import { Users } from "lucide-react";
+import { OnlineGame } from "../dreidel/online-game";
+import { Smartphone, Users } from "lucide-react";
+import { useNav } from "@/lib/nav";
 import { GeltShower } from "../gelt-shower";
 import { DreidelIcon } from "../icons";
 import { Empty } from "../ui";
@@ -16,7 +18,7 @@ import { Empty } from "../ui";
 /**
  * The Dreidel section, open during Chanukah (from the countdown week). Spin a dreidel just for fun
  * any time: swipe it on a phone or tablet, click it on a computer. During the countdown week it
- * also says to come back on Chanukah to play with friends. (Playing together comes next.)
+ * also says to come back on Chanukah to play with friends. On Chanukah: play on one phone, or many.
  */
 export function DreidelView_() {
   const state = useChanukahNow();
@@ -27,8 +29,13 @@ export function DreidelView_() {
   const [gelt, setGelt] = useState(0);
   const [touch, setTouch] = useState(true);
   const [choosing, setChoosing] = useState(false);
-  const [mode, setMode] = useState<"spin" | "local">("spin");
+  const { query } = useNav();
+  // A join link (from a QR code or a shared link) opens the game on many phones.
+  const [mode, setMode] = useState<"spin" | "local" | "online">(query.join ? "online" : "spin");
 
+  useEffect(() => {
+    if (query.join) setMode("online");
+  }, [query.join]);
   useEffect(() => {
     setDesign(savedDesign());
     setTouch(!window.matchMedia?.("(hover: hover) and (pointer: fine)").matches);
@@ -39,6 +46,7 @@ export function DreidelView_() {
   }
 
   if (mode === "local") return <LocalGame onExit={() => setMode("spin")} />;
+  if (mode === "online" && state.phase === "night") return <OnlineGame joinCode={query.join} onExit={() => setMode("spin")} />;
 
   const go = (direction: 1 | -1 = 1) => {
     if (spinning) return;
@@ -69,6 +77,14 @@ export function DreidelView_() {
           >
             <Users size={20} className="relative" aria-hidden />
             <span className="relative">{t("Play on This Phone")}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("online")}
+            className="relative flex h-14 w-full items-center justify-center gap-2 overflow-hidden rounded-[20px] bg-gradient-to-b from-[#ffe29a] via-[#ffbd52] to-[#f28a2e] text-[1.05rem] font-semibold text-[#2a1300] shadow-[0_10px_30px_rgba(255,140,50,.3),inset_0_1px_0_rgba(255,255,255,.75)] active:scale-[0.98] before:absolute before:inset-x-0 before:top-0 before:h-1/2 before:bg-gradient-to-b before:from-white/40 before:to-transparent"
+          >
+            <Smartphone size={20} className="relative" aria-hidden />
+            <span className="relative">{t("Play on Many Phones")}</span>
           </button>
           <p className="text-xs text-muted">{t("Or spin just for fun below.")}</p>
         </div>
