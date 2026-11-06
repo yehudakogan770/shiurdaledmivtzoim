@@ -1268,7 +1268,7 @@ function ReportAccess({ person }: { person: Profile }) {
             setBusy(false);
           }
         }}
-        className="h-6 w-11 shrink-0 cursor-pointer appearance-none rounded-full bg-outline/40 transition-colors before:block before:h-5 before:w-5 before:translate-x-0.5 before:rounded-full before:bg-white before:shadow before:transition-transform checked:bg-accent checked:before:translate-x-[1.375rem] disabled:opacity-50"
+        className="switch"
       />
     </label>
   );

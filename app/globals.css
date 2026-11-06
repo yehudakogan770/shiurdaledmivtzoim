@@ -534,3 +534,51 @@ header.sticky {
   color: transparent;
   filter: url(#chanukah-puffy) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
 }
+
+/* On/off switches: fully round, a knob with a soft shadow that slides smoothly (never squared off). */
+input.switch {
+  -webkit-appearance: none;
+  appearance: none;
+  position: relative;
+  flex-shrink: 0;
+  width: 3.25rem;
+  height: 2rem;
+  border-radius: 9999px !important;
+  background: color-mix(in srgb, var(--outline) 38%, transparent);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  transition: background-color 0.25s ease;
+}
+input.switch::before {
+  content: "";
+  position: absolute;
+  top: 0.1875rem;
+  left: 0.1875rem;
+  width: 1.625rem;
+  height: 1.625rem;
+  border-radius: 9999px;
+  background: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 0 1px rgba(0, 0, 0, 0.15);
+  transition: transform 0.25s cubic-bezier(0.3, 1.2, 0.5, 1);
+}
+input.switch:checked {
+  background: var(--accent);
+}
+input.switch:checked::before {
+  transform: translateX(1.25rem);
+}
+[dir="rtl"] input.switch:checked::before {
+  transform: translateX(-1.25rem);
+}
+[dir="rtl"] input.switch::before {
+  left: auto;
+  right: 0.1875rem;
+}
+input.switch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+input.switch:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
