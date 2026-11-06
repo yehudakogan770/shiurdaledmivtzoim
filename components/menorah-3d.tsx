@@ -258,8 +258,13 @@ function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, e
     geo.computeVertexNormals();
     return geo;
   };
-  // A flower: a short bell, narrow at the bottom, flaring to a rolled lip at the top.
-  const bell = lathe([[0, 0], [0.3, 0], [0.34, 0.08], [0.4, 0.28], [0.5, 0.48], [0.55, 0.58], [0.5, 0.66], [0.3, 0.64], [0, 0.63]], 48);
+  // A cup that faces downward (גביע): narrow where it hangs from the piece above, opening wider
+  // toward its mouth. Its own "up" runs from the narrow end to the mouth, so it's placed pointing
+  // down the branch; the next cup's narrow end tucks into its mouth, so the three are joined.
+  const downCup = lathe([[0, 0], [0.2, 0], [0.22, 0.05], [0.17, 0.13], [0.21, 0.2], [0.32, 0.29], [0.42, 0.4], [0.48, 0.52], [0.5, 0.61], [0.47, 0.68], [0.4, 0.71], [0.32, 0.68], [0, 0.6]], 48);
+  // As in the photo, nearly as wide as the ball above them.
+  const CUP_SIZE = 1.45;
+  const CUP_STEP = 0.6 * CUP_SIZE;
   // A wide collar with eight petals, like an open flower around the stem.
   const petalCollar = (r: number) => {
     const geo = lathe([[0, 0], [0.4, 0], [0.55, 0.05], [r * 0.85, 0.12], [r, 0.2], [r * 0.95, 0.27], [0.55, 0.3], [0.4, 0.38], [0, 0.38]], 64);
@@ -278,9 +283,9 @@ function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, e
   const ringGeo = (r: number, tube = 0.1) => new THREE.TorusGeometry(r, tube, 12, 40).rotateX(Math.PI / 2);
 
   // The base: a polished dome, a little taller than half a ball, with a decorated band at its rim.
-  // About 10 inches across, 8 front to back and 6 high.
+  // About 9 inches across, 8 front to back and 6 high, as in the photo.
   const baseGroup = new THREE.Group();
-  baseGroup.scale.set(1.16, 1, 0.93);
+  baseGroup.scale.set(1.04, 1, 0.93);
   group.add(baseGroup);
   const toBase = (mesh: import("three").Object3D) => {
     group.remove(mesh);
@@ -318,14 +323,15 @@ function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, e
   }
   for (let i = 0; i < 4; i++) {
     const a = Math.PI / 4 + (i * Math.PI) / 2;
-    add(footGeo, gold, Math.cos(a) * 3.45 * 1.16, 0, Math.sin(a) * 3.45 * 0.93);
+    // A little taller than the rim, so they show under the dome as in the photo.
+    add(footGeo, gold, Math.cos(a) * 3.6 * 1.04, 0, Math.sin(a) * 3.6 * 0.93).scale.set(1.15, 1.35, 1.15);
   }
 
   // The stem, from the dome to the shamash: thin sections between balls, collars and rings.
   rod(V(0, 6.1), V(0, SHAMASH_CUP - 0.2), 0.33);
   add(lathe([[0, 0], [0.7, 0], [0.62, 0.18], [0.45, 0.3], [0.42, 0.55], [0.5, 0.65], [0, 0.66]], 40), darkGold, 0, 6.05); // where the stem meets the dome
   add(petalCollar(1.15), gold, 0, 6.6);
-  along(bell, V(0, 9.95), new THREE.Vector3(0, -1, 0)); // a hanging bud
+  along(downCup, V(0, 10.05), new THREE.Vector3(0, -1, 0)); // a hanging cup under the lower ball
   add(ball(0.72), gold, 0, 10.7);
   add(ringGeo(0.42), darkGold, 0, 11.45);
   add(petalCollar(1.15), gold, 0, 11.8);
@@ -337,33 +343,35 @@ function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, e
     add(ringGeo(0.4), darkGold, 0, y - 0.82);
     if (i > 0) add(ringGeo(0.38, 0.08), darkGold, 0, (y + JOINT[i - 1]) / 2);
   });
-  // Under the shamash: three stacked flowers and a ball, the same as under each branch's cup.
-  for (let k = 0; k < 3; k++) add(bell, gold, 0, 23.25 + k * 0.72);
-  add(ball(0.72), gold, 0, 26.8);
+  // Under the shamash's candle cup, going down: the wide flower, a ball, then three cups facing
+  // downward, the same as on each branch.
+  add(petalCollar(1.05), gold, 0, SHAMASH_CUP - 0.42);
+  add(ball(0.72), gold, 0, SHAMASH_CUP - 1.05);
+  const down = new THREE.Vector3(0, -1, 0);
+  for (let k = 0; k < 3; k++) along(downCup, V(0, SHAMASH_CUP - 1.05 - 0.6 - k * CUP_STEP), down).scale.setScalar(CUP_SIZE);
 
   // The eight branches.
   for (const x of xs) {
-    const sgn = Math.sign(x);
     const dx = Math.abs(x);
     const joint = V(0, JOINT[SPREAD.indexOf(dx)]);
-    const knop = V(x - sgn * 0.62, ROW - 0.5);
+    // Going up the branch: three cups facing down, the ball, the wide flower, then the candle cup.
+    const knop = V(x, ROW - 1.05);
     const dir = new THREE.Vector3().subVectors(joint, knop).normalize(); // down and in, toward the stem
+    add(petalCollar(1.05), gold, x, ROW - 0.42);
     add(ball(0.72), gold, knop.x, knop.y);
-    // Three flowers stacked down the branch, their open ends toward the cup.
-    for (let k = 0; k < 3; k++) {
-      const at = knop.clone().addScaledVector(dir, 0.95 + k * 0.66 + 0.6);
-      along(bell, at, dir.clone().negate());
-    }
-    const rodStart = knop.clone().addScaledVector(dir, 0.95 + 3 * 0.66 + 0.4);
-    flutedRod(rodStart, joint, 0.19);
-    // A small collar where the rod leaves the flowers, and where it meets the joint ball.
+    for (let k = 0; k < 3; k++) along(downCup, knop.clone().addScaledVector(dir, 0.6 + k * CUP_STEP), dir).scale.setScalar(CUP_SIZE);
+    const rodStart = knop.clone().addScaledVector(dir, 0.6 + 3 * CUP_STEP + 0.05);
+    // The rod runs from the ball through the cups to the stem, holding it all together.
+    flutedRod(knop.clone().addScaledVector(dir, 0.5), joint, 0.19);
+    // A small collar where the rod leaves the cups, and where it meets the joint ball.
     along(new THREE.TorusGeometry(0.24, 0.07, 10, 28).rotateX(Math.PI / 2), rodStart, dir);
     along(new THREE.TorusGeometry(0.22, 0.07, 10, 28).rotateX(Math.PI / 2), joint.clone().addScaledVector(dir, -0.72), dir);
   }
 
-  // The goblet cups: a small foot and neck, a ball, a waist, then a body with raised lobes that
-  // flares to a scalloped, petal-shaped rim. Open on top, where the candle sits.
-  const cupGeo = (hole: number) => {
+  // The candle cup at the top of each branch and of the stem, sitting on the wide flower, after the
+  // close-up: a small foot, a ring of beads, a narrow neck, then a bowl of six raised leaves whose
+  // pointed tips curl outward, with small leaves between them. Open on top, where the candle sits.
+  const flowerGeo = (hole: number) => {
     const geo = lathe(
       [
         [0, 0],
@@ -397,26 +405,33 @@ function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, e
       const a = Math.atan2(pz, px);
       let k = 1;
       let lift = 0;
-      // Raised lobes around the body.
-      if (py > 1.05 && py < 2.2) k += 0.07 * Math.max(0, Math.cos(a * 8)) * Math.sin(((py - 1.05) / 1.15) * Math.PI);
-      // Eight petals around the rim.
+      const leaf = Math.max(0, Math.cos(a * 6)); // six big leaves
+      const small = Math.max(0, Math.cos(a * 6 + Math.PI)); // six small leaves between them
+      // The leaves stand out from the bowl, with a fine line down the middle of each.
+      if (py > 1.05) {
+        const h = Math.min(1, (py - 1.05) / 1.2);
+        k += 0.1 * Math.pow(leaf, 2) * h + 0.05 * Math.pow(small, 2) * h - 0.03 * Math.pow(leaf, 40) * h;
+        // Fine teeth along the leaf edges.
+        k += 0.012 * Math.cos(a * 36) * h;
+      }
+      // The tips rise to points and curl outward.
       if (py > 2.0) {
         const w = (py - 2.0) / 0.45;
-        k += 0.06 * Math.cos(a * 8) * w;
-        lift = 0.18 * Math.cos(a * 8) * w;
+        lift = (0.34 * Math.pow(leaf, 4) + 0.14 * Math.pow(small, 4) - 0.06) * w;
+        k += 0.14 * Math.pow(leaf, 2) * w * w;
       }
-      // Small bumps on the ball under the cup.
-      if (py > 0.45 && py < 0.85) k += 0.05 * Math.cos(a * 12);
+      // A ring of beads at the neck.
+      if (py > 0.45 && py < 0.85) k += 0.07 * Math.pow(Math.max(0, Math.cos(a * 16)), 2);
       pos.setXYZ(i, px * k, py + lift, pz * k);
     }
     geo.computeVertexNormals();
     return geo;
   };
-  // About 1.5 inches wide and 2 tall.
-  const CUP = 0.8;
-  const cup = cupGeo(0.32);
-  for (const x of xs) add(cup, gold, x, ROW).scale.setScalar(CUP);
-  add(cupGeo(0.33), gold, 0, SHAMASH_CUP).scale.setScalar(CUP);
+  // About 2 inches wide and 2.6 tall, as in the photo.
+  const CUP = 1.08;
+  const flower = flowerGeo(0.32);
+  for (const x of xs) add(flower, gold, x, ROW).scale.setScalar(CUP);
+  add(flowerGeo(0.33), gold, 0, SHAMASH_CUP).scale.setScalar(CUP);
 
   // ---- Candles: tall, thin yellow candles, a little uneven, with a melted dip and a wick ----
   const candles: { wax: import("three").MeshStandardMaterial; top: V3 }[] = [];
