@@ -5,8 +5,10 @@ import { t } from "@/lib/i18n";
 import { cx } from "./ui";
 
 /**
- * The menorah in real 3D (three.js, drawn on the phone's graphics chip): polished gold with real
- * reflections, nine wax candles, and nine live flames, each with its own seed, speed, size and
+ * The 770 menorah in real 3D (three.js, drawn on the phone's graphics chip), built from a photo of
+ * the one in 770: straight branches at 45° with small balls under each tulip cup, a stem with
+ * decorative balls and rings, a dome base on feet, polished brass with real reflections, nine tall
+ * yellow candles, and nine live flames, each with its own seed, speed, size and
  * brightness so they never move together, each giving its own small flickering light onto the
  * gold and wax. Drag it (finger or mouse) to spin it all the way around and tilt it up to 35° up or
  * down; let go and it keeps turning a little, then slows to a stop. Touches on it turn it and never
@@ -180,7 +182,7 @@ function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, e
   const grainTex = new THREE.CanvasTexture(grain);
   grainTex.wrapS = grainTex.wrapT = THREE.RepeatWrapping;
   grainTex.repeat.set(3, 3);
-  const gold = new THREE.MeshPhysicalMaterial({ color: 0xd9a443, metalness: 1, roughness: 0.2, roughnessMap: grainTex, clearcoat: 0.35, clearcoatRoughness: 0.15, envMapIntensity: 1.35 });
+  const gold = new THREE.MeshPhysicalMaterial({ color: 0xe2b453, metalness: 1, roughness: 0.18, roughnessMap: grainTex, clearcoat: 0.35, clearcoatRoughness: 0.15, envMapIntensity: 1.35 });
   const darkGold = gold.clone();
   darkGold.color = new THREE.Color(0xb8862f);
 
@@ -205,46 +207,109 @@ function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, e
   };
   const V = (x: number, y: number) => new THREE.Vector3(x, y, 0);
 
-  // ---- The menorah (same proportions as the drawing) ----
-  // A solid round base with a rounded edge and a raised step.
-  add(lathe([[0, 0], [6.9, 0], [7.15, 0.08], [7.25, 0.3], [7.25, 0.62], [7.12, 0.86], [6.8, 0.95], [2.2, 1.0], [1.9, 1.15], [1.6, 1.3], [0, 1.32]], 96), gold);
-  add(lathe([[0, 1.3], [1.15, 1.3], [1.2, 1.4], [1.1, 1.85], [0.8, 1.95], [0, 1.95]], 48), darkGold);
-  // The stem, all the way up to the shamash.
-  rod(V(0, 1.9), V(0, 21.15), 0.56);
-  const cupTop = 19.4;
-  const cupBottom = 18.2;
-  const armTop = 18.0;
-  const xs = [-4, -3, -2, -1, 1, 2, 3, 4].map((k) => Math.sign(k) * (2.8 + (Math.abs(k) - 1) * 3.4));
-  for (let k = 1; k <= 4; k++) {
-    const dx = 2.8 + (k - 1) * 3.4;
-    const dy = dx * 1.05;
-    rod(V(-dx, armTop), V(0, armTop - dy), 0.36);
-    rod(V(0, armTop - dy), V(dx, armTop), 0.36);
-    // A small collar where each pair of branches meets the stem.
-    add(new THREE.TorusGeometry(0.62, 0.12, 12, 40), darkGold, 0, armTop - dy).rotation.x = Math.PI / 2;
-  }
-  // A cup: a short cylinder with a rolled lip, open on top.
-  // `hole` is the opening the candle sits in, just wider than the candle.
-  const cupGeo = (r: number, h: number, hole: number) =>
-    lathe([[0, 0], [r * 0.7, 0], [r * 0.95, 0.08], [r, 0.3], [r, h - 0.18], [r * 1.08, h - 0.06], [r * 1.05, h], [hole + 0.06, h], [hole, h - 0.08], [hole, h - 0.6], [0, h - 0.6]], 48);
-  for (const x of xs) add(cupGeo(1.1, cupTop - cupBottom, 0.47), gold, x, cupBottom);
-  const shamashCupBottom = 21.15;
-  add(cupGeo(1.2, 1.25, 0.5), gold, 0, shamashCupBottom);
+  // ---- The 770 menorah, built from the photo (proportions measured from it; the back is a best guess) ----
+  // Units: the whole menorah is about 26 tall to the row of cups and 26 wide.
+  const ROW = 24.5; // bottom of the eight cups (they sit in one level row)
+  const xs = [-13.15, -10.3, -7.45, -4.6, 4.6, 7.45, 10.3, 13.15];
+  const SHAMASH_CUP = 27.1; // the shamash cup, a little higher, on top of the stem
 
-  // ---- Candles: wax, a little uneven, rounded top edge with a melted dip, and a wick ----
+  // The base: a polished dome on four small feet (three show from the front).
+  add(lathe([[0, 1.55], [4.45, 1.55], [4.5, 1.7], [4.45, 1.85], [4.2, 1.95], [4.05, 2.4], [3.75, 3.2], [3.25, 4.0], [2.55, 4.7], [1.7, 5.25], [1.05, 5.55], [0.75, 5.75], [0.55, 6.05], [0, 6.1]], 96), gold);
+  for (let i = 0; i < 4; i++) {
+    const a = Math.PI / 4 + (i * Math.PI) / 2;
+    const fx = Math.cos(a) * 3.55;
+    const fz = Math.sin(a) * 3.55;
+    // A short leg ending in a ball foot.
+    add(lathe([[0, 0], [0.5, 0], [0.62, 0.22], [0.55, 0.5], [0.34, 0.75], [0.3, 1.2], [0.42, 1.45], [0.5, 1.6], [0, 1.6]], 32), darkGold, fx, 0, fz);
+    add(new THREE.SphereGeometry(0.42, 24, 16), gold, fx * 1.04, 0.42, fz * 1.04);
+  }
+
+  // The stem: thick, from the dome up to the shamash cup, with decorative balls and rings.
+  rod(V(0, 5.9), V(0, SHAMASH_CUP + 0.1), 0.42);
+  const knop = (y: number, r: number) => add(new THREE.SphereGeometry(r, 32, 20), gold, 0, y);
+  const ring = (y: number, r: number) => {
+    add(new THREE.TorusGeometry(r, 0.13, 12, 40), darkGold, 0, y).rotation.x = Math.PI / 2;
+  };
+  knop(7.6, 0.66);
+  ring(8.45, 0.55);
+  knop(9.3, 0.7);
+  ring(10.2, 0.5);
+  knop(22.3, 0.55);
+  ring(23.3, 0.48);
+  ring(SHAMASH_CUP - 0.25, 0.5);
+
+  // Four straight branches each side at 45°, joining the stem at a ball, each with a short chain
+  // of small balls just under its cup.
+  for (const x of xs) {
+    const dx = Math.abs(x);
+    const joint = V(0, ROW - dx);
+    const top = V(x, ROW);
+    rod(joint, top, 0.24);
+    const dir = new THREE.Vector3().subVectors(joint, top).normalize();
+    for (let b = 1; b <= 3; b++) {
+      const p = top.clone().addScaledVector(dir, 0.35 + b * 0.5);
+      add(new THREE.SphereGeometry(0.34 - b * 0.03, 20, 14), gold, p.x, p.y, p.z);
+    }
+  }
+  for (const dx of [4.6, 7.45, 10.3, 13.15]) {
+    knop(ROW - dx, 0.62);
+    ring(ROW - dx + 0.68, 0.36);
+  }
+
+  // A tulip-shaped cup on a small neck, with a scalloped rim, open where the candle sits.
+  const cupGeo = (hole: number) => {
+    const geo = lathe(
+      [
+        [0, 0],
+        [0.26, 0],
+        [0.34, 0.14],
+        [0.22, 0.36],
+        [0.3, 0.52],
+        [0.56, 0.72],
+        [0.8, 1.04],
+        [0.92, 1.36],
+        [0.96, 1.62],
+        [0.86, 1.7],
+        [hole + 0.04, 1.62],
+        [hole, 1.5],
+        [hole, 1.05],
+        [0, 1.05],
+      ],
+      72,
+    );
+    // Six petals around the rim.
+    const pos = geo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const px = pos.getX(i);
+      const py = pos.getY(i);
+      const pz = pos.getZ(i);
+      if (py < 1.2 || Math.hypot(px, pz) < hole + 0.05) continue;
+      const a = Math.atan2(pz, px);
+      const w = (py - 1.2) / 0.5;
+      const petal = Math.cos(a * 6);
+      pos.setXYZ(i, px * (1 + 0.05 * petal * w), py + 0.14 * petal * w, pz * (1 + 0.05 * petal * w));
+    }
+    geo.computeVertexNormals();
+    return geo;
+  };
+  const cup = cupGeo(0.34);
+  for (const x of xs) add(cup, gold, x, ROW);
+  add(cupGeo(0.36), gold, 0, SHAMASH_CUP);
+
+  // ---- Candles: tall, thin yellow candles, a little uneven, with a melted dip and a wick ----
   const candles: { wax: import("three").MeshStandardMaterial; top: V3 }[] = [];
   const candle = (x: number, base: number, height: number, r: number, seed: number) => {
     const prof: [number, number][] = [
       [0, 0],
       [r, 0],
-      [r, height - 0.18],
-      [r * 0.96, height - 0.05],
-      [r * 0.82, height],
-      [r * 0.45, height - 0.06],
-      [r * 0.18, height - 0.12],
-      [0, height - 0.13],
+      [r, height - 0.16],
+      [r * 0.95, height - 0.04],
+      [r * 0.8, height],
+      [r * 0.45, height - 0.05],
+      [r * 0.18, height - 0.1],
+      [0, height - 0.11],
     ];
-    const geo = lathe(prof, 40);
+    const geo = lathe(prof, 36);
     // Slightly imperfect: a gentle wobble around and along the candle.
     const pos = geo.attributes.position;
     for (let i = 0; i < pos.count; i++) {
@@ -252,25 +317,26 @@ function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, e
       const py = pos.getY(i);
       const pz = pos.getZ(i);
       const a = Math.atan2(pz, px);
-      const k = 1 + 0.025 * Math.sin(a * 3 + seed) * Math.sin(py * 1.7 + seed * 2) + 0.012 * Math.sin(a * 7 + py * 3 + seed);
+      const k = 1 + 0.03 * Math.sin(a * 3 + seed) * Math.sin(py * 1.1 + seed * 2) + 0.012 * Math.sin(a * 7 + py * 3 + seed);
       pos.setXYZ(i, px * k, py, pz * k);
     }
     geo.computeVertexNormals();
     const wax = new THREE.MeshStandardMaterial({
-      color: new THREE.Color().setHSL(0.11, 0.35 + Math.random() * 0.1, 0.9 + Math.random() * 0.04),
-      roughness: 0.48,
+      // Yellow beeswax, each a slightly different shade.
+      color: new THREE.Color().setHSL(0.118 + Math.random() * 0.01, 0.88 + Math.random() * 0.08, 0.47 + Math.random() * 0.04),
+      roughness: 0.42,
       metalness: 0,
-      emissive: new THREE.Color(0xff9a3c),
+      emissive: new THREE.Color(0xffa040),
       emissiveIntensity: 0,
     });
     add(geo, wax, x, base);
     // The wick: thin, dark, a slight bend.
-    const wick = add(new THREE.CylinderGeometry(0.035, 0.045, 0.5, 8), new THREE.MeshStandardMaterial({ color: 0x1d140c, roughness: 0.9 }), x, base + height + 0.08);
+    const wick = add(new THREE.CylinderGeometry(0.03, 0.04, 0.45, 8), new THREE.MeshStandardMaterial({ color: 0x1d140c, roughness: 0.9 }), x, base + height + 0.08);
     wick.rotation.z = (Math.random() - 0.5) * 0.25;
-    candles.push({ wax, top: new THREE.Vector3(x, base + height + 0.3, 0) });
+    candles.push({ wax, top: new THREE.Vector3(x, base + height + 0.28, 0) });
   };
-  xs.forEach((x, i) => candle(x, cupTop - 0.6, 3.15, 0.42, i * 1.7));
-  candle(0, shamashCupBottom + 1.25 - 0.6, 3.75, 0.45, 20);
+  xs.forEach((x, i) => candle(x, ROW + 1.1, 5.2, 0.3, i * 1.7));
+  candle(0, SHAMASH_CUP + 1.1, 5.6, 0.32, 20);
 
   // A soft shadow under the base.
   const sh = document.createElement("canvas");
@@ -282,7 +348,7 @@ function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, e
   grd.addColorStop(1, "rgba(0,0,0,0)");
   sg.fillStyle = grd;
   sg.fillRect(0, 0, 128, 128);
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(19, 19), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(sh), transparent: true, depthWrite: false }));
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(13, 13), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(sh), transparent: true, depthWrite: false }));
   floor.rotation.x = -Math.PI / 2;
   floor.position.y = 0.01;
   scene.add(floor);
@@ -330,8 +396,8 @@ function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, e
 
   // ---- Camera: same framing as the drawing ----
   const camera = new THREE.PerspectiveCamera(32, 1, 1, 400);
-  camera.position.set(0, 16.5, 61);
-  camera.lookAt(0, 13.4, 0);
+  camera.position.set(0, 21.3, 73);
+  camera.lookAt(0, 18.3, 0);
 
   const resize = () => {
     const w = el.clientWidth || 300;
@@ -394,9 +460,9 @@ function build(THREE: Three, RoomEnvironment: new () => import("three").Scene, e
   el.addEventListener("pointermove", onMove);
   el.addEventListener("pointerup", onUp);
   el.addEventListener("pointercancel", onUp);
-  const target = new THREE.Vector3(0, 13.4, 0);
-  const DIST = 61.1;
-  const BASE_PITCH = Math.atan2(16.5 - 13.4, 61);
+  const target = new THREE.Vector3(0, 18.3, 0);
+  const DIST = Math.hypot(73, 3);
+  const BASE_PITCH = Math.atan2(3, 73);
 
   // ---- The loop: runs only while the menorah is on screen and the page is in view ----
   const start = performance.now();
