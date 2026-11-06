@@ -10,7 +10,7 @@ import { isNightNow } from "@/lib/chanukah";
 import { toISODate } from "@/lib/dates";
 import { t, tn } from "@/lib/i18n";
 import { useChanukahNow } from "../chanukah";
-import { Menorah3D, MenorahStill } from "../menorah-3d";
+import { GeltShower } from "../gelt-shower";
 import { MenorahIcon } from "../icons";
 import { Empty, Input, Textarea, cx } from "../ui";
 
@@ -57,6 +57,8 @@ function ChanukahForm({ editing }: { editing?: ChanukahEntry }) {
   const [notes, setNotes] = useState(editing?.notes ?? "");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  // Counts each new stop logged, so each one gets its own gelt shower (and a re-render never replays it).
+  const [celebration, setCelebration] = useState(0);
 
   // Names to tap: the route's Chavrusas, then anyone they've written down before.
   const names = useMemo(() => {
@@ -97,6 +99,7 @@ function ChanukahForm({ editing }: { editing?: ChanukahEntry }) {
     try {
       await actions.saveChanukah(entry, editing?.id);
       setDone(true);
+      if (!editing) setCelebration((n) => n + 1);
     } catch (e) {
       notify((e as Error).message);
     } finally {
@@ -117,9 +120,10 @@ function ChanukahForm({ editing }: { editing?: ChanukahEntry }) {
 
   if (done) {
     return (
-      <div className="mx-auto max-w-md pt-6 text-center">
-        <Menorah3D lit={8} className="max-w-[260px]" fallback={<MenorahStill />} />
-        <h1 className="mt-3 text-[2rem] leading-tight">
+      <div className="mx-auto max-w-md pt-[18vh] text-center">
+        {/* Gold gelt falls around the message when a new stop is logged. */}
+        {!editing && celebration > 0 && <GeltShower key={celebration} />}
+        <h1 className="text-[2.4rem] leading-tight">
           <span className="chanukah-gold">{editing ? t("Saved") : t("Logged! Keep Lighting Up the City")}</span>
         </h1>
         <p className="mt-2 text-sm text-muted">
