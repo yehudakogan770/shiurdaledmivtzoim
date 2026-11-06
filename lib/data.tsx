@@ -2,7 +2,8 @@
 
 import { isLang, setLanguage, t, type Lang } from "./i18n";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { newId, newJoinCode, pickBackend, type Backend, type PersonPatch, type SavedAccount } from "./backend";
+import { newId, newJoinCode, pickBackend, type Backend, type ChanukahTotals, type PersonPatch, type SavedAccount } from "./backend";
+import { HDate } from "@hebcal/core";
 import type {
   Activity,
   HiddenRange,
@@ -20,6 +21,7 @@ import type {
   ReportItem,
   ReportCount,
   Poster,
+  ChanukahEntry,
 } from "./types";
 import { DEFAULT_SETTINGS, type SignUpInput } from "./types";
 import { sendToDrive } from "./drive";
@@ -31,6 +33,18 @@ import { splitWeekAnswers, weekAnswerEntry } from "./week-answers";
 import { isMessage, messageEntry, readMessage, type Message } from "./messages";
 import { isAdminIdentifier } from "./admin";
 import { builtinDescription, builtinIcon, builtins, isBuiltinRow, type Builtin, type BuiltinType } from "./categories";
+
+export type ChanukahInput = Omit<ChanukahEntry, "id" | "user_id" | "created_at">;
+
+const NO_TOTALS: ChanukahTotals = { lit: 0, people: 0, given: 0 };
+
+/** Totals worked out from entries, where the database can't do it (and for test entries). */
+export function sumChanukah(rows: ChanukahEntry[]): ChanukahTotals {
+  return rows.reduce(
+    (t, e) => ({ lit: t.lit + e.menorahs.length, people: t.people + e.menorahs.reduce((a, n) => a + (Number(n) || 0), 0), given: t.given + (Number(e.given_out) || 0) }),
+    { ...NO_TOTALS },
+  );
+}
 
 export interface AppData {
   groups: Group[];
@@ -124,6 +138,17 @@ interface DataContextValue {
   reportViewers: string[];
   /** The Owner's posters (empty until database update 017 is run). */
   posters: Poster[];
+  /**
+   * Chanukah entries: this account's own (all of them for the Owner). null until database
+   * update 019 is run.
+   */
+  chanukah: ChanukahEntry[] | null;
+  /** The shiur's Chanukah totals for this year, test entries left out. */
+  chanukahTotals: ChanukahTotals;
+  /** The Owner, and accounts the Owner picked, can use Chanukah test mode. */
+  canTestChanukah: boolean;
+  /** The Owner: the accounts allowed to test Chanukah. */
+  chanukahTesters: string[];
   /** Every account; filled in for admins only. */
   people: Profile[];
   toast: string | null;
@@ -214,6 +239,13 @@ interface DataContextValue {
     addPoster(picture: Blob | null, times: number | null, starts: string | null, ends: string | null): Promise<void>;
     updatePoster(id: string, patch: Partial<Pick<Poster, "active" | "times" | "starts" | "ends">>): Promise<void>;
     deletePoster(id: string): Promise<void>;
+    /** Save a Chanukah stop (new, or a change to one by its id). */
+    saveChanukah(entry: ChanukahInput, id?: string): Promise<void>;
+    deleteChanukah(id: string): Promise<void>;
+    /** Test mode was turned off: delete this account's test entries. */
+    deleteChanukahTests(): Promise<void>;
+    /** The Owner: let an account test Chanukah, or stop it. */
+    setChanukahTester(userId: string, allowed: boolean): Promise<void>;
     /** The Owner: the weekly report's items. */
     addReportItem(name: string): Promise<void>;
     renameReportItem(id: string, name: string): Promise<void>;
@@ -259,6 +291,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [viewerRows, setViewerRows] = useState<{ id: string; user_id: string }[]>([]);
   const [report, setReport] = useState<DataContextValue["report"]>(null);
   const [posters, setPosters] = useState<Poster[]>([]);
+  const [chanukah, setChanukah] = useState<ChanukahEntry[] | null>(null);
+  const [chanukahTotals, setChanukahTotals] = useState<ChanukahTotals>(NO_TOTALS);
+  const [testerRows, setTesterRows] = useState<{ id: string; user_id: string }[]>([]);
   const [recovering, setRecovering] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -317,6 +352,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
     names[user.id] = user.name || names[user.id];
     setPeople(everyone);
     b.list("posters").then(setPosters, () => setPosters([]));
+    // Chanukah (database update 019): entries, totals, and who may test it.
+    const chanukahYear = new HDate(new Date()).getFullYear();
+    b.list("chanukah_entries").then(
+      (rows) => {
+        if (unsaved.current > 0) return;
+        const clean = rows.map((r) => ({ ...r, people: Array.isArray(r.people) ? r.people : [], menorahs: Array.isArray(r.menorahs) ? r.menorahs.map(Number) : [] }));
+        setChanukah(clean);
+        // Where the database can add up everyone's entries, it does; otherwise these are everyone's already.
+        const ownTotals = () => setChanukahTotals(sumChanukah(clean.filter((r) => r.year === chanukahYear && !r.is_test)));
+        if (b.chanukahTotals) b.chanukahTotals(chanukahYear).then((tot) => (tot ? setChanukahTotals(tot) : ownTotals()), ownTotals);
+        else ownTotals();
+      },
+      () => setChanukah(null),
+    );
+    b.list("chanukah_testers").then(setTesterRows, () => setTesterRows([]));
     // The Owner sees every row; anyone else only their own (the database decides).
     b.list("report_viewers").then(
       (rows) => {
@@ -434,6 +484,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }
     };
     /** Save in the background after the screen already changed; on failure, reload what's really saved. */
+    // The shiur's Chanukah totals after a change: from the database where it adds up everyone's, else from the entries here.
+    const refreshChanukahTotals = (rows: ChanukahEntry[]) => {
+      const year = new HDate(new Date()).getFullYear();
+      const local = () => setChanukahTotals(sumChanukah(rows.filter((r) => r.year === year && !r.is_test)));
+      if (b.chanukahTotals) b.chanukahTotals(year).then((tot) => (tot ? setChanukahTotals(tot) : local()), local);
+      else local();
+    };
     const saveLater = (job: () => Promise<void>) => {
       unsaved.current++;
       saveQueue.current = saveQueue.current
@@ -492,6 +549,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       reportViewers: viewerRows.map((v) => v.user_id),
       report,
       posters,
+      chanukah,
+      chanukahTotals,
+      canTestChanukah: isAdminIdentifier(me?.email) || isAdminIdentifier(me?.username) || testerRows.some((r) => r.user_id === me?.id),
+      chanukahTesters: testerRows.map((r) => r.user_id),
       toast,
       notify,
       refresh,
@@ -805,6 +866,52 @@ export function DataProvider({ children }: { children: ReactNode }) {
           setPosters((list) => list.filter((x) => x.id !== id));
           saveLater(() => b.remove("posters", id));
         },
+        saveChanukah: async (entry, id) => {
+          const me_ = uid();
+          if (!entry.people.length) throw new Error(t("Add who went."));
+          if (!entry.place.trim()) throw new Error(t("Write where you were."));
+          if (!entry.menorahs.length && !entry.given_out) throw new Error(t("Add a menorah you lit or how many you gave out."));
+          const clean: ChanukahInput = { ...entry, place: entry.place.trim(), notes: entry.notes?.trim() || null, menorahs: entry.menorahs.map((n) => Math.max(0, Math.round(n) || 0)) };
+          const missing = (e: Error) => new Error(/chanukah|relation|schema cache/.test(e.message) ? t("Run database update 019 in Supabase first.") : e.message);
+          let next: ChanukahEntry[];
+          if (id) {
+            next = (chanukah ?? []).map((x) => (x.id === id ? { ...x, ...clean } : x));
+            await b.update("chanukah_entries", id, clean).catch((e: Error) => {
+              throw missing(e);
+            });
+          } else {
+            const saved = await b.insert("chanukah_entries", { ...clean, user_id: me_ }).catch((e: Error) => {
+              throw missing(e);
+            });
+            next = [...(chanukah ?? []), { ...saved, people: clean.people, menorahs: clean.menorahs }];
+          }
+          setChanukah(next);
+          refreshChanukahTotals(next);
+        },
+        deleteChanukah: async (id) => {
+          const next = (chanukah ?? []).filter((x) => x.id !== id);
+          setChanukah(next);
+          await b.remove("chanukah_entries", id);
+          refreshChanukahTotals(next);
+        },
+        deleteChanukahTests: async () => {
+          const tests = (chanukah ?? []).filter((x) => x.is_test && x.user_id === me?.id);
+          if (!tests.length) return;
+          setChanukah((chanukah ?? []).filter((x) => !tests.includes(x)));
+          for (const x of tests) await b.remove("chanukah_entries", x.id).catch(() => {});
+        },
+        setChanukahTester: async (userId, allowed) => {
+          const row = testerRows.find((v) => v.user_id === userId);
+          if (allowed && !row) {
+            const saved = await b.insert("chanukah_testers", { user_id: userId }).catch((e: Error) => {
+              throw new Error(/chanukah|relation|schema cache/.test(e.message) ? t("Run database update 019 in Supabase first.") : e.message);
+            });
+            setTesterRows((v) => [...v, saved]);
+          } else if (!allowed && row) {
+            await b.remove("chanukah_testers", row.id);
+            setTesterRows((v) => v.filter((x) => x.id !== row.id));
+          }
+        },
         addReportItem: async (name) => {
           if (!name.trim()) throw new Error(t("Give it a name."));
           const saved = await b.insert("report_items", { name: name.trim(), position: report?.items.length ?? 0 });
@@ -930,7 +1037,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       actions: sampleOnly(value.actions),
       auth: { ...sampleOnly(value.auth), signIn, signUp, requestPasswordReset, updatePassword, finishRecovery, recovering },
     };
-  }, [backend, status, error, me, data, mine, settings, people, photos, cards, viewerRows, report, posters, recovering, toast, notify, refresh, load]);
+  }, [backend, status, error, me, data, mine, settings, people, photos, cards, viewerRows, report, posters, chanukah, chanukahTotals, testerRows, recovering, toast, notify, refresh, load]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }

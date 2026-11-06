@@ -80,3 +80,22 @@ export function LulavIcon({ size = 24, className, strokeWidth = 2 }: { size?: nu
     </svg>
   );
 }
+
+/**
+ * Menorah, Chabad style: straight diagonal branches (never round), eight candles in a row, the
+ * shamash raised in the middle, a straight stem and a flat base.
+ */
+export function MenorahIcon({ size = 24, className, strokeWidth = 1.15 }: { size?: number; className?: string; strokeWidth?: number }) {
+  const reach = [2.6, 5.2, 7.8, 10.4];
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" aria-hidden className={className}>
+      {/* branches */}
+      <path strokeWidth={strokeWidth} d={reach.map((d) => `M${12 - d} 8 L12 ${8 + d * 0.95} L${12 + d} 8`).join(" ")} />
+      {/* candles */}
+      <path strokeWidth={strokeWidth * 1.2} d={reach.map((d) => `M${12 - d} 5v2.2 M${12 + d} 5v2.2`).join(" ")} />
+      {/* stem, base and shamash */}
+      <path strokeWidth={strokeWidth} d="M12 3.5v16.5M8.5 21.2h7" />
+      <path strokeWidth={strokeWidth * 1.2} d="M12 1.6v1" />
+    </svg>
+  );
+}

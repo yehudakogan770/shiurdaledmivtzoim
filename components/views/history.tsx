@@ -13,6 +13,7 @@ import { parshaOfWeek } from "@/lib/parsha";
 import { Button, ButtonLink, Card, CategoryIcon, Empty, Field, IconButton, Input, PageHeader, Select } from "../ui";
 import { EditSwitch, sum } from "./dashboard";
 import { EntryGroups } from "../entry-groups";
+import { ChanukahHistory } from "../chanukah-history";
 import { t, tn } from "@/lib/i18n";
 
 export function HistoryView() {
@@ -63,6 +64,7 @@ function EveryonesHistory() {
   return (
     <div className="grid grid-cols-1 gap-3">
       <PageHeader title={t("History")} subtitle={tn(rows.length, "Everyone's Mivtzoim: {total} across {n} entry", "Everyone's Mivtzoim: {total} across {n} entries", { total: sum(rows) })} action={<EditSwitch />} />
+      <ChanukahHistory />
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label={t("Person")} htmlFor="history-person">
           <Select id="history-person" value={person} onChange={(e) => setPerson(e.target.value)}>
@@ -242,6 +244,7 @@ function MyHistory() {
           </div>
         }
       />
+      <ChanukahHistory />
 
       {rows.length === 0 ? (
         <Card>

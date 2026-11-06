@@ -19,6 +19,7 @@ import { builtinHiddenIn, categoryHiddenIn, orderedMivtzoim, type BuiltinType } 
 import { parshaName, parshaOfWeek, parshaThisShabbos, weekTitle } from "@/lib/parsha";
 import type { Activity } from "@/lib/types";
 import { Card, CardTitle, CategoryIcon, Empty, IconButton, PageHeader, cx, listClass } from "../ui";
+import { ChanukahHero } from "../chanukah";
 import { getLang, t } from "@/lib/i18n";
 
 export function sum(rows: Activity[]) {
@@ -154,6 +155,8 @@ function OwnerHome() {
     <div className="grid grid-cols-1 gap-3">
       <PageHeader eyebrow={`${longDate()}${hd ? ` · ${hd}` : ""} · ${parshaThisShabbos().local}`} title={t("Dashboard")} action={<EditSwitch />} />
 
+      <ChanukahHero />
+
       {editing && (
         <Card>
           <CardTitle sub={t("Turn off Edit when you're done.")}>{t("Editing the site")}</CardTitle>
@@ -216,6 +219,8 @@ function PersonalHome() {
   return (
     <div className="rise grid grid-cols-1 gap-3">
       <PageHeader eyebrow={`${longDate()}${hd ? ` · ${hd}` : ""} · ${parshaThisShabbos().local}`} title={me?.name || t("Dashboard")} />
+
+      <ChanukahHero />
 
       <WeekPicker week={week} onChange={setWeek} />
 
@@ -453,7 +458,7 @@ function QuickButton({ c, count, hint, sample, onAdd, onSubtract }: { c: Counter
   return (
     <div
       ref={box}
-      className={cx("relative aspect-square rounded-[28px] sm:aspect-auto sm:h-44", c.soft)}
+      className={cx("quick-tile relative aspect-square rounded-[28px] sm:aspect-auto sm:h-44", c.soft)}
       style={c.custom ? { background: `color-mix(in srgb, ${c.color} 18%, var(--card))` } : undefined}
     >
       {/* The whole square adds one; the number is this week's total. */}

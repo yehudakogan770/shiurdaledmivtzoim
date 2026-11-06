@@ -1,5 +1,5 @@
-import type { Activity, PersonalCategory, Profile, Route, Location, WeekAnswer } from "./types";
-import { activityMoment, activityWeek } from "./dates";
+import type { Activity, ChanukahEntry, PersonalCategory, Profile, Route, Location, WeekAnswer } from "./types";
+import { activityMoment, activityWeek, formatDay, weekOf, parseDate } from "./dates";
 import { categoryName, reportColumns, type Builtin } from "./categories";
 import { weekTitle } from "./parsha";
 import { chavrusasOf, hebrewName } from "./chavrusa";
@@ -19,7 +19,16 @@ export interface ExportInput {
   routes: Route[];
   locations: Location[];
   siteName: string;
+  /** Everyone's Chanukah stops; each Chanukah that touches the chosen weeks gets its own sheet. */
+  chanukah?: ChanukahEntry[];
 }
+
+/** A stop's day, at noon (so it lands in the right week). */
+const noon = (day: string) => {
+  const d = parseDate(day);
+  d.setHours(12);
+  return d;
+};
 
 type Column = { key: string; label: string; matches: (a: Activity) => boolean };
 
@@ -132,6 +141,46 @@ export async function buildWorkbook(input: ExportInput): Promise<Blob> {
           ws.mergeCells(row.number, 2, row.number, 3);
         }
       }
+    }
+  }
+
+  // Chanukah: its own sheet for each year whose stops fall in the chosen weeks (the whole Chanukah, test entries left out).
+  const stops = (input.chanukah ?? []).filter((e) => !e.is_test);
+  const years = [...new Set(stops.filter((e) => inWeeks.has(weekOf(noon(e.entry_date)))).map((e) => e.year))].sort();
+  for (const year of years) {
+    const list = stops.filter((e) => e.year === year).sort((a, b) => a.entry_date.localeCompare(b.entry_date) || a.created_at.localeCompare(b.created_at));
+    const sheet = wb.addWorksheet(t("Chanukah {year}", { year }));
+    sheet.pageSetup = { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
+    [16, 9, 22, 30, 28, 18, 12, 12, 12, 30].forEach((w, i) => (sheet.getColumn(i + 1).width = w));
+    sheet.addRow([`${input.siteName} · ${t("Chanukah {year}", { year })}`]).font = { bold: true, size: 16 };
+    const lit = list.reduce((n, e) => n + e.menorahs.length, 0);
+    const people = list.reduce((n, e) => n + e.menorahs.reduce((a, x) => a + x, 0), 0);
+    const given = list.reduce((n, e) => n + e.given_out, 0);
+    sheet.addRow([]);
+    const totalsHead = sheet.addRow([t("Menorahs lit"), "", t("People lit"), "", t("Menorahs given out")]);
+    totalsHead.font = { bold: true, color: { argb: GRAY } };
+    sheet.addRow([lit, "", people, "", given]).font = { bold: true, size: 14 };
+    sheet.addRow([]);
+    const head = sheet.addRow([t("Day"), t("Day / Night"), t("Route"), t("Who went"), t("Where"), t("People at each menorah"), t("Menorahs lit"), t("People lit"), t("Menorahs given out"), t("Anything else")]);
+    head.eachCell((cell) => {
+      cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: TEAL } };
+      cell.alignment = { wrapText: true, vertical: "middle" };
+    });
+    for (const e of list) {
+      const row = sheet.addRow([
+        formatDay(e.entry_date),
+        e.time_of_day === "night" ? t("Night") : t("Day"),
+        nameOf(e.user_id),
+        e.people.join(", "),
+        e.place,
+        e.menorahs.join(" + "),
+        e.menorahs.length,
+        e.menorahs.reduce((a, x) => a + x, 0),
+        e.given_out,
+        e.notes ?? "",
+      ]);
+      row.alignment = { wrapText: true, vertical: "top" };
     }
   }
 

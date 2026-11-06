@@ -411,3 +411,126 @@ header.sticky {
   backdrop-filter: blur(28px) saturate(170%);
   border-inline-end: 1px solid var(--glass-edge);
 }
+
+/*
+ * Chanukah (lib/chanukah.ts turns on the "chanukah" class from Friday 5am the week before until the
+ * end of Chanukah, then the site's own colors come back). A purple night sky with gold and orange
+ * candlelight, a little red at the edge of the glow and some blue, no green. The page runs edge to
+ * edge as one piece (no boxes or divider lines) and buttons are glossy.
+ */
+:root.chanukah {
+  --paper: #0d0a1f;
+  --surface: #120e28;
+  --card: #1a1535;
+  --sunken: #241d46;
+  --high: #2c2452;
+  --ink: #f4effc;
+  --muted: #cbc2e8;
+  --line: #3a3162;
+  --outline: #8f86ad;
+  --accent: #ffc163;
+  --accent-ink: #2a1300;
+  --accent-soft: #3d2f7a;
+  --accent-on-soft: #ece6ff;
+  --secondary-soft: #2c2458;
+  --secondary-on-soft: #ece6ff;
+  /* Warm orange-red, so Candles stand apart from the gold (Tefillin) in charts. */
+  --candle: #ff8a5c;
+  --candle-soft: #7a3f16;
+  --candle-on-soft: #ffe6b5;
+  --brand: #e9a640;
+  --glass: rgba(255, 255, 255, 0.06);
+  --glass-tint: 0.6;
+  --glass-edge: rgba(255, 255, 255, 0.12);
+  --glass-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  color-scheme: dark;
+}
+:root.chanukah body::before {
+  background:
+    radial-gradient(70% 16% at 50% 6%, rgba(255, 176, 80, 0.3), transparent 70%),
+    radial-gradient(60% 18% at 8% 32%, rgba(96, 72, 214, 0.55), transparent 70%),
+    radial-gradient(55% 18% at 96% 46%, rgba(54, 88, 210, 0.42), transparent 70%),
+    radial-gradient(45% 12% at 88% 22%, rgba(196, 46, 60, 0.2), transparent 70%),
+    radial-gradient(60% 16% at 16% 66%, rgba(255, 138, 60, 0.18), transparent 70%),
+    radial-gradient(70% 18% at 80% 88%, rgba(110, 80, 220, 0.45), transparent 70%),
+    #0d0a1f;
+}
+/* One piece, edge to edge: the page's cards lose their boxes and the lists lose their divider lines.
+   (Pop-ups sit outside <main>, so they keep their glass.) */
+:root.chanukah main .bg-card {
+  background: transparent !important;
+  border-color: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+:root.chanukah main .divide-y > * {
+  border-color: transparent !important;
+}
+/* Glossy: a bright top edge and a soft shine over the upper half. */
+:root.chanukah .bg-accent {
+  background: linear-gradient(180deg, #ffe29a 0%, #ffbd52 45%, #f28a2e 100%) !important;
+  box-shadow: 0 8px 24px rgba(255, 140, 50, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.75), inset 0 -2px 0 rgba(150, 60, 0, 0.25);
+}
+:root.chanukah .quick-tile {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 10px 26px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+:root.chanukah .quick-tile::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 55% 0;
+  border-radius: 28px 28px 0 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.2), transparent);
+  pointer-events: none;
+}
+:root.chanukah .quick-tile.bg-accent-soft {
+  background: linear-gradient(160deg, rgba(120, 100, 240, 0.6), rgba(60, 50, 150, 0.4)) !important;
+}
+:root.chanukah .quick-tile.bg-candle-soft {
+  background: linear-gradient(160deg, rgba(255, 170, 70, 0.55), rgba(190, 70, 40, 0.38)) !important;
+}
+/* The logo turns gold for Chanukah. */
+:root.chanukah svg rect[fill="#106a7a"] {
+  fill: #e9a640;
+}
+
+/* The menorah's flames: each one flickers on its own, gently. */
+@keyframes flame-flicker {
+  0%, 100% { transform: scale(1, 1) skewX(0deg); opacity: 1; }
+  20% { transform: scale(0.96, 1.05) skewX(-2deg); }
+  45% { transform: scale(1.03, 0.94) skewX(2deg); opacity: 0.92; }
+  70% { transform: scale(0.98, 1.03) skewX(-1deg); }
+}
+@keyframes glow-breathe {
+  0%, 100% { opacity: 0.85; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+.flame {
+  transform-box: fill-box;
+  transform-origin: 50% 90%;
+  animation: flame-flicker 1.6s ease-in-out infinite;
+}
+.flame-glow {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: glow-breathe 2.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .flame,
+  .flame-glow {
+    animation: none;
+  }
+}
+/* Rounded gold lettering, like a balloon: lit from the top left, rolling off into shade at the edges. */
+.chanukah-gold {
+  display: inline-block;
+  font-weight: 700;
+  line-height: 1.1;
+  background: linear-gradient(180deg, #ffe6a8 0%, #ffc463 55%, #ff9d45 100%) 0 0 / 100% 1.1em repeat-y;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: url(#chanukah-puffy) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.45));
+}

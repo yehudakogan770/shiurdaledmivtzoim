@@ -41,6 +41,14 @@ function fridayShkiah(place: Place, tz: string) {
   }
 }
 
+/** Where zmanim are worked out for: the saved location (and this phone's time zone), or Crown Heights. */
+export function zmanimPlace(): GeoLocation {
+  const place = typeof window === "undefined" ? null : saved();
+  const tz = place ? Intl.DateTimeFormat().resolvedOptions().timeZone : CROWN_HEIGHTS_TZ;
+  const p = place ?? CROWN_HEIGHTS;
+  return new GeoLocation(null, p.lat, p.lon, 0, tz);
+}
+
 /** Asked once already (whatever the answer): not asked again by itself. */
 const ASKED_KEY = "sdm-location-asked";
 /** When the location was last brought up to date. */

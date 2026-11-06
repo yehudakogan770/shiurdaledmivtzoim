@@ -48,6 +48,8 @@ function empty(): Store {
     report_items: [],
     report_counts: [],
     posters: [],
+    chanukah_entries: [],
+    chanukah_testers: [],
   };
 }
 

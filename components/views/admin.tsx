@@ -14,6 +14,7 @@ import { handle, isAdminIdentifier } from "@/lib/admin";
 import { chavrusasOf, encodeChavrusa, type Chavrusa } from "@/lib/chavrusa";
 import { DESTINATIONS } from "@/lib/messages";
 import { PHOTOS_PROMO } from "../photos-promo";
+import { ChanukahTestCard } from "../chanukah-test";
 import { useNav } from "@/lib/nav";
 import { ChavrusaFields, ChavrusaNames } from "../chavrusa-fields";
 import { Avatar, Badge, Button, Card, Chip, CardTitle, CategoryIcon, Empty, Field, IconButton, Input, Modal, PageHeader, Select, Textarea, cx, listClass } from "../ui";
@@ -45,6 +46,7 @@ export function AdminView() {
       )}
       <ReportLinkCard />
       {isOwner && <PostersCard />}
+      {isOwner && <ChanukahTestCard />}
       <PeopleCard />
       <ExportCard />
       {isOwner && <PhotoDriveCard />}
@@ -718,7 +720,7 @@ function matchesMivtza(a: Activity, kind: string, shared: PersonalCategory[]) {
 
 /** Download everyone's Mivtzoim as an Excel file, organized by week. */
 function ExportCard() {
-  const { data, people, builtins, shared, settings, notify } = useData();
+  const { data, people, builtins, shared, settings, notify, chanukah } = useData();
   const weeks = allWeeks(); // newest first
   const [mode, setMode] = useState<"this" | "all" | "choose">("this");
   const [picked, setPicked] = useState<string[]>([]);
@@ -742,6 +744,7 @@ function ExportCard() {
         routes: data.routes,
         locations: data.locations,
         siteName: settings.site_name,
+        chanukah: chanukah ?? [],
       });
       const range = mode === "this" ? t("Week of {date}", { date: currentWeek() }) : mode === "all" ? t("All weeks") : selected.length === 1 ? weekTitle(selected[0]).replace(/[^\w '-]/g, "").trim() : t("{n} weeks", { n: selected.length });
       const link = document.createElement("a");

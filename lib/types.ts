@@ -203,6 +203,33 @@ export interface Poster {
   created_at: string;
 }
 
+/** One Chanukah stop: who went, where, each menorah lit (how many people lit it), and how many were given out. */
+export interface ChanukahEntry {
+  id: string;
+  user_id: string;
+  /** The Hebrew year, like 5787. */
+  year: number;
+  entry_date: string;
+  time_of_day: "day" | "night";
+  place: string;
+  /** Everyone who went. */
+  people: string[];
+  /** One number per menorah lit: how many people lit it. */
+  menorahs: number[];
+  given_out: number;
+  notes: string | null;
+  /** Logged in test mode: never counts, and is deleted when test mode is turned off. */
+  is_test: boolean;
+  created_at: string;
+}
+
+/** An account the Owner lets try Chanukah ahead of time. */
+export interface ChanukahTester {
+  id: string;
+  user_id: string;
+  created_at: string;
+}
+
 export interface Tables {
   profiles: Profile;
   groups: Group;
@@ -216,6 +243,8 @@ export interface Tables {
   report_items: ReportItem;
   report_counts: ReportCount;
   posters: Poster;
+  chanukah_entries: ChanukahEntry;
+  chanukah_testers: ChanukahTester;
 }
 
 export type TableName = keyof Tables;

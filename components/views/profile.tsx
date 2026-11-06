@@ -13,10 +13,11 @@ import { sum } from "./dashboard";
 import { InstallCard } from "../install-app";
 import { MyPhotos } from "./photos";
 import { LanguageCard } from "../language-picker";
+import { ChanukahTestCard } from "../chanukah-test";
 import { t } from "@/lib/i18n";
 
 export function ProfileView() {
-  const { me, backend, mine, auth, actions, notify } = useData();
+  const { me, backend, mine, auth, actions, notify, isOwner } = useData();
   const [catName, setCatName] = useState("");
   const [catDesc, setCatDesc] = useState("");
   const [busy, setBusy] = useState(false);
@@ -50,6 +51,8 @@ export function ProfileView() {
   return (
     <div className="grid grid-cols-1 gap-3">
       <PageHeader title={t("Profile")} subtitle={t("Your account and the Mivtzoim you track.")} />
+
+      {!isOwner && <ChanukahTestCard />}
 
       <div className="grid gap-3 lg:grid-cols-2">
         <AccountCard />

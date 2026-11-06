@@ -22,6 +22,7 @@ import { WhoWentPrompt } from "./week-question";
 import { MessagePrompt } from "./message-prompt";
 import { PosterPrompt } from "./poster-prompt";
 import { AccountSwitcher } from "./account-switcher";
+import { ChanukahTheme } from "./chanukah";
 import { lockPage } from "@/lib/page-lock";
 
 const links = [
@@ -459,6 +460,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* The Owner's poster, after any other pop-up has closed. */}
       {me && !guest && !isOwner && !(backend?.hasAuth && missingHebrewNames(me.partners)) && <PosterPrompt />}
       <Snackbar message={toast} />
+      <ChanukahTheme />
     </div>
     </EditModeProvider>
   );

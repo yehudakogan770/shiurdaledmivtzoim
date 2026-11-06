@@ -359,6 +359,12 @@ export function createSupabaseBackend(url: string, key: string): Backend {
       const { data, error } = await sb.rpc("community_activity", { p_from: from, p_to: to });
       return error ? null : (data as CommunityRow[]);
     },
+    async chanukahTotals(year) {
+      const { data, error } = await sb.rpc("chanukah_totals", { p_year: year });
+      if (error || !Array.isArray(data) || !data[0]) return null;
+      const r = data[0] as { lit: number; people: number; given: number };
+      return { lit: Number(r.lit) || 0, people: Number(r.people) || 0, given: Number(r.given) || 0 };
+    },
     async listPeople() {
       const withEmail = await sb.rpc("admin_people");
       // Profile photos come from the profiles table itself (admins can read every row).

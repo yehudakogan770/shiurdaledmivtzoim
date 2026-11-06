@@ -65,6 +65,8 @@ export interface Backend {
    * Only where the backend can't already see everyone's entries; null if unavailable.
    */
   communityActivity?(from: string, to: string): Promise<CommunityRow[] | null>;
+  /** The shiur's Chanukah totals for a Hebrew year (test entries left out); null if unavailable. */
+  chanukahTotals?(year: number): Promise<ChanukahTotals | null>;
   /** The mivtzoim everyone shares (names, icons, order), readable without an account for the sample. */
   sharedMivtzoim?(): Promise<PersonalCategory[]>;
   /** Everyone's photos, newest first (anyone can see them, even without an account). */
@@ -113,6 +115,12 @@ export interface CommunityRow {
   quantity: number;
   /** true for the signed-in person's own entries */
   mine: boolean;
+}
+
+export interface ChanukahTotals {
+  lit: number;
+  people: number;
+  given: number;
 }
 
 /** An account kept signed in on this device. */
