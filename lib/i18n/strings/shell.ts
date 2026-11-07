@@ -110,6 +110,9 @@ const shell: Area = {
     Language: "שפה",
     "The site shows in this language on every phone you sign in on.": "האתר יוצג בשפה הזו בכל טלפון שבו תתחבר.",
     "Your language didn't save: {message}": "השפה שלך לא נשמרה: {message}",
+    "Sign In to Continue": "התחברו כדי להמשיך",
+    "Sign in or create an account to log your Mivtzoim and make changes.": "התחברו או פתחו חשבון כדי לרשום את המבצעים שלכם ולשנות דברים.",
+    "Sign in to save this.": "התחברו כדי לשמור.",
   },
   fr: {
     // Navigation
@@ -221,6 +224,9 @@ const shell: Area = {
     Language: "Langue",
     "The site shows in this language on every phone you sign in on.": "Le site s'affiche dans cette langue sur chaque téléphone où vous vous connectez.",
     "Your language didn't save: {message}": "Votre langue n'a pas été enregistrée : {message}",
+    "Sign In to Continue": "Connectez-vous pour continuer",
+    "Sign in or create an account to log your Mivtzoim and make changes.": "Connectez-vous ou créez un compte pour enregistrer vos Mivtsaïm et faire des changements.",
+    "Sign in to save this.": "Connectez-vous pour enregistrer.",
   },
   es: {
     // Navigation
@@ -332,6 +338,9 @@ const shell: Area = {
     Language: "Idioma",
     "The site shows in this language on every phone you sign in on.": "El sitio se muestra en este idioma en cada teléfono donde inicies sesión.",
     "Your language didn't save: {message}": "Tu idioma no se guardó: {message}",
+    "Sign In to Continue": "Inicia sesión para continuar",
+    "Sign in or create an account to log your Mivtzoim and make changes.": "Inicia sesión o crea una cuenta para registrar tus Mivtzoim y hacer cambios.",
+    "Sign in to save this.": "Inicia sesión para guardar.",
   },
 };
 export default shell;

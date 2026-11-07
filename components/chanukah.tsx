@@ -85,7 +85,7 @@ function useTotals(state: ChanukahState) {
  */
 export function ChanukahHero() {
   const state = useChanukahNow();
-  const { me, guest, notify, chanukah, isOwner } = useData();
+  const { me, guest, notify, chanukah, isOwner, askSignIn } = useData();
   const { go, Link } = useNav();
   const totals = useTotals(state);
   if (!isChanukahOn(state)) return null;
@@ -100,7 +100,7 @@ export function ChanukahHero() {
   const minutes = Math.floor((left % 3_600_000) / 60_000);
 
   const logOpen = () => {
-    if (guest || !me) return notify(t("Create an account to log Chanukah."));
+    if (guest || !me) return askSignIn();
     go("/chanukah");
   };
 

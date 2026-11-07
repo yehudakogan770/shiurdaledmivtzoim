@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { ChevronDown, ImagePlus, Images, Trash2, X } from "lucide-react";
-import { useData, GUEST_MESSAGE } from "@/lib/data";
+import { useData } from "@/lib/data";
 import { formatShort, weekOf } from "@/lib/dates";
 import { parshaOfWeek } from "@/lib/parsha";
 import { arrange, fitToSpots, pendingPhotos, shrinkPhoto, type ShrunkPhoto } from "@/lib/photos";
@@ -26,7 +26,7 @@ const FADE = "linear-gradient(to bottom, transparent 0, #000 3rem, #000 calc(100
  * to take over; let go and it carries on from there. Anyone with an account can add photos.
  */
 export function PhotosView() {
-  const { photos, me, guest, notify, isAdmin } = useData();
+  const { photos, me, guest, notify, isAdmin, askSignIn } = useData();
   const { editing } = useEditMode();
   const [picked, setPicked] = useState<File[] | null>(null);
   const [open, setOpen] = useState<Photo | null>(null);
@@ -45,7 +45,7 @@ export function PhotosView() {
   }, [photos]);
 
   function choose() {
-    if (guest || !me) return notify(t(GUEST_MESSAGE));
+    if (guest || !me) return askSignIn();
     input.current?.click();
   }
 

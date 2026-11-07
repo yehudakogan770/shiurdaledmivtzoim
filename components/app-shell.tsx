@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { Eye, History, Images, LayoutDashboard, LogIn, LogOut, Map, Menu, ShieldCheck, Sunset, UserRound, UserRoundPlus, ChartColumn } from "lucide-react";
+import { History, Images, LayoutDashboard, LogIn, LogOut, Map, Menu, ShieldCheck, Sunset, UserRound, UserRoundPlus, ChartColumn } from "lucide-react";
 import { handle } from "@/lib/admin";
 import { useData } from "@/lib/data";
 import { displayName } from "@/lib/types";
@@ -9,7 +9,7 @@ import { useNav } from "@/lib/nav";
 import { hebrewDate } from "@/lib/dates";
 import { parshaThisShabbos } from "@/lib/parsha";
 import { useShkiah } from "@/lib/shkiah";
-import { Avatar, ButtonLink, Empty, IconButton, cx } from "./ui";
+import { Avatar, Button, Empty, IconButton, Modal, cx } from "./ui";
 import { LogoMark } from "./brand";
 import { LoginView } from "./views/login";
 import { SiteFooter } from "./site-footer";
@@ -337,8 +337,9 @@ function TopAppBar({ onMenu }: { onMenu: () => void }) {
           </Link>
         )}
         {guest && (
-          <Link href="/login" aria-label={t("Sign in or create an account")} className="ms-auto me-2 grid h-10 w-10 place-items-center rounded-full bg-accent-soft text-accent-on-soft">
-            <UserRound size={22} />
+          <Link href="/login" aria-label={t("Sign in or create an account")} className="ms-auto me-2 inline-flex h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-accent px-3.5 text-sm font-medium text-accent-ink">
+            <LogIn size={18} aria-hidden />
+            {t("Sign in")}
           </Link>
         )}
       </header>
@@ -347,8 +348,8 @@ function TopAppBar({ onMenu }: { onMenu: () => void }) {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { status, error, me, guest, backend, toast, auth, isOwner } = useData();
-  const { path: rawPath, query, go } = useNav();
+  const { status, error, me, guest, backend, toast, auth, isOwner, signInAsked } = useData();
+  const { path: rawPath, query, go, Link } = useNav();
   const path = rawPath.length > 1 ? rawPath.replace(/\/+$/, "") : rawPath;
   const [menuOpen, setMenuOpen] = useState(false);
   const closeMenu = useCallback(() => setMenuOpen(false), []);
@@ -418,7 +419,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   } else if (guest) {
     body = (
       <>
-        <SampleBanner />
         {path === "/profile" || path === "/admin" ? (
           <div className="mt-6">
             <Empty title={t("Sign in to see this page")} icon={UserRound}>
@@ -448,11 +448,17 @@ export function AppShell({ children }: { children: ReactNode }) {
       <ModalDrawer open={menuOpen} onOpen={openMenu} onClose={closeMenu} />
       <div className="min-w-0 flex-1">
         <TopAppBar onMenu={() => setMenuOpen(true)} />
-        <div className="hidden justify-end px-8 pt-6 lg:flex">
+        <div className="hidden items-center justify-end gap-3 px-8 pt-6 lg:flex">
           <span className="inline-flex items-center gap-2 rounded-full bg-card px-4 py-2 text-sm text-muted">
             <Sunset size={16} aria-hidden className="text-candle" />
             <ShkiahLine />
           </span>
+          {guest && (
+            <Link href="/login" className="inline-flex h-10 items-center gap-1.5 rounded-full bg-accent px-4 text-sm font-medium text-accent-ink">
+              <LogIn size={18} aria-hidden />
+              {t("Sign in")}
+            </Link>
+          )}
         </div>
         <main className="px-4 pt-2 pb-16 sm:px-6 lg:px-8 lg:pt-4 lg:pb-12">
           <div className="w-full">{body}</div>
@@ -466,6 +472,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {me && !guest && !isOwner && !(backend?.hasAuth && missingHebrewNames(me.partners)) && <MessagePrompt />}
       {/* The Owner's poster, after any other pop-up has closed. */}
       {me && !guest && !isOwner && !(backend?.hasAuth && missingHebrewNames(me.partners)) && <PosterPrompt />}
+      {guest && signInAsked && <SignInPrompt />}
       <Snackbar message={toast} />
       <ChanukahTheme />
     </div>
@@ -473,26 +480,40 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
 }
 
-/** Shown to everyone who isn't signed in: they're looking at a blank sample. */
-function SampleBanner() {
+/**
+ * Someone not signed in tapped something that adds or changes: a pop-up over the blurred page
+ * that asks them to sign in or create an account.
+ */
+function SignInPrompt() {
+  const { closeSignIn } = useData();
+  const { go } = useNav();
+  const to = (href: string) => {
+    closeSignIn();
+    go(href);
+  };
   return (
-    <div className="mb-4 flex flex-col gap-3 rounded-[28px] bg-accent-soft px-5 py-4 text-accent-on-soft sm:flex-row sm:items-center sm:gap-4">
-      <span className="flex min-w-0 flex-1 items-start gap-3">
-        <Eye size={20} aria-hidden className="mt-0.5 shrink-0" />
-        <span className="min-w-0">
-          <span className="block font-medium">{t("You're looking at a preview")}</span>
-          <span className="block text-sm opacity-85">{t("Look around and tap anything. Nothing is saved until you create an account.")}</span>
+    <Modal onClose={closeSignIn} blur>
+      <div role="dialog" aria-modal="true" aria-labelledby="sign-in-ask" onClick={(e) => e.stopPropagation()} className="grid w-full max-w-sm gap-4 rounded-[28px] bg-card p-6 text-center shadow-pop">
+        <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-accent-soft text-accent-on-soft">
+          <LogIn size={26} aria-hidden />
         </span>
-      </span>
-      <span className="flex flex-wrap gap-2 ps-8 sm:ps-0">
-        <ButtonLink href="/login?mode=signup" className="h-10 px-4">
-          {t("Create account")}
-        </ButtonLink>
-        <ButtonLink href="/login" variant="ghost" className="h-10 px-4">
-          {t("Sign in")}
-        </ButtonLink>
-      </span>
-    </div>
+        <div>
+          <h2 id="sign-in-ask" className="text-xl font-medium">{t("Sign In to Continue")}</h2>
+          <p className="mt-1 text-sm text-muted">{t("Sign in or create an account to log your Mivtzoim and make changes.")}</p>
+        </div>
+        <div className="grid gap-2">
+          <Button onClick={() => to("/login")} className="h-12">
+            {t("Sign in")}
+          </Button>
+          <Button variant="ghost" onClick={() => to("/login?mode=signup")} className="h-12">
+            {t("Create account")}
+          </Button>
+          <button type="button" onClick={closeSignIn} className="h-10 text-sm text-muted">
+            {t("Not now")}
+          </button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 

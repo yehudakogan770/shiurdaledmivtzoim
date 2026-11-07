@@ -153,6 +153,10 @@ interface DataContextValue {
   people: Profile[];
   toast: string | null;
   notify(message: string): void;
+  /** Someone not signed in tried to add or change something: show the sign-in pop-up. */
+  signInAsked: boolean;
+  askSignIn(): void;
+  closeSignIn(): void;
   refresh(): Promise<void>;
   auth: {
     /** The accounts signed in on this device, to switch between (empty where not available). */
@@ -260,12 +264,16 @@ interface DataContextValue {
  * What someone without an account sees when they tap anything that would save. Kept in English
  * (it's the dictionary key): show it with t(GUEST_MESSAGE).
  */
-export const GUEST_MESSAGE = "This is a preview. Create an account to save your Mivtzoim.";
+export const GUEST_MESSAGE = "Sign in to save this.";
 
-/** The same functions, except each one only says "create an account" and changes nothing. */
-function sampleOnly<T extends object>(fns: T): T {
+/** The same functions, except each one only asks them to sign in and changes nothing. */
+function sampleOnly<T extends object>(fns: T, ask: () => void): T {
   const blocked = {} as T;
-  for (const k of Object.keys(fns) as (keyof T)[]) (blocked as Record<keyof T, unknown>)[k] = () => Promise.reject(new Error(t(GUEST_MESSAGE)));
+  for (const k of Object.keys(fns) as (keyof T)[])
+    (blocked as Record<keyof T, unknown>)[k] = () => {
+      ask();
+      return Promise.reject(new Error(t(GUEST_MESSAGE)));
+    };
   return blocked;
 }
 
@@ -303,8 +311,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const unsaved = useRef(0);
   const savedIds = useRef(new Map<string, string>());
 
+  const [signInAsked, setSignInAsked] = useState(false);
+  const askSignIn = useCallback(() => setSignInAsked(true), []);
+  const closeSignIn = useCallback(() => setSignInAsked(false), []);
+
   const notify = useCallback((message: string) => {
     // Messages are translated when made; this also catches English ones passed through (like errors).
+    // "Sign in to save" isn't shown: the sign-in pop-up already says it.
+    if (t(message).includes(t(GUEST_MESSAGE))) return;
     setToast(t(message));
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), 3200);
@@ -555,6 +569,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       chanukahTesters: testerRows.map((r) => r.user_id),
       toast,
       notify,
+      signInAsked,
+      askSignIn,
+      closeSignIn,
       refresh,
       auth: {
         savedAccounts: async () => (b.savedAccounts ? b.savedAccounts() : []),
@@ -1034,10 +1051,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const { signIn, signUp, requestPasswordReset, updatePassword, finishRecovery } = value.auth;
     return {
       ...value,
-      actions: sampleOnly(value.actions),
-      auth: { ...sampleOnly(value.auth), signIn, signUp, requestPasswordReset, updatePassword, finishRecovery, recovering },
+      actions: sampleOnly(value.actions, askSignIn),
+      auth: { ...sampleOnly(value.auth, askSignIn), signIn, signUp, requestPasswordReset, updatePassword, finishRecovery, recovering },
     };
-  }, [backend, status, error, me, data, mine, settings, people, photos, cards, viewerRows, report, posters, chanukah, chanukahTotals, testerRows, recovering, toast, notify, refresh, load]);
+  }, [backend, status, error, me, data, mine, settings, people, photos, cards, viewerRows, report, posters, chanukah, chanukahTotals, testerRows, recovering, toast, notify, refresh, load, signInAsked, askSignIn, closeSignIn]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }
