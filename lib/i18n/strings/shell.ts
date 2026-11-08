@@ -113,6 +113,15 @@ const shell: Area = {
     "Sign In to Continue": "התחברו כדי להמשיך",
     "Sign in or create an account to log your Mivtzoim and make changes.": "התחברו או פתחו חשבון כדי לרשום את המבצעים שלכם ולשנות דברים.",
     "Sign in to save this.": "התחברו כדי לשמור.",
+    "One moment…": "רגע אחד…",
+    "This link didn't work": "הקישור הזה לא עבד",
+    "Please open the Unsubscribe link from the email again.": "אנא פתחו שוב את קישור ביטול המינוי מהמייל.",
+    "You're unsubscribed": "ביטלתם את המינוי",
+    "You're subscribed again": "נרשמתם שוב",
+    "Subscribe again": "להירשם שוב",
+    "Unsubscribe": "ביטול מינוי",
+    "You won't get emails from Shiur Daled Mivtzoim anymore. Emails about your account (like resetting your password) still come.": "לא תקבלו יותר מיילים מ־Shiur Daled Mivtzoim. מיילים על החשבון שלכם (כמו איפוס סיסמה) עדיין יגיעו.",
+    "You'll get emails from Shiur Daled Mivtzoim again.": "תקבלו שוב מיילים מ־Shiur Daled Mivtzoim.",
   },
   fr: {
     // Navigation
@@ -227,6 +236,15 @@ const shell: Area = {
     "Sign In to Continue": "Connectez-vous pour continuer",
     "Sign in or create an account to log your Mivtzoim and make changes.": "Connectez-vous ou créez un compte pour enregistrer vos Mivtsaïm et faire des changements.",
     "Sign in to save this.": "Connectez-vous pour enregistrer.",
+    "One moment…": "Un instant…",
+    "This link didn't work": "Ce lien n'a pas fonctionné",
+    "Please open the Unsubscribe link from the email again.": "Veuillez rouvrir le lien de désinscription depuis l'e-mail.",
+    "You're unsubscribed": "Vous êtes désinscrit",
+    "You're subscribed again": "Vous êtes de nouveau inscrit",
+    "Subscribe again": "Se réinscrire",
+    "Unsubscribe": "Se désinscrire",
+    "You won't get emails from Shiur Daled Mivtzoim anymore. Emails about your account (like resetting your password) still come.": "Vous ne recevrez plus d'e-mails de Shiur Daled Mivtzoim. Les e-mails concernant votre compte (comme la réinitialisation du mot de passe) arrivent toujours.",
+    "You'll get emails from Shiur Daled Mivtzoim again.": "Vous recevrez de nouveau les e-mails de Shiur Daled Mivtzoim.",
   },
   es: {
     // Navigation
@@ -341,6 +359,15 @@ const shell: Area = {
     "Sign In to Continue": "Inicia sesión para continuar",
     "Sign in or create an account to log your Mivtzoim and make changes.": "Inicia sesión o crea una cuenta para registrar tus Mivtzoim y hacer cambios.",
     "Sign in to save this.": "Inicia sesión para guardar.",
+    "One moment…": "Un momento…",
+    "This link didn't work": "Este enlace no funcionó",
+    "Please open the Unsubscribe link from the email again.": "Vuelve a abrir el enlace para darte de baja desde el correo.",
+    "You're unsubscribed": "Te has dado de baja",
+    "You're subscribed again": "Te has suscrito de nuevo",
+    "Subscribe again": "Suscribirme de nuevo",
+    "Unsubscribe": "Darme de baja",
+    "You won't get emails from Shiur Daled Mivtzoim anymore. Emails about your account (like resetting your password) still come.": "Ya no recibirás correos de Shiur Daled Mivtzoim. Los correos sobre tu cuenta (como restablecer la contraseña) seguirán llegando.",
+    "You'll get emails from Shiur Daled Mivtzoim again.": "Volverás a recibir correos de Shiur Daled Mivtzoim.",
   },
 };
 export default shell;

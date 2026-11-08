@@ -6,6 +6,17 @@ import type { LocationCard, PersonalCategory, Photo, Profile, SignUpInput, SiteS
  * same screens run on Supabase (the hosted website), inside a Claude artifact
  * (shared with everyone the artifact is shared with), or on one device.
  */
+/** Someone the Owner can email. */
+export interface EmailPerson {
+  id: string;
+  name: string;
+  email: string;
+  /** The private key in their Unsubscribe link. */
+  token: string;
+  /** They unsubscribed. */
+  off: boolean;
+}
+
 export interface Backend {
   kind: "supabase" | "claude" | "local";
   /** Short description shown on the Profile page. */
@@ -79,6 +90,15 @@ export interface Backend {
   photoDriveUrl?(): Promise<string | null>;
   /** The Owner only: set or clear that address. */
   setPhotoDriveUrl?(url: string | null): Promise<void>;
+  /** The Owner: everyone's email address, and whether they unsubscribed from the Owner's emails. */
+  emailList?(): Promise<EmailPerson[]>;
+  /** The Owner: the address of the Google script that sends the emails from the Owner's Gmail. */
+  emailSenderUrl?(): Promise<string | null>;
+  setEmailSenderUrl?(url: string | null): Promise<void>;
+  /** From an email's Unsubscribe link (no sign-in needed): stop (or start again) those emails. */
+  emailUnsubscribe?(token: string, off: boolean): Promise<boolean>;
+  /** The signed-in account's sign-in key, so the email script can check it's really the Owner. */
+  accessToken?(): Promise<string | null>;
   /** The Owner: store a poster picture (already made smaller) and give back its address. */
   uploadPosterImage?(image: Blob): Promise<string>;
   /**

@@ -17,7 +17,7 @@ import { PHOTOS_PROMO } from "../photos-promo";
 import { ChanukahTestCard } from "../chanukah-test";
 import { useNav } from "@/lib/nav";
 import { ChavrusaFields, ChavrusaNames } from "../chavrusa-fields";
-import { Avatar, Badge, Button, Card, Chip, CardTitle, CategoryIcon, Empty, Field, IconButton, Input, Modal, PageHeader, Select, Textarea, cx, listClass } from "../ui";
+import { Avatar, Badge, Button, ButtonLink, Card, Chip, CardTitle, CategoryIcon, Empty, Field, IconButton, Input, Modal, PageHeader, Select, Textarea, cx, listClass } from "../ui";
 import { sum } from "./dashboard";
 import { t, tn } from "@/lib/i18n";
 
@@ -45,6 +45,7 @@ export function AdminView() {
         </div>
       )}
       <ReportLinkCard />
+      {isOwner && <EmailCard />}
       {isOwner && <PostersCard />}
       {isOwner && <ChanukahTestCard />}
       <PeopleCard />
@@ -53,6 +54,18 @@ export function AdminView() {
       {/* The Owner's History already shows everyone's entries. */}
       {!isOwner && <ActivityCard />}
     </div>
+  );
+}
+
+/** The Owner: write an email to everyone (or chosen people). */
+function EmailCard() {
+  return (
+    <Card>
+      <CardTitle sub="Write an email and send it from your Gmail to everyone with an account, or to people you choose." action={<ButtonLink href="/email">Write an Email</ButtonLink>}>
+        Emails
+      </CardTitle>
+      <div className="pb-2" />
+    </Card>
   );
 }
 

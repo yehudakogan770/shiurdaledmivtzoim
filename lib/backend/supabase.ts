@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { displayName, type LocationCard, type PersonalCategory, type Photo, type Profile, type TableName, type Tables } from "../types";
 import { t } from "../i18n";
-import { NOT_ALLOWED, checkEmail, checkPassword, loginKey, normalizeUsername, type Backend, type CommunityRow } from "./index";
+import { NOT_ALLOWED, checkEmail, checkPassword, loginKey, normalizeUsername, type Backend, type CommunityRow, type EmailPerson } from "./index";
 
 /** Where email links (confirmation, password reset) send people back to. */
 function siteUrl() {
@@ -279,6 +279,30 @@ export function createSupabaseBackend(url: string, key: string): Backend {
       const { error } = await sb.from("photo_drive").upsert({ id: 1, url: url?.trim() || null, updated_at: new Date().toISOString() });
       if (error?.message.includes("photo_drive")) throw new Error(t("Run the latest database update (015) in Supabase first."));
       fail(error);
+    },
+    async emailList() {
+      const { data, error } = await sb.rpc("email_list");
+      if (error) throw new Error(/email_list|schema cache|does not exist/.test(error.message) ? "Run database update 021 in Supabase first." : error.message);
+      return (data ?? []) as EmailPerson[];
+    },
+    async emailSenderUrl() {
+      const { data, error } = await sb.from("email_sender").select("url").eq("id", 1).maybeSingle();
+      if (error) return null;
+      return (data?.url as string | null) || null;
+    },
+    async setEmailSenderUrl(url) {
+      const { error } = await sb.from("email_sender").upsert({ id: 1, url: url?.trim() || null, updated_at: new Date().toISOString() });
+      if (error?.message.includes("email_sender")) throw new Error("Run database update 021 in Supabase first.");
+      fail(error);
+    },
+    async emailUnsubscribe(token, off) {
+      const { data, error } = await sb.rpc("email_unsubscribe", { p_token: token, p_off: off });
+      if (error) throw new Error(t("Something went wrong. Please try again."));
+      return !!data;
+    },
+    async accessToken() {
+      const { data } = await sb.auth.getSession();
+      return data.session?.access_token ?? null;
     },
     async adminDeletePerson(userId) {
       const { error } = await sb.rpc("admin_delete_person", { p_user: userId });

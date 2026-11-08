@@ -16,6 +16,9 @@ type Store = { [K in Exclude<TableName, "profiles">]: Tables[K][] } & {
   cards?: (LocationCard & { data?: string | null })[];
   /** Where print copies of photos go (Google Drive script). */
   photoDrive?: string | null;
+  /** The Owner's email script, and who unsubscribed (by their private key). */
+  emailSender?: string | null;
+  emailPrefs?: Record<string, { token: string; off: boolean }>;
   /** Accounts kept signed in on this device, to switch between. */
   kept?: string[];
 };
@@ -249,6 +252,38 @@ export function createLocalBackend(): Backend {
     },
     async listPhotos() {
       return [...(load().photos ?? [])].sort((a, b) => b.created_at.localeCompare(a.created_at)).map(({ data, thumbData, ...p }) => ({ ...p, url: data, thumbUrl: thumbData }));
+    },
+    async emailList() {
+      const s = load();
+      requireAdmin(s);
+      s.emailPrefs ??= {};
+      for (const p of s.profiles) s.emailPrefs[p.id] ??= { token: newId(), off: false };
+      save(s);
+      return s.profiles
+        .filter((p) => p.email)
+        .map((p) => ({ id: p.id, name: p.name, email: p.email!, ...s.emailPrefs![p.id] }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+    },
+    async accessToken() {
+      // Only for trying it out in this browser; the real check is done by Supabase.
+      return load().session;
+    },
+    async emailSenderUrl() {
+      return load().emailSender ?? null;
+    },
+    async setEmailSenderUrl(url) {
+      const s = load();
+      requireAdmin(s);
+      s.emailSender = url?.trim() || null;
+      save(s);
+    },
+    async emailUnsubscribe(token, off) {
+      const s = load();
+      const entry = Object.values(s.emailPrefs ?? {}).find((e) => e.token === token);
+      if (!entry) return false;
+      entry.off = off;
+      save(s);
+      return true;
     },
     async photoDriveUrl() {
       return load().photoDrive ?? null;
