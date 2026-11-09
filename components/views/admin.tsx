@@ -567,6 +567,9 @@ function PeopleCard() {
   const [open, setOpen] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  // The list stays closed until it's opened or something is searched for.
+  const [listOpen, setListOpen] = useState(false);
+  const showList = listOpen || words.length > 0;
   // Every word typed has to match something on the account, in any order.
   const rows = [...people]
     .filter((p) => !words.length || ((text) => words.every((w) => text.includes(w)))(searchText(p, data)))
@@ -593,8 +596,21 @@ function PeopleCard() {
           )}
         </label>
       </div>
-      {rows.length === 0 && <p className="px-6 pb-5 text-sm text-muted">{t("No account matches “{q}”.", { q: query.trim() })}</p>}
-      <ul className={listClass}>
+      {!words.length && (
+        <div className="px-6 pb-3">
+          <button
+            type="button"
+            aria-expanded={listOpen}
+            onClick={() => setListOpen(!listOpen)}
+            className="flex h-12 w-full items-center justify-between rounded-2xl border border-line/70 px-4 text-start font-medium hover:bg-ink/5"
+          >
+            <span>{listOpen ? t("Hide the list") : tn(people.length, "Show all {n} account", "Show all {n} accounts")}</span>
+            <ChevronDown size={18} aria-hidden className={cx("shrink-0 text-muted transition-transform", listOpen && "rotate-180")} />
+          </button>
+        </div>
+      )}
+      {showList && rows.length === 0 && <p className="px-6 pb-5 text-sm text-muted">{t("No account matches “{q}”.", { q: query.trim() })}</p>}
+      {showList && <ul className={listClass}>
         {rows.map((p) => {
           const total = sum(data.activity.filter((a) => a.user_id === p.id));
           const expanded = open === p.id;
@@ -617,10 +633,12 @@ function PeopleCard() {
                 </span>
                 {p.username && <span className="block truncate text-sm text-muted">{handle(p.username)}</span>}
               </span>
-              <span className="tabular text-end">
-                <span className="block text-xl">{total}</span>
-                <span className="block text-xs text-muted">{t("Mivtzoim")}</span>
-              </span>
+              {p.role !== "admin" && (
+                <span className="tabular text-end">
+                  <span className="block text-xl">{total}</span>
+                  <span className="block text-xs text-muted">{t("Mivtzoim")}</span>
+                </span>
+              )}
               <ChevronDown size={18} aria-hidden className={cx("shrink-0 text-muted transition-transform", expanded && "rotate-180")} />
               </button>
             </div>
@@ -628,7 +646,7 @@ function PeopleCard() {
             </li>
           );
         })}
-      </ul>
+      </ul>}
     </Card>
   );
 }
@@ -671,26 +689,31 @@ function PersonDetails({ person }: { person: Profile }) {
     .sort((a, b) => (b.activity_date + b.created_at).localeCompare(a.activity_date + a.created_at));
   const routes = data.routes.filter((r) => r.created_by === userId).length;
   const categories = data.categories.filter((c) => c.user_id === userId && !c.shared).map((c) => c.name);
+  const admin = person.role === "admin";
   const facts: [string, ReactNode][] = [
     ["Username", person.username ? handle(person.username) : "—"],
     ["Email", person.email || "—"],
     ["Chavrusas", chavrusasOf(person.partners).length ? <ChavrusaNames partners={person.partners} /> : t("None")],
-    ["Routes made", String(routes)],
-    ["Own categories", categories.length ? categories.map((c) => t(c)).join(", ") : t("None")],
-    ["Last active", rows[0] ? dayWithParsha(rows[0]) : t("Never")],
+    // Admin accounts don't log Mivtzoim, so these say nothing about them.
+    ...(admin ? [] : ([
+      ["Routes made", String(routes)],
+      ["Own categories", categories.length ? categories.map((c) => t(c)).join(", ") : t("None")],
+      ["Last active", rows[0] ? dayWithParsha(rows[0]) : t("Never")],
+    ] as [string, ReactNode][])),
   ];
   // One box per mivtza (hidden ones too if this person has history with them).
   const totals: [string, number][] = reportColumns(builtins, shared, rows).map((c) => [c.label, sum(rows.filter(c.matches))]);
   return (
     <div className="mx-4 mb-4 grid gap-4 rounded-[20px] bg-paper p-4">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      {/* Admin accounts don't log Mivtzoim, so they have no counts. */}
+      {!admin && <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {totals.map(([label, value]) => (
           <div key={label} className="rounded-2xl bg-card px-4 py-3">
             <p className="text-xs text-muted">{t(label)}</p>
             <p className="tabular text-2xl">{value}</p>
           </div>
         ))}
-      </div>
+      </div>}
       <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
         {facts.map(([k, v]) => (
           <div key={k} className="min-w-0">
@@ -707,7 +730,7 @@ function PersonDetails({ person }: { person: Profile }) {
         <MessagePerson person={person} />
       </div>
       <ReportAccess person={person} />
-      <div className="overflow-hidden rounded-2xl bg-card">
+      {!admin && <div className="overflow-hidden rounded-2xl bg-card">
         <p className="px-6 pt-4 pb-1 text-sm font-medium">{t("Entries ({n})", { n: rows.length })}</p>
         {rows.length === 0 ? (
           <p className="px-6 pb-4 text-sm text-muted">{t("Nothing logged yet.")}</p>
@@ -719,7 +742,7 @@ function PersonDetails({ person }: { person: Profile }) {
           </ul>
         )}
         {rows.length > 25 && <p className="px-6 py-3 text-xs text-muted">{t("Showing the latest 25. See all of them in All activity below.")}</p>}
-      </div>
+      </div>}
     </div>
   );
 }

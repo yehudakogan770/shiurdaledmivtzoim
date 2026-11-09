@@ -161,6 +161,9 @@ const admin: Area = {
     "New password": "סיסמה חדשה",
     "Type it again": "הקלד שוב",
     "Save new password": "שמור סיסמה חדשה",
+    "Hide the list": "הסתר את הרשימה",
+    "Show all {n} account": "הצג חשבון אחד",
+    "Show all {n} accounts": "הצג את כל {n} החשבונות",
   },
   fr: {
     "Admins only": "Réservé aux administrateurs",
@@ -321,6 +324,9 @@ const admin: Area = {
     "New password": "Nouveau mot de passe",
     "Type it again": "Retapez-le",
     "Save new password": "Enregistrer le mot de passe",
+    "Hide the list": "Masquer la liste",
+    "Show all {n} account": "Afficher le compte",
+    "Show all {n} accounts": "Afficher les {n} comptes",
   },
   es: {
     "Admins only": "Solo para administradores",
@@ -481,6 +487,9 @@ const admin: Area = {
     "New password": "Contraseña nueva",
     "Type it again": "Escríbela otra vez",
     "Save new password": "Guardar contraseña nueva",
+    "Hide the list": "Ocultar la lista",
+    "Show all {n} account": "Mostrar la cuenta",
+    "Show all {n} accounts": "Mostrar las {n} cuentas",
   },
 };
 export default admin;
