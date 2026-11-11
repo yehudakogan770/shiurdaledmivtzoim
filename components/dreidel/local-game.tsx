@@ -361,7 +361,7 @@ export function Results({ state, onAgain, onExit, waiting }: { state: GameState;
       <ul className="mt-5 grid gap-2 text-start">
         {ranked.map((p) => (
           <li key={p.id} className="flex items-center gap-3 rounded-[18px] border border-white/10 bg-white/5 px-3 py-2">
-            {state.winners.includes(p.id) ? <Trophy size={20} className="shrink-0 text-accent" aria-label={t("Winner")} /> : <span className="w-5" />}
+            {state.winners.includes(p.id) ? <Trophy size={20} className="shrink-0 text-flame" aria-label={t("Winner")} /> : <span className="w-5" />}
             <DreidelThumb design={p.design} size={36} />
             <span className="flex min-w-0 flex-1 items-center gap-1.5 font-medium">
               <span className="truncate">{p.name}</span>

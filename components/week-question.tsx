@@ -29,7 +29,7 @@ export function WeekQuestion({ week }: { week: string }) {
   return (
     <Card>
         <div className="flex items-center gap-3 px-4 py-3">
-          <span aria-hidden className={cx("grid h-9 w-9 shrink-0 place-items-center rounded-full", answer?.went ? "bg-sage-soft text-sage-on-soft" : "bg-accent-soft text-accent-on-soft")}>
+          <span aria-hidden className={cx("grid h-9 w-9 shrink-0 place-items-center rounded-full", answer?.went ? "flame-fill" : "bg-accent-soft text-accent-on-soft")}>
             {answer?.went ? <Check size={18} strokeWidth={2.6} /> : <Footprints size={18} />}
           </span>
           <button type="button" onClick={answer?.went ? () => setOpen(true) : undefined} className={cx("min-w-0 flex-1 text-start", !answer?.went && "cursor-default")} tabIndex={answer?.went ? 0 : -1}>
@@ -88,7 +88,7 @@ function SmallChoice({ selected, tone, onClick, children }: { selected: boolean;
       onClick={onClick}
       className={cx(
         "h-8 rounded-full border px-3.5 text-sm font-medium transition-colors",
-        selected ? (tone === "yes" ? "border-transparent bg-sage-soft text-sage-on-soft" : "border-transparent bg-danger-soft text-danger") : "border-outline text-ink hover:bg-ink/8",
+        selected ? (tone === "yes" ? "flame-fill border-transparent" : "border-transparent bg-danger-soft text-danger") : "border-outline text-ink hover:bg-ink/8",
       )}
     >
       {children}

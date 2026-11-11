@@ -324,12 +324,13 @@ textarea {
 
 /*
  * Glass: the cards are frosted glass instead of solid. Soft glows of the site's own colors
- * (the green, the light blue and the candle yellow) sit behind them, so the frost shows.
+ * (the green, the light blue, and the logo flame's yellow and orange) sit behind them, so the frost shows.
  */
 :root {
   --glow-1: rgba(16, 106, 122, 0.42);
   --glow-2: rgba(140, 226, 250, 0.7);
-  --glow-3: rgba(255, 214, 110, 0.58);
+  --glow-3: rgba(255, 211, 107, 0.6);
+  --glow-4: rgba(243, 154, 44, 0.42);
   --glass: rgba(255, 255, 255, 0.55);
   --glass-tint: 0.62;
   --glass-edge: rgba(255, 255, 255, 0.75);
@@ -339,7 +340,8 @@ textarea {
   :root:not([data-theme="light"]) {
     --glow-1: rgba(22, 128, 146, 0.58);
     --glow-2: rgba(0, 96, 112, 0.68);
-    --glow-3: rgba(120, 92, 0, 0.52);
+    --glow-3: rgba(255, 190, 80, 0.26);
+    --glow-4: rgba(243, 154, 44, 0.34);
     --glass: rgba(31, 32, 34, 0.5);
     --glass-tint: 0.55;
     --glass-edge: rgba(255, 255, 255, 0.1);
@@ -349,7 +351,8 @@ textarea {
 :root[data-theme="dark"] {
   --glow-1: rgba(22, 128, 146, 0.58);
   --glow-2: rgba(0, 96, 112, 0.68);
-  --glow-3: rgba(120, 92, 0, 0.52);
+  --glow-3: rgba(255, 190, 80, 0.26);
+  --glow-4: rgba(243, 154, 44, 0.34);
   --glass: rgba(31, 32, 34, 0.5);
   --glass-tint: 0.55;
   --glass-edge: rgba(255, 255, 255, 0.1);
@@ -367,6 +370,7 @@ body::before {
   z-index: -1;
   pointer-events: none;
   background:
+    radial-gradient(50% 14% at 96% 37%, var(--glow-4), transparent 70%),
     radial-gradient(60% 20.5% at 12% 30.9%, var(--glow-2), transparent 70%),
     radial-gradient(55% 18.2% at 95% 40.9%, var(--glow-1), transparent 70%),
     radial-gradient(60% 20.5% at 20% 61.4%, var(--glow-3), transparent 70%),
@@ -624,4 +628,13 @@ input[type="date"]::-webkit-date-and-time-value {
 .grid > div:has(> input[type="date"]),
 .grid > div:has(> label + input[type="date"]) {
   min-width: 0;
+}
+
+/* The logo flame's two colors (yellow into orange), for the good moments: a Yes, a win. */
+.flame-fill {
+  background: linear-gradient(135deg, #ffd36b, #f39a2c);
+  color: #3b2300;
+}
+.text-flame {
+  color: #f39a2c;
 }
