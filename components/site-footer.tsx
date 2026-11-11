@@ -7,6 +7,7 @@ import { useNav } from "@/lib/nav";
 import { useEditMode } from "@/lib/edit-mode";
 import { donationInfo, donationTagline, type DonationInfo } from "@/lib/donation";
 import { Button, Field, Input, Textarea, cx } from "./ui";
+import { LogoWithName } from "./brand";
 import { t } from "@/lib/i18n";
 
 const EMAIL = "sdmivtzoim87@gmail.com";
@@ -103,8 +104,11 @@ export function SiteFooter({ className }: { className?: string }) {
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 px-2 text-sm text-muted">
-        <span>
-          © {new Date().getFullYear()} {t(settings.site_name)}
+        <span className="grid gap-1.5">
+          <LogoWithName label={t(settings.site_name)} className="h-11 w-auto" />
+          <span>
+            © {new Date().getFullYear()} {t(settings.site_name)}
+          </span>
         </span>
         <span className="flex flex-wrap items-center gap-x-5 gap-y-1">
           <a

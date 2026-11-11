@@ -10,7 +10,7 @@ import { hebrewDate } from "@/lib/dates";
 import { parshaThisShabbos } from "@/lib/parsha";
 import { useShkiah } from "@/lib/shkiah";
 import { Avatar, Button, Empty, IconButton, Modal, cx } from "./ui";
-import { LogoMark } from "./brand";
+import { LogoMark, LogoWithName } from "./brand";
 import { LoginView } from "./views/login";
 import { SiteFooter } from "./site-footer";
 import { EditModeProvider } from "@/lib/edit-mode";
@@ -62,11 +62,10 @@ function PanelContent({ expanded, onNavigate }: { expanded: boolean; onNavigate?
     <div className="flex h-full flex-col px-3 py-4" onClick={(e) => (e.target as HTMLElement).closest("a") && onNavigate?.()}>
       <div className="px-2 pt-2 pb-6">
         <Link href="/">
-          <span className="flex items-center gap-3">
-            <LogoMark className="h-10 w-10" />
-            <span className={cx("leading-tight", label)}>
-              <span className="block text-lg font-medium text-ink">{t(settings.site_name)}</span>
-            </span>
+          {/* Open: the logo with the name. Folded to a narrow rail: just the square mark. */}
+          <span className="relative block h-12">
+            <LogoMark className={cx("absolute start-0 top-1 h-10 w-10 transition-opacity duration-200", expanded ? "opacity-0" : "opacity-100")} />
+            <LogoWithName label={t(settings.site_name)} className={cx("absolute start-0 top-0 h-12 w-auto transition-opacity duration-200", expanded ? "opacity-100" : "opacity-0")} />
           </span>
         </Link>
       </div>

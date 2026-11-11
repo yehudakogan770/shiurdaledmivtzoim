@@ -647,3 +647,11 @@ input[type="date"]::-webkit-date-and-time-value {
 .text-flame {
   color: #f39a2c;
 }
+
+/* The logo with the name (side menu): teal and a dark name; lighter teal and a light name in dark mode. */
+.lw-teal { fill: #006878; }
+.lw-ink { fill: var(--ink); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .lw-teal { fill: #84d2e5; }
+}
+:root[data-theme="dark"] .lw-teal { fill: #84d2e5; }
