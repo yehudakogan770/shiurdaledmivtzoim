@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   },
   twitter: { card: "summary", title: "Shiur Daled Mivtzoim", description: DESCRIPTION, images: [`${base}/icon-512.png`] },
   manifest: `${base}/manifest.webmanifest`,
-  // The logo on the browser tab (the logo alone, see-through, no square). Kept in public/ and listed here so every browser finds one.
+  // The logo on the browser tab: see-through on a light browser, the teal square on a dark one. Kept in public/ and listed here so every browser finds one.
   icons: {
     icon: [
       { url: `${base}/favicon.ico`, sizes: "48x48" },
