@@ -21,7 +21,15 @@ export const metadata: Metadata = {
   },
   twitter: { card: "summary", title: "Shiur Daled Mivtzoim", description: DESCRIPTION, images: [`${base}/icon-512.png`] },
   manifest: `${base}/manifest.webmanifest`,
-  icons: { apple: `${base}/apple-touch-icon.png` },
+  // The logo on the browser tab. Listed by hand, since naming any icon here hides app/icon.svg.
+  icons: {
+    icon: [
+      { url: `${base}/favicon.ico`, sizes: "48x48" },
+      { url: `${base}/icon.svg`, type: "image/svg+xml" },
+      { url: `${base}/icon-192.png`, sizes: "192x192", type: "image/png" },
+    ],
+    apple: `${base}/apple-touch-icon.png`,
+  },
   // Opens full screen, like an app, when added to an iPhone home screen.
   appleWebApp: { capable: true, title: "SD Mivtzoim", statusBarStyle: "default" },
 };
