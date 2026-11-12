@@ -187,9 +187,16 @@ export function createSupabaseBackend(url: string, key: string): Backend {
     },
 
     async list(table) {
-      const { data, error } = await sb.from(table).select("*");
-      fail(error);
-      return (data ?? []) as Tables[typeof table][];
+      // The database hands back at most 1,000 rows at a time. Admins can see everyone's entries,
+      // which is well past that, so ask page by page until a short page says it's the last.
+      const PAGE = 1000;
+      const rows: Tables[typeof table][] = [];
+      for (let from = 0; ; from += PAGE) {
+        const { data, error } = await sb.from(table).select("*").order("id").range(from, from + PAGE - 1);
+        fail(error);
+        rows.push(...((data ?? []) as Tables[typeof table][]));
+        if (!data || data.length < PAGE) return rows;
+      }
     },
     async insert(table, row) {
       const { data, error } = await sb.from(table).insert(row as never).select().single();
