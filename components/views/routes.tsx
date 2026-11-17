@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { Check, ChevronDown, ChevronUp, Globe, IdCard, Mail, MapPin, Pencil, Phone, Plus, RotateCcw, Trash2, User, X } from "lucide-react";
+import { ArrowDownUp, Check, ChevronDown, Navigation, ChevronUp, Globe, IdCard, Mail, MapPin, Pencil, Phone, Plus, RotateCcw, Trash2, User, X } from "lucide-react";
 import { useEditMode } from "@/lib/edit-mode";
 import { chavrusasOf } from "@/lib/chavrusa";
 import { getLang, t } from "@/lib/i18n";
@@ -17,7 +17,6 @@ import { useData, type StopInput } from "@/lib/data";
 import type { LocationCard } from "@/lib/types";
 import { ScanCardButton } from "../card-scanner";
 import { AddressInput, googleMapsLink } from "../address-input";
-import { RouteDirections } from "../route-directions";
 import { useNav } from "@/lib/nav";
 import { Button, ButtonLink, Card, CardTitle, Empty, Field, IconButton, Input, Modal, PageHeader, Select, Textarea, cx } from "../ui";
 
@@ -383,6 +382,39 @@ function AllRoutesView() {
   );
 }
 
+/** Google Maps links take up to 9 stops between the start and the end, but only 3 in a phone's browser. */
+const perMapLink = () => (typeof navigator !== "undefined" && /iPhone|iPad|Android/i.test(navigator.userAgent) ? 4 : 10);
+
+/**
+ * "Open in Google Maps": the stops not done yet, in the route's order, starting from where you
+ * are. A long route on a phone comes in parts, each starting where the last one ended.
+ */
+function MapButtons({ addresses }: { addresses: string[] }) {
+  if (addresses.length === 0) return null;
+  const per = perMapLink();
+  const parts: { from: number; list: string[] }[] = [{ from: 0, list: addresses.slice(0, per) }];
+  for (let i = per - 1; i < addresses.length - 1; i += per) parts.push({ from: i, list: addresses.slice(i, i + per + 1) });
+  const url = (list: string[], fromHere: boolean) => {
+    const p = new URLSearchParams({ api: "1", destination: list[list.length - 1] });
+    if (!fromHere) p.set("origin", list[0]);
+    const between = list.slice(fromHere ? 0 : 1, -1);
+    if (between.length) p.set("waypoints", between.join("|"));
+    return `https://www.google.com/maps/dir/?${p}`;
+  };
+  return (
+    <div className="flex flex-wrap gap-2 px-6 pt-3">
+      {parts.map((part, i) => (
+        <a key={i} href={url(part.list, i === 0)} target="_blank" rel="noopener noreferrer" className="inline-flex h-10 items-center gap-2 rounded-full bg-accent px-4 text-sm font-medium text-accent-ink transition hover:brightness-95">
+          <Navigation size={16} aria-hidden />
+          {parts.length === 1
+            ? t("Open in Google Maps")
+            : t("Google Maps, stops {from} to {to}", { from: i === 0 ? 1 : part.from + 2, to: i === 0 ? part.list.length : part.from + part.list.length })}
+        </a>
+      ))}
+    </div>
+  );
+}
+
 export function RouteDetailView() {
   const { me, data, mine, actions, notify, isOwner, people, cards } = useData();
   const { editing } = useEditMode();
@@ -507,19 +539,22 @@ export function RouteDetailView() {
       )}
       {route.description && !(isOwner && editing) && <p className="-mt-3 max-w-2xl text-muted">{route.description}</p>}
 
-      {!isOwner && (
-        <RouteDirections
-          key={stops.filter((s) => !s.stop.completed).map((s) => s.stop.id).join()}
-          stops={stops.filter((s) => !s.stop.completed && s.loc?.address).map((s) => ({ id: s.stop.id, name: s.loc!.name, address: s.loc!.address! }))}
-        />
-      )}
       <Card>
         <CardTitle
           action={
-            done > 0 && canEdit ? (
-              <Button variant="ghost" className="h-9 px-3" disabled={pending !== null} onClick={() => wrap("reset", () => actions.resetRoute(route.id), t("All stops unchecked."))}>
-                <RotateCcw size={14} aria-hidden /> {t("Start over")}
-              </Button>
+            canEdit && (stops.length > 1 || done > 0) ? (
+              <span className="flex flex-wrap justify-end gap-1">
+                {stops.length > 1 && (
+                  <Button variant="ghost" className="h-9 px-3" disabled={pending !== null} onClick={() => wrap("sort", () => actions.sortStops(route.id), t("Stops put in order, closest first."))}>
+                    <ArrowDownUp size={14} aria-hidden /> {pending === "sort" ? t("Sorting…") : t("Sort by distance")}
+                  </Button>
+                )}
+                {done > 0 && (
+                  <Button variant="ghost" className="h-9 px-3" disabled={pending !== null} onClick={() => wrap("reset", () => actions.resetRoute(route.id), t("All stops unchecked."))}>
+                    <RotateCcw size={14} aria-hidden /> {t("Start over")}
+                  </Button>
+                )}
+              </span>
             ) : undefined
           }
         >
@@ -546,7 +581,7 @@ export function RouteDetailView() {
                 </li>
               ) : (
               <li key={stop.id} className="flex items-center gap-3 px-6 py-3">
-                {isOwner && editing && (
+                {canEdit && stops.length > 1 && (
                   <span className="-ms-3 flex shrink-0 flex-col">
                     <IconButton aria-label={t("Move {name} up", { name: loc?.name ?? "" })} disabled={i === 0 || pending !== null} onClick={() => wrap(stop.id, () => actions.moveStop(stop.id, -1))} className="h-7 w-9 disabled:opacity-25">
                       <ChevronUp size={18} />
@@ -604,6 +639,7 @@ export function RouteDetailView() {
             )}
           </ol>
         )}
+        <MapButtons addresses={stops.filter((s) => !s.stop.completed && s.loc?.address).map((s) => s.loc!.address!)} />
         {canEdit && (
         <div className="px-6 pt-2 pb-6">
           {adding ? (

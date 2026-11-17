@@ -30,6 +30,7 @@ import { today, weekOf } from "./dates";
 import { parshaOfWeek } from "./parsha";
 import { newVersionOnline } from "./install";
 import { splitWeekAnswers, weekAnswerEntry } from "./week-answers";
+import { orderByDistance } from "./route-order";
 import { isMessage, messageEntry, readMessage, type Message } from "./messages";
 import { isAdminIdentifier } from "./admin";
 import { builtinDescription, builtinIcon, builtins, isBuiltinRow, type Builtin, type BuiltinType } from "./categories";
@@ -211,6 +212,8 @@ interface DataContextValue {
     updateRoute(routeId: string, patch: { name: string; description: string }): Promise<void>;
     /** Change a stop's place: its name, address, type, notes and card details. */
     updateStop(locationId: string, stop: StopInput): Promise<void>;
+    /** Put a route's stops in order: from Crown Heights, closest stop next. */
+    sortStops(routeId: string): Promise<void>;
     /** Move a stop one place up or down on its route. */
     moveStop(stopId: string, by: -1 | 1): Promise<void>;
     addCategory(name: string, description?: string, shared?: boolean, icon?: string): Promise<void>;
@@ -482,6 +485,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (trouble) setTimeout(() => notify(trouble), 0);
       return result;
     };
+    /** A route stop with its place's address, for putting stops in distance order. */
+    const withAddress = (x: RouteLocation) => ({ ...x, address: data.locations.find((l) => l.id === x.location_id)?.address ?? null });
+    const inDistanceOrder = async (list: RouteLocation[]) => {
+      const sorted = await orderByDistance(list.map(withAddress));
+      return sorted.every((x, i) => x.id === list[i].id);
+    };
+    /** Numbers the stops 0, 1, 2… in this order, changing only the ones that moved. */
+    const saveOrder = async (list: { id: string; position: number }[]) => {
+      for (const [position, x] of list.entries()) if (x.position !== position) await b.update("route_locations", x.id, { position });
+    };
     /**
      * Saves a place's business card details, when there are any (or there were before). If that
      * fails (say, database update 012 isn't run yet), the place itself is still saved, and it says
@@ -725,7 +738,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
               created_by: uid(),
             });
             let position = 0;
-            for (const s of input.stops) {
+            // New routes start in order: from Crown Heights, closest stop next.
+            for (const s of await orderByDistance(input.stops)) {
               const loc = await b.insert("locations", {
                 name: s.name.trim(),
                 address: s.address?.trim() || null,
@@ -754,9 +768,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
               notes: s.notes?.trim() || null,
               created_by: uid(),
             });
-            const last = Math.max(-1, ...data.stops.filter((x) => x.route_id === routeId).map((x) => x.position));
-            await b.insert("route_locations", { route_id: routeId, location_id: loc.id, position: last + 1, completed: false });
+            const before = data.stops.filter((x) => x.route_id === routeId).sort((x, y) => x.position - y.position);
+            const last = Math.max(-1, ...before.map((x) => x.position));
+            // Still in distance order (nobody moved a stop)? Then the new stop takes its place in it;
+            // otherwise it goes at the end, keeping the order the person chose.
+            const sorted = await inDistanceOrder(before);
+            const added = await b.insert("route_locations", { route_id: routeId, location_id: loc.id, position: last + 1, completed: false });
             await saveCardFor(loc.id, uid(), s);
+            if (sorted) await saveOrder(await orderByDistance([...before.map(withAddress), { ...added, address: loc.address }]));
+          }),
+        sortStops: (routeId) =>
+          run(async () => {
+            const list = data.stops.filter((x) => x.route_id === routeId).sort((x, y) => x.position - y.position);
+            await saveOrder(await orderByDistance(list.map(withAddress)));
           }),
         removeStop: async (stopId) => {
           setData((d) => ({ ...d, stops: d.stops.filter((x) => x.id !== stopId) }));
