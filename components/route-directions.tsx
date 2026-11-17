@@ -76,11 +76,13 @@ function walkParts(order: Stop[], fromHere: boolean) {
 const appleTo = (address: string, way: Way) => `https://maps.apple.com/?${new URLSearchParams({ daddr: address, dirflg: APPLE_MODE[way] })}`;
 
 /**
- * Directions for a route: get to the first stop by car, train or on foot, then walk from stop to
- * stop, closest next. Opens in Google Maps (the whole walk) or Apple Maps (one stop at a time).
+ * Directions for a route: how you get to the first stop and how you go between the stops (each
+ * walk, drive or train), closest stop next. Google Maps takes the whole trip; Apple Maps and
+ * trains go one stop at a time.
  */
 export function RouteDirections({ stops }: { stops: Stop[] }) {
   const [way, setWay] = useState<Way>("walk");
+  const [between, setBetween] = useState<Way>("walk");
   const [busy, setBusy] = useState(false);
   const [plan, setPlan] = useState<{ order: Stop[]; located: boolean; missing: number } | null>(null);
   const withAddress = stops.filter((s) => s.address.trim());
@@ -101,31 +103,40 @@ export function RouteDirections({ stops }: { stops: Stop[] }) {
     { key: "drive", label: t("Drive"), icon: Car },
     { key: "train", label: t("Train"), icon: TrainFront },
   ];
+  const Icon = ways.find((w) => w.key === between)!.icon;
   const order = plan?.order ?? [];
-  const parts = walkParts(order, way === "walk");
+  // Trains can't go through several stops in one link: one stop at a time.
+  const oneByOne = between === "train";
+  // The same way there and between: one trip from where you are. Otherwise the stops start at the first one.
+  const oneTrip = way === between && !oneByOne;
+  const parts = oneByOne ? [] : walkParts(order, oneTrip);
   const link = "inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-medium transition hover:brightness-95";
+  const choice = (label: string, value: Way, set: (w: Way) => void) => (
+    <div>
+      <span className="block text-sm text-muted">{label}</span>
+      <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label={label}>
+        {ways.map(({ key, label: text, icon: WayIcon }) => (
+          <button
+            key={key}
+            type="button"
+            aria-pressed={value === key}
+            onClick={() => set(key)}
+            className={cx("inline-flex h-9 items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors", value === key ? "border-transparent bg-accent text-accent-ink" : "border-outline text-ink hover:bg-ink/8")}
+          >
+            <WayIcon size={16} aria-hidden /> {text}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+  const ThereIcon = ways.find((w) => w.key === way)!.icon;
 
   return (
     <Card>
       <CardTitle>{t("Directions")}</CardTitle>
       <div className="grid gap-4 px-6 pb-6">
-        <div>
-          <span className="block text-sm text-muted">{t("How are you getting to the first stop?")}</span>
-          <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label={t("How are you getting to the first stop?")}>
-            {ways.map(({ key, label, icon: Icon }) => (
-              <button
-                key={key}
-                type="button"
-                aria-pressed={way === key}
-                onClick={() => setWay(key)}
-                className={cx("inline-flex h-9 items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors", way === key ? "border-transparent bg-accent text-accent-ink" : "border-outline text-ink hover:bg-ink/8")}
-              >
-                <Icon size={16} aria-hidden /> {label}
-              </button>
-            ))}
-          </div>
-          <span className="mt-2 block text-sm text-muted">{t("Between the stops, everyone walks.")}</span>
-        </div>
+        {choice(t("How are you getting to the first stop?"), way, setWay)}
+        {choice(t("Between the stops"), between, setBetween)}
 
         {!plan ? (
           <Button onClick={makePlan} disabled={busy} className="justify-self-start">
@@ -151,28 +162,32 @@ export function RouteDirections({ stops }: { stops: Stop[] }) {
             </div>
 
             <div className="grid gap-2">
-              {way !== "walk" && (
+              {!oneTrip && (
                 <div className="flex flex-wrap gap-2">
                   <a href={googleRoute([order[0]], GOOGLE_MODE[way], true)} target="_blank" rel="noopener noreferrer" className={cx(link, "bg-accent text-accent-ink")}>
-                    {way === "drive" ? <Car size={16} aria-hidden /> : <TrainFront size={16} aria-hidden />} {t("Get to the first stop: Google Maps")}
+                    <ThereIcon size={16} aria-hidden /> {t("Get to the first stop: Google Maps")}
                   </a>
                   <a href={appleTo(order[0].address, way)} target="_blank" rel="noopener noreferrer" className={cx(link, "bg-accent-soft text-accent-on-soft")}>
                     {t("Apple Maps")}
                   </a>
                 </div>
               )}
-              <div className="flex flex-wrap gap-2">
-                {parts.map((part, i) => (
-                  <a key={i} href={googleRoute(part.stops, "walking", part.fromHere)} target="_blank" rel="noopener noreferrer" className={cx(link, "bg-accent text-accent-ink")}>
-                    <Footprints size={16} aria-hidden />
-                    {parts.length > 1 ? t("Walk the stops, part {n}: Google Maps", { n: i + 1 }) : way === "walk" ? t("Walk the whole route: Google Maps") : t("Walk the stops: Google Maps")}
+              {parts.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {parts.map((part, i) => (
+                    <a key={i} href={googleRoute(part.stops, GOOGLE_MODE[between], part.fromHere)} target="_blank" rel="noopener noreferrer" className={cx(link, "bg-accent text-accent-ink")}>
+                      <Icon size={16} aria-hidden />
+                      {parts.length > 1 ? t("The stops, part {n}: Google Maps", { n: i + 1 }) : oneTrip ? t("The whole route: Google Maps") : t("All the stops: Google Maps")}
+                    </a>
+                  ))}
+                  <a href={appleTo(order[0].address, between)} target="_blank" rel="noopener noreferrer" className={cx(link, "bg-accent-soft text-accent-on-soft")}>
+                    {t("Next stop: Apple Maps")}
                   </a>
-                ))}
-                <a href={appleTo(order[0].address, "walk")} target="_blank" rel="noopener noreferrer" className={cx(link, "bg-accent-soft text-accent-on-soft")}>
-                  {way === "walk" ? t("Next stop: Apple Maps") : t("Next stop on foot: Apple Maps")}
-                </a>
-              </div>
-              <span className="text-xs text-muted">{t("Apple Maps takes one stop at a time. Check off each stop here as you go, then plan again for the next one.")}</span>
+                </div>
+              )}
+              <span className="text-xs text-muted">
+                {oneByOne ? t("By train, it's one stop at a time: check off each stop here, then plan again for the next one.") : t("Apple Maps takes one stop at a time. Check off each stop here as you go, then plan again for the next one.")}
+              </span>
             </div>
             <Button variant="ghost" onClick={makePlan} disabled={busy} className="h-9 justify-self-start px-3">
               {busy ? t("Finding the best order…") : t("Plan again from here")}
