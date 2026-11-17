@@ -360,3 +360,31 @@ export function AddressInput({
 export function googleMapsLink(address: string) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
 }
+
+/**
+ * Where an address is on the map (free OpenStreetMap search, near where people go), for putting
+ * a route's stops in order. Kept on this device so each address is looked up only once.
+ */
+export async function findPlace(address: string): Promise<{ lat: number; lon: number } | null> {
+  const key = `sdm-place:${address.trim().toLowerCase()}`;
+  const saved = readPoint(key);
+  if (saved) return saved;
+  try {
+    const near = nearPoint();
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    const found = await photon({ q: address, limit: "1", lat: String(near.lat), lon: String(near.lon) }, controller.signal);
+    clearTimeout(timer);
+    const f = found[0];
+    if (!f) return null;
+    const point = { lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0] };
+    try {
+      localStorage.setItem(key, JSON.stringify(point));
+    } catch {
+      // Storage blocked: it's looked up again next time.
+    }
+    return point;
+  } catch {
+    return null;
+  }
+}

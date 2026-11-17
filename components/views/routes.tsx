@@ -17,6 +17,7 @@ import { useData, type StopInput } from "@/lib/data";
 import type { LocationCard } from "@/lib/types";
 import { ScanCardButton } from "../card-scanner";
 import { AddressInput, googleMapsLink } from "../address-input";
+import { RouteDirections } from "../route-directions";
 import { useNav } from "@/lib/nav";
 import { Button, ButtonLink, Card, CardTitle, Empty, Field, IconButton, Input, Modal, PageHeader, Select, Textarea, cx } from "../ui";
 
@@ -506,6 +507,12 @@ export function RouteDetailView() {
       )}
       {route.description && !(isOwner && editing) && <p className="-mt-3 max-w-2xl text-muted">{route.description}</p>}
 
+      {!isOwner && (
+        <RouteDirections
+          key={stops.filter((s) => !s.stop.completed).map((s) => s.stop.id).join()}
+          stops={stops.filter((s) => !s.stop.completed && s.loc?.address).map((s) => ({ id: s.stop.id, name: s.loc!.name, address: s.loc!.address! }))}
+        />
+      )}
       <Card>
         <CardTitle
           action={
