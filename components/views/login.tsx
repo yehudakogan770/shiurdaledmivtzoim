@@ -3,7 +3,7 @@
 import { getLang, t } from "@/lib/i18n";
 import { LanguageButtons } from "../language-picker";
 import { useState, type FormEvent } from "react";
-import { ArrowLeft, Plus, X } from "lucide-react";
+import { ArrowLeft, Mail, Plus, X } from "lucide-react";
 import { useData } from "@/lib/data";
 import { hebrewDate } from "@/lib/dates";
 import { parshaThisShabbos } from "@/lib/parsha";
@@ -24,7 +24,7 @@ const TITLES: Record<Mode, string> = {
 };
 
 export function LoginView({ initialMode = "signin", onBack }: { initialMode?: Mode; onBack?: () => void }) {
-  const { auth, backend, settings } = useData();
+  const { auth, backend, settings, me } = useData();
   const [mode, setMode] = useState<Mode>(initialMode);
   const [name, setName] = useState("");
   const [partners, setPartners] = useState<Chavrusa[]>([BLANK_CHAVRUSA]);
@@ -68,7 +68,7 @@ export function LoginView({ initialMode = "signin", onBack }: { initialMode?: Mo
         await auth.signIn(username, password);
       } else if (mode === "forgot") {
         await auth.requestPasswordReset(email);
-        setMessage({ kind: "info", text: t("If {email} has an account, we sent it a link to reset your password. The email also shows your username.", { email: email.trim() }) });
+        setMessage({ kind: "info", text: t("If {email} has an account, we sent it a link to choose a new password. Open the link, type a new password, and you're in.\n\nDon't see the email? Check your Spam or Promotions folder.", { email: email.trim() }) });
       } else {
         await auth.updatePassword(password);
         auth.finishRecovery();
@@ -84,9 +84,11 @@ export function LoginView({ initialMode = "signin", onBack }: { initialMode?: Mo
     mode === "signup"
       ? t(settings.welcome)
       : mode === "forgot"
-        ? t("No problem. The admin can look up your username and give you a new password.")
+        ? t("No problem. Type the email you signed up with, and we'll send you a link to choose a new password.")
         : mode === "reset"
-          ? t("Type your new password twice.")
+          ? me?.username
+            ? t("Type your new password twice. Your username is {username}.", { username: me.username })
+            : t("Type your new password twice.")
           : t("to continue to {site}", { site: t(settings.site_name) });
 
   return (
@@ -143,16 +145,8 @@ export function LoginView({ initialMode = "signin", onBack }: { initialMode?: Mo
             </Field>
           )}
 
-          {mode === "forgot" && (
-            <div className="grid gap-3 rounded-2xl bg-paper p-5">
-              <p className="font-medium">{t("Contact the admin")}</p>
-              <p className="text-sm text-muted">{t("Send a message with your full name and the email you signed up with. You'll get your username and a new password back.")}</p>
-              <p className="text-base font-medium break-all text-accent select-all">{ADMIN_EMAILS[0]}</p>
-            </div>
-          )}
-
-          {mode === "signup" && (
-            <Field label={t("Email")} htmlFor="login-email" hint={t("So the admin can reach you, and help if you forget your password.")}>
+          {(mode === "signup" || mode === "forgot") && (
+            <Field label={t("Email")} htmlFor="login-email" hint={mode === "signup" ? t("So the admin can reach you, and help if you forget your password.") : undefined}>
               <Input
                 id="login-email"
                 type="email"
@@ -194,6 +188,12 @@ export function LoginView({ initialMode = "signin", onBack }: { initialMode?: Mo
             </Field>
           )}
 
+          {mode === "forgot" && (
+            <Button type="submit" disabled={busy} className="justify-self-start">
+              <Mail size={18} aria-hidden /> {busy ? t("Please wait…") : t("Send me a reset link")}
+            </Button>
+          )}
+
           {mode === "signin" && (
             <button type="button" onClick={() => go("forgot")} className="justify-self-start px-1 text-sm font-medium text-accent hover:underline">
               {t("Forgot username or password?")}
@@ -204,6 +204,16 @@ export function LoginView({ initialMode = "signin", onBack }: { initialMode?: Mo
             <p className={cx("whitespace-pre-line", message.kind === "error" ? "rounded-2xl bg-danger-soft px-4 py-3 text-sm text-danger" : "rounded-2xl bg-sage-soft px-4 py-3 text-sm text-sage-on-soft")}>
               {message.text}
             </p>
+          )}
+          {mode === "forgot" && (
+            <>
+              {/* For someone who can't get into their email, or doesn't remember which one they used. */}
+              <div className="grid gap-2 rounded-2xl bg-paper p-5">
+                <p className="font-medium">{t("Can't get into your email?")}</p>
+                <p className="text-sm text-muted">{t("Send the admin a message with your full name. You'll get your username and a new password back.")}</p>
+                <p className="text-base font-medium break-all text-accent select-all">{ADMIN_EMAILS[0]}</p>
+              </div>
+            </>
           )}
           {backend?.kind === "local" && <p className="px-1 text-sm text-muted">{backend.storageLabel}</p>}
 

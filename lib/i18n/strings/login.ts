@@ -27,6 +27,18 @@ const login: Area = {
     "3 to 20 letters, numbers, dots or dashes. You'll use it to sign in.":
       "3 עד 20 אותיות, ספרות, נקודות או מקפים. תשתמש בו כדי להתחבר.",
     "Contact the admin": "פנה למנהל",
+    "If {email} has an account, we sent it a link to choose a new password. Open the link, type a new password, and you're in.\n\nDon't see the email? Check your Spam or Promotions folder.":
+      "אם ל-{email} יש חשבון, שלחנו אליו קישור לבחירת סיסמה חדשה. פתח את הקישור, הקלד סיסמה חדשה, ואתה בפנים.\n\nלא רואה את המייל? בדוק בתיקיית הספאם או הקידומים.",
+    "No problem. Type the email you signed up with, and we'll send you a link to choose a new password.":
+      "אין בעיה. הקלד את המייל שנרשמת איתו, ונשלח לך קישור לבחירת סיסמה חדשה.",
+    "Type your new password twice. Your username is {username}.":
+      "הקלד את הסיסמה החדשה פעמיים. שם המשתמש שלך הוא {username}.",
+    "Send me a reset link":
+      "שלח לי קישור לאיפוס",
+    "Can't get into your email?":
+      "אין לך גישה למייל?",
+    "Send the admin a message with your full name. You'll get your username and a new password back.":
+      "שלח למנהל הודעה עם שמך המלא. תקבל בחזרה את שם המשתמש שלך וסיסמה חדשה.",
     "Send a message with your full name and the email you signed up with. You'll get your username and a new password back.":
       "שלח הודעה עם שמך המלא והאימייל שנרשמת איתו. תקבל בחזרה את שם המשתמש שלך וסיסמה חדשה.",
     Email: "אימייל",
@@ -67,6 +79,18 @@ const login: Area = {
     "3 to 20 letters, numbers, dots or dashes. You'll use it to sign in.":
       "3 à 20 lettres, chiffres, points ou tirets. Vous l'utiliserez pour vous connecter.",
     "Contact the admin": "Contacter l'administrateur",
+    "If {email} has an account, we sent it a link to choose a new password. Open the link, type a new password, and you're in.\n\nDon't see the email? Check your Spam or Promotions folder.":
+      "Si {email} a un compte, nous lui avons envoyé un lien pour choisir un nouveau mot de passe. Ouvre le lien, tape un nouveau mot de passe, et c'est bon.\n\nTu ne vois pas l'e-mail ? Regarde dans tes dossiers Spam ou Promotions.",
+    "No problem. Type the email you signed up with, and we'll send you a link to choose a new password.":
+      "Pas de souci. Tape l'e-mail de ton inscription et nous t'enverrons un lien pour choisir un nouveau mot de passe.",
+    "Type your new password twice. Your username is {username}.":
+      "Tape ton nouveau mot de passe deux fois. Ton nom d'utilisateur est {username}.",
+    "Send me a reset link":
+      "Envoie-moi un lien",
+    "Can't get into your email?":
+      "Tu n'as pas accès à ton e-mail ?",
+    "Send the admin a message with your full name. You'll get your username and a new password back.":
+      "Envoie à l'administrateur un message avec ton nom complet. Tu recevras ton nom d'utilisateur et un nouveau mot de passe.",
     "Send a message with your full name and the email you signed up with. You'll get your username and a new password back.":
       "Envoyez un message avec votre nom complet et l'e-mail utilisé à l'inscription. Vous recevrez votre nom d'utilisateur et un nouveau mot de passe.",
     Email: "E-mail",
@@ -107,6 +131,18 @@ const login: Area = {
     "3 to 20 letters, numbers, dots or dashes. You'll use it to sign in.":
       "De 3 a 20 letras, números, puntos o guiones. Lo usarás para iniciar sesión.",
     "Contact the admin": "Contacta al administrador",
+    "If {email} has an account, we sent it a link to choose a new password. Open the link, type a new password, and you're in.\n\nDon't see the email? Check your Spam or Promotions folder.":
+      "Si {email} tiene una cuenta, le enviamos un enlace para elegir una nueva contraseña. Abre el enlace, escribe una contraseña nueva y listo.\n\n¿No ves el correo? Revisa tu carpeta de Spam o Promociones.",
+    "No problem. Type the email you signed up with, and we'll send you a link to choose a new password.":
+      "No hay problema. Escribe el correo con el que te registraste y te enviaremos un enlace para elegir una nueva contraseña.",
+    "Type your new password twice. Your username is {username}.":
+      "Escribe tu nueva contraseña dos veces. Tu nombre de usuario es {username}.",
+    "Send me a reset link":
+      "Envíame un enlace",
+    "Can't get into your email?":
+      "¿No puedes entrar a tu correo?",
+    "Send the admin a message with your full name. You'll get your username and a new password back.":
+      "Envía al administrador un mensaje con tu nombre completo. Recibirás tu nombre de usuario y una nueva contraseña.",
     "Send a message with your full name and the email you signed up with. You'll get your username and a new password back.":
       "Envía un mensaje con tu nombre completo y el correo con el que te registraste. Recibirás tu usuario y una contraseña nueva.",
     Email: "Correo",
