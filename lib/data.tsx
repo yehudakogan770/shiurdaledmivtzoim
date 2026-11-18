@@ -312,6 +312,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // are saved in the background, one after another, in the order they were made.
   const saveQueue = useRef<Promise<void>>(Promise.resolve());
   const unsaved = useRef(0);
+  /** A background save failed: reload once everything still waiting has been saved. */
+  const failedSave = useRef(false);
   const savedIds = useRef(new Map<string, string>());
 
   const [signInAsked, setSignInAsked] = useState(false);
@@ -479,7 +481,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
     let cardTrouble: string | null = null;
     const run = async <T,>(work: () => Promise<T>): Promise<T> => {
       cardTrouble = null;
+      // Quick taps (a square, a stop's check mark) save in the background. Let them finish first,
+      // and again before reloading, so the reload can't bring back the screen from before the tap.
+      await saveQueue.current;
       const result = await work();
+      await saveQueue.current;
       await load(b);
       const trouble = cardTrouble;
       if (trouble) setTimeout(() => notify(trouble), 0);
@@ -522,12 +528,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
       unsaved.current++;
       saveQueue.current = saveQueue.current
         .then(job)
-        .catch(async (e: Error) => {
+        .catch((e: Error) => {
           notify(t("That didn't save: {reason}", { reason: t(e.message) }));
-          await load(b).catch(() => {});
+          failedSave.current = true;
         })
-        .finally(() => {
+        .finally(async () => {
           unsaved.current--;
+          // After a failed save, reload what's really saved, but only once the taps still waiting
+          // behind it are saved too; reloading sooner would wipe them off the screen.
+          if (unsaved.current === 0 && failedSave.current) {
+            failedSave.current = false;
+            await load(b).catch(() => {});
+          }
         });
     };
     /**
