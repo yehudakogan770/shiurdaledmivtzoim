@@ -27,12 +27,17 @@ function write(key: string, value: string, session = false) {
   }
 }
 
-/** The posters this account still has to see: on, not past their end date, under their count. */
+/**
+ * The posters this account still has to see: on, not past their end date, under their count.
+ * They take turns: the one seen the fewest times comes first (newest first when it's a tie), so
+ * with two posters up, each visit shows the other one and nobody sees only the first.
+ */
 export function postersToShow(posters: Poster[], userId: string) {
+  const seen = (p: Poster) => Number(read(seenKey(userId, p.id)) || 0);
   return posters
     .filter((p) => p.active && (!p.starts || p.starts <= today()) && (!p.ends || p.ends >= today()))
-    .filter((p) => p.times == null || Number(read(seenKey(userId, p.id)) || 0) < p.times)
-    .sort((a, b) => b.created_at.localeCompare(a.created_at));
+    .filter((p) => p.times == null || seen(p) < p.times)
+    .sort((a, b) => seen(a) - seen(b) || b.created_at.localeCompare(a.created_at));
 }
 
 /**
