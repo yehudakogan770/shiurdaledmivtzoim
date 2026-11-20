@@ -165,9 +165,14 @@ export interface WeekAnswer {
 
 
 /** An account the Owner lets see the weekly report (admins see it anyway). */
+/** What an account on the weekly report may do: only look, fill in the numbers, or also change the items. */
+export type ReportAccess = "view" | "fill" | "edit";
+
 export interface ReportViewer {
   id: string;
   user_id: string;
+  /** Missing until database update 022 is run: then everyone on the report fills in numbers. */
+  access?: ReportAccess | null;
   created_at: string;
 }
 

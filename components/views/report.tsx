@@ -7,17 +7,20 @@ import { handle } from "@/lib/admin";
 import { addDays, allWeeks, currentWeek, FIRST_WEEK, formatShort } from "@/lib/dates";
 import { parshaName } from "@/lib/parsha";
 import { buildReportWorkbook } from "@/lib/report-export";
-import type { ReportCount, ReportItem } from "@/lib/types";
+import type { ReportAccess, ReportCount, ReportItem } from "@/lib/types";
 import { Avatar, Button, Card, Empty, IconButton, Input, PageHeader, Select, cx } from "../ui";
 
 /**
- * The weekly report: the Owner sets up the items (Scrolls, Candles…), and each week the Owner,
- * admins and accounts the Owner allowed fill in how many were sold and how many are needed for
- * next week. Plain tables, like a ledger. English only.
+ * The weekly report: a list of items (Scrolls, Candles…), and each week someone types in how many
+ * there were this week and how many are needed for next week. The Owner chooses who is on the
+ * report and what each account may do: only look, fill in the numbers, or also change the items
+ * (admins can do it all). The items list stays put away until Edit is tapped. English only.
  */
 export function ReportView() {
-  const { canSeeReport, isOwner, report, settings, notify } = useData();
+  const { canSeeReport, isOwner, report, reportAccess, settings, notify } = useData();
   const [week, setWeek] = useState(currentWeek());
+  const [editing, setEditing] = useState(false);
+  const canEditItems = reportAccess === "edit";
   if (!canSeeReport) {
     return (
       <Card>
@@ -64,16 +67,23 @@ export function ReportView() {
     <div className="grid grid-cols-1 gap-3">
       <PageHeader
         title="Weekly report"
-        subtitle="How many of each item were sold, and how many are needed for next week."
+        subtitle="How many of each item this week, and how many are needed for next week."
         action={
-          <Button variant="secondary" onClick={download}>
-            <Download size={16} aria-hidden /> Export
-          </Button>
+          <span className="flex flex-wrap gap-2">
+            {canEditItems && (
+              <Button variant={editing ? "primary" : "secondary"} aria-pressed={editing} onClick={() => setEditing(!editing)}>
+                <Pencil size={16} aria-hidden /> {editing ? "Done" : "Edit"}
+              </Button>
+            )}
+            <Button variant="secondary" onClick={download}>
+              <Download size={16} aria-hidden /> Export
+            </Button>
+          </span>
         }
       />
       <WeekBar week={week} onChange={setWeek} />
-      <WeekTable week={week} items={items} counts={report.counts} />
-      {isOwner && <ManageItems items={items} />}
+      {canEditItems && editing && <ManageItems items={items} />}
+      <WeekTable week={week} items={items} counts={report.counts} canFill={reportAccess !== "view"} canEditItems={canEditItems} />
       {isOwner && <ManageAccess />}
     </div>
   );
@@ -113,13 +123,12 @@ function suggestion(itemId: string, week: string, counts: ReportCount[]) {
 }
 
 /** The week's sheet: one row per item, with boxes to fill in. Each box saves when you leave it. */
-function WeekTable({ week, items, counts }: { week: string; items: ReportItem[]; counts: ReportCount[] }) {
-  const { isOwner } = useData();
+function WeekTable({ week, items, counts, canFill, canEditItems }: { week: string; items: ReportItem[]; counts: ReportCount[]; canFill: boolean; canEditItems: boolean }) {
   const get = (itemId: string, w: string) => counts.find((c) => c.item_id === itemId && c.week === w);
   if (items.length === 0) {
     return (
       <Card>
-        <p className="px-6 py-5 text-sm text-muted">{isOwner ? "No items yet. Add the first one below (for example Scrolls)." : "The Owner hasn't set up any items yet."}</p>
+        <p className="px-6 py-5 text-sm text-muted">{canEditItems ? "No items yet. Tap Edit to add the first one (for example Scrolls)." : "No items have been set up yet."}</p>
       </Card>
     );
   }
@@ -127,14 +136,16 @@ function WeekTable({ week, items, counts }: { week: string; items: ReportItem[];
     <Card>
       <div className="px-6 pt-5 pb-3">
         <h2 className="font-medium">Week of {formatShort(week)}</h2>
-        <p className="text-sm text-muted">Type a number and it saves. “Need next week” shows a suggestion in gray until someone fills it in.</p>
+        <p className="text-sm text-muted">
+          {canFill ? "Type a number and it saves. “Need next week” shows a suggestion in gray until someone fills it in." : "You can see the numbers here. Only some accounts can fill them in."}
+        </p>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead className="border-b border-line text-xs uppercase tracking-wide text-muted">
             <tr>
               <th className={th}>Item</th>
-              <th className={cx(th, "text-end")}>Sold</th>
+              <th className={cx(th, "text-end")}>This week</th>
               <th className={cx(th, "text-end", wideOnly)}>Last week</th>
               <th className={cx(th, "text-end")}>Need next week</th>
             </tr>
@@ -150,11 +161,19 @@ function WeekTable({ week, items, counts }: { week: string; items: ReportItem[];
                     <span className="block text-xs text-muted sm:hidden">Last week: {last ?? "—"}</span>
                   </td>
                   <td className={cx(td, "text-end")}>
-                    <NumberBox key={`${x.id}-${week}-sold`} label={`${x.name} sold`} value={row?.sold ?? null} itemId={x.id} week={week} field="sold" />
+                    {canFill ? (
+                      <NumberBox key={`${x.id}-${week}-sold`} label={`${x.name} this week`} value={row?.sold ?? null} itemId={x.id} week={week} field="sold" />
+                    ) : (
+                      <span className={num}>{row?.sold ?? "—"}</span>
+                    )}
                   </td>
                   <td className={cx(td, num, wideOnly, "text-muted")}>{last ?? "—"}</td>
                   <td className={cx(td, "text-end")}>
-                    <NumberBox key={`${x.id}-${week}-needed`} label={`${x.name} needed next week`} value={row?.needed ?? null} placeholder={suggestion(x.id, week, counts)} itemId={x.id} week={week} field="needed" />
+                    {canFill ? (
+                      <NumberBox key={`${x.id}-${week}-needed`} label={`${x.name} needed next week`} value={row?.needed ?? null} placeholder={suggestion(x.id, week, counts)} itemId={x.id} week={week} field="needed" />
+                    ) : (
+                      <span className={num}>{row?.needed ?? "—"}</span>
+                    )}
                   </td>
                 </tr>
               );
@@ -193,7 +212,7 @@ function NumberBox({ label, value, placeholder, itemId, week, field }: { label: 
   );
 }
 
-/** The Owner: add, rename, reorder or remove the items. */
+/** Edit mode: add, rename, reorder or remove the items. */
 function ManageItems({ items }: { items: ReportItem[] }) {
   const { actions, notify } = useData();
   const [name, setName] = useState("");
@@ -206,7 +225,7 @@ function ManageItems({ items }: { items: ReportItem[] }) {
     <Card>
       <div className="px-6 pt-5 pb-3">
         <h2 className="font-medium">Items</h2>
-        <p className="text-sm text-muted">Only you can change this list. Everyone who can use the report fills in the numbers.</p>
+        <p className="text-sm text-muted">Add, rename, move or remove items. Tap Done when you're finished.</p>
       </div>
       {items.length > 0 && (
         <ul className="divide-y divide-line/60 border-y border-line/60">
@@ -260,9 +279,15 @@ function ManageItems({ items }: { items: ReportItem[] }) {
   );
 }
 
-/** The Owner: which accounts can use this page (see it and fill in the numbers). Admins always can. */
+const ACCESS: { value: ReportAccess; label: string }[] = [
+  { value: "view", label: "Can only look" },
+  { value: "fill", label: "Fills in numbers" },
+  { value: "edit", label: "Numbers and items" },
+];
+
+/** The Owner: which accounts are on this page, and what each one may do. Admins can always do everything. */
 function ManageAccess() {
-  const { people, reportViewers, actions, notify } = useData();
+  const { people, reportViewers, reportAccessOf, actions, notify } = useData();
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
   const allowed = people.filter((p) => reportViewers.includes(p.id)).sort((a, b) => a.name.localeCompare(b.name));
@@ -299,13 +324,26 @@ function ManageAccess() {
     <Card>
       <div className="px-6 pt-5 pb-3">
         <h2 className="font-medium">Who can use this page</h2>
-        <p className="text-sm text-muted">They can see the report and fill in the numbers. Only you can change the items. Admins always can.</p>
+        <p className="text-sm text-muted">Choose what each account can do: only look, fill in the numbers, or also change the items. Admins can always do everything.</p>
       </div>
       {allowed.length > 0 ? (
         <ul className="divide-y divide-line/60 border-y border-line/60">
           {allowed.map((p) => (
-            <li key={p.id} className="flex items-center gap-3 py-2 ps-6 pe-3">
-              {row(p)}
+            <li key={p.id} className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-2 py-2 ps-6 pe-3 sm:grid-cols-[1fr_13rem_auto]">
+              <span className="flex min-w-0 items-center gap-3">{row(p)}</span>
+              <Select
+                aria-label={`What ${p.name} can do`}
+                value={reportAccessOf[p.id] ?? "fill"}
+                disabled={busy}
+                onChange={(e) => actions.setReportAccess(p.id, e.target.value as ReportAccess).catch((err: Error) => notify(err.message))}
+                className="order-last col-span-2 py-2 text-sm sm:order-none sm:col-span-1"
+              >
+                {ACCESS.map((a) => (
+                  <option key={a.value} value={a.value}>
+                    {a.label}
+                  </option>
+                ))}
+              </Select>
               <IconButton aria-label={`Remove ${p.name}`} disabled={busy} onClick={() => set(p.id, p.name, false)} className="h-9 w-9">
                 <X size={16} />
               </IconButton>

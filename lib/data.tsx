@@ -20,6 +20,8 @@ import type {
   WeekAnswer,
   ReportItem,
   ReportCount,
+  ReportViewer,
+  ReportAccess,
   Poster,
   ChanukahEntry,
 } from "./types";
@@ -137,6 +139,10 @@ interface DataContextValue {
   report: { items: ReportItem[]; counts: ReportCount[] } | null;
   /** The Owner: the accounts allowed to see the weekly report (besides admins). */
   reportViewers: string[];
+  /** What this account may do on the weekly report. */
+  reportAccess: ReportAccess;
+  /** The Owner: each allowed account's level. */
+  reportAccessOf: Record<string, ReportAccess>;
   /** The Owner's posters (empty until database update 017 is run). */
   posters: Poster[];
   /**
@@ -253,7 +259,9 @@ interface DataContextValue {
     deleteChanukahTests(): Promise<void>;
     /** The Owner: let an account test Chanukah, or stop it. */
     setChanukahTester(userId: string, allowed: boolean): Promise<void>;
-    /** The Owner: the weekly report's items. */
+    /** The Owner: what an account on the weekly report may do. */
+    setReportAccess(userId: string, access: ReportAccess): Promise<void>;
+    /** The weekly report's items (the Owner, admins, and accounts allowed to change them). */
     addReportItem(name: string): Promise<void>;
     renameReportItem(id: string, name: string): Promise<void>;
     moveReportItem(id: string, by: -1 | 1): Promise<void>;
@@ -299,7 +307,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [cards, setCards] = useState<Record<string, LocationCard>>({});
   // Who may see the weekly report: rows of report_viewers (empty until database update 016 is run).
-  const [viewerRows, setViewerRows] = useState<{ id: string; user_id: string }[]>([]);
+  const [viewerRows, setViewerRows] = useState<ReportViewer[]>([]);
   const [report, setReport] = useState<DataContextValue["report"]>(null);
   const [posters, setPosters] = useState<Poster[]>([]);
   const [chanukah, setChanukah] = useState<ChanukahEntry[] | null>(null);
@@ -586,6 +594,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       cards,
       canSeeReport: me?.role === "admin" || viewerRows.some((v) => v.user_id === me?.id),
       reportViewers: viewerRows.map((v) => v.user_id),
+      reportAccess: me?.role === "admin" ? "edit" : (viewerRows.find((v) => v.user_id === me?.id)?.access ?? "fill"),
+      reportAccessOf: Object.fromEntries(viewerRows.map((v) => [v.user_id, v.access ?? "fill"])),
       report,
       posters,
       chanukah,
@@ -965,9 +975,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
             setTesterRows((v) => v.filter((x) => x.id !== row.id));
           }
         },
+        setReportAccess: async (userId, access) => {
+          const row = viewerRows.find((v) => v.user_id === userId);
+          if (!row) return;
+          await b.update("report_viewers", row.id, { access }).catch((e: Error) => {
+            throw new Error(/access|column|schema cache|not allowed|permission/i.test(e.message) ? t("Run database update 022 in Supabase first.") : e.message);
+          });
+          setViewerRows((v) => v.map((x) => (x.id === row.id ? { ...x, access } : x)));
+        },
         addReportItem: async (name) => {
           if (!name.trim()) throw new Error(t("Give it a name."));
-          const saved = await b.insert("report_items", { name: name.trim(), position: report?.items.length ?? 0 });
+          const saved = await b.insert("report_items", { name: name.trim(), position: report?.items.length ?? 0 }).catch((e: Error) => {
+            // Before update 022 only the Owner may change the items.
+            throw new Error(/row-level security|not allowed|permission/i.test(e.message) ? t("Run database update 022 in Supabase first.") : e.message);
+          });
           setReport((r) => (r ? { ...r, items: [...r.items, saved] } : r));
         },
         renameReportItem: async (id, name) => {

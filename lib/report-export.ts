@@ -23,13 +23,13 @@ export async function buildReportWorkbook(week: string, items: ReportItem[], cou
   ws.addRow([`${siteName} · Weekly report`]).font = { bold: true, size: 14 };
   ws.addRow([weekTitle(week)]).font = { italic: true };
   ws.addRow([]);
-  header(ws, ["Item", "Sold this week", "Sold last week", "Need next week"]);
+  header(ws, ["Item", "This week", "Last week", "Need next week"]);
   for (const x of items) ws.addRow([x.name, get(x.id, week)?.sold ?? "", get(x.id, addDays(week, -7))?.sold ?? "", get(x.id, week)?.needed ?? ""]);
   [26, 16, 16, 16].forEach((w, i) => (ws.getColumn(i + 1).width = w));
 
   const weeks = Array.from({ length: 8 }, (_, i) => addDays(week, -7 * (7 - i)));
   const h = wb.addWorksheet("Last 8 weeks");
-  header(h, ["Item (sold)", ...weeks.map((w) => `Week of ${formatShort(w)}`)]);
+  header(h, ["Item (this week)", ...weeks.map((w) => `Week of ${formatShort(w)}`)]);
   for (const x of items) h.addRow([x.name, ...weeks.map((w) => get(x.id, w)?.sold ?? "")]);
   [24, ...weeks.map(() => 13)].forEach((w, i) => (h.getColumn(i + 1).width = w));
 
