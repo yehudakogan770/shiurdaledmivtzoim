@@ -32,23 +32,27 @@ export function AccountDeskView({ ownerLang }: { ownerLang: Lang }) {
   const [resting, setResting] = useState(false);
   // Going to rest starts the forms over, so an account someone left open isn't waiting for the next person.
   const [round, setRound] = useState(0);
+  const rest = () => {
+    setResting(true);
+    setLeaving(false);
+    setTab("create");
+    setRound((n) => n + 1);
+  };
   useEffect(() => {
     if (resting) return;
-    let timer = setTimeout(rest, REST_AFTER);
-    function rest() {
-      setResting(true);
-      setLeaving(false);
-      setTab("create");
-      setRound((n) => n + 1);
-    }
+    let last = Date.now();
     const awake = () => {
-      clearTimeout(timer);
-      timer = setTimeout(rest, REST_AFTER);
+      last = Date.now();
     };
+    // Someone in the middle of typing gets much longer, so a pause to think doesn't wipe their form.
+    const typing = () => [...document.querySelectorAll<HTMLInputElement>("input, textarea")].some((el) => el.type !== "file" && el.value.trim() !== "");
+    const timer = setInterval(() => {
+      if (Date.now() - last >= (typing() ? REST_WHILE_TYPING : REST_AFTER)) rest();
+    }, 500);
     const events = ["pointerdown", "keydown", "input", "scroll"] as const;
     for (const e of events) window.addEventListener(e, awake, { passive: true, capture: true });
     return () => {
-      clearTimeout(timer);
+      clearInterval(timer);
       for (const e of events) window.removeEventListener(e, awake, { capture: true });
     };
   }, [resting]);
@@ -60,7 +64,7 @@ export function AccountDeskView({ ownerLang }: { ownerLang: Lang }) {
       {behind && <PhotoShow photos={shots} resting={resting} onWake={() => setResting(false)} />}
       {!(resting && behind) && (
         <div key={round} className={cx("relative z-10 flex w-full flex-col items-center", behind && "desk-pop")}>
-          <DeskBody tab={tab} setTab={setTab} round={round} behind={behind} onLeave={() => setLeaving(true)} />
+          <DeskBody tab={tab} setTab={setTab} round={round} behind={behind} onLeave={() => setLeaving(true)} onDone={rest} />
         </div>
       )}
       {leaving && <LeaveDesk ownerLang={ownerLang} onClose={() => setLeaving(false)} />}
@@ -69,7 +73,7 @@ export function AccountDeskView({ ownerLang }: { ownerLang: Lang }) {
 }
 
 /** The desk itself: the two tabs, the form, and the Owner's way out. */
-function DeskBody({ tab, setTab, round, behind, onLeave }: { tab: "create" | "find"; setTab(tab: "create" | "find"): void; round: number; behind: boolean; onLeave(): void }) {
+function DeskBody({ tab, setTab, round, behind, onLeave, onDone }: { tab: "create" | "find"; setTab(tab: "create" | "find"): void; round: number; behind: boolean; onLeave(): void; onDone(): void }) {
   // Only after a tab was tapped: the form slides in from that tab's side (not when the desk first appears).
   const [moved, setMoved] = useState(false);
   const pick = (k: "create" | "find") => {
@@ -98,7 +102,7 @@ function DeskBody({ tab, setTab, round, behind, onLeave }: { tab: "create" | "fi
       </div>
 
       <div key={tab} className={cx("flex w-full flex-col items-center", moved && (tab === "find" ? "desk-slide-from-end" : "desk-slide-from-start"))}>
-        {tab === "create" ? <CreateAccount key={round} /> : <FindAccount key={round} />}
+        {tab === "create" ? <CreateAccount key={round} /> : <FindAccount key={round} onDone={onDone} />}
       </div>
 
       <button
@@ -241,7 +245,7 @@ function CreateAccount() {
  * For someone with an account but no phone: they find it by username and log their Mivtzoim here.
  * Names only show once a few letters are typed, so nobody can scroll through everyone's accounts.
  */
-function FindAccount() {
+function FindAccount({ onDone }: { onDone(): void }) {
   const { people, me } = useData();
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<Profile | null>(null);
@@ -272,7 +276,11 @@ function FindAccount() {
         <QuickLog week={currentWeek()} userId={picked.id} />
         <Button
           className="mt-2 justify-self-center"
-          onClick={back}
+          onClick={() => {
+            // Finished: close the account and hand the screen back to the photos for the next person.
+            back();
+            onDone();
+          }}
         >
           {t("Done")}
         </Button>
@@ -325,7 +333,8 @@ function FindAccount() {
 }
 
 /** How long the desk waits with nobody touching it before the photos take over. */
-const REST_AFTER = 60_000;
+const REST_AFTER = 5_000;
+const REST_WHILE_TYPING = 60_000;
 const SHOW_EACH = 6_000;
 
 /**
