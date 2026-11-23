@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type TouchEvent } from "react";
 import { CircleCheck, Lock, Search, UserRoundPlus } from "lucide-react";
 import type { Photo, Profile } from "@/lib/types";
+import { showOrder } from "@/lib/photos";
 import { currentWeek } from "@/lib/dates";
 import { QuickLog } from "./dashboard";
 import { getLang, setLanguage, t, type Lang } from "@/lib/i18n";
@@ -56,10 +57,27 @@ export function AccountDeskView({ ownerLang }: { ownerLang: Lang }) {
       for (const e of events) window.removeEventListener(e, awake, { capture: true });
     };
   }, [resting]);
-  const shots = photos.filter((p) => p.url);
+  // Newest week first; inside a week the photos are mixed, so one person's aren't back to back.
+  const shots = useMemo(() => showOrder(photos.filter((p) => p.url)), [photos]);
   const behind = shots.length > 0;
+  // On a touch screen, a sideways swipe moves between the two tabs, like turning a page (anywhere on the screen).
+  const from = useRef<{ x: number; y: number } | null>(null);
+  const start = (e: TouchEvent) => {
+    const el = e.target as HTMLElement;
+    // Not from inside a box being typed in: there a sideways drag moves the cursor.
+    from.current = el.closest("input, textarea, select") ? null : { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  };
+  const end = (e: TouchEvent) => {
+    if (!from.current) return;
+    const dx = e.changedTouches[0].clientX - from.current.x;
+    const dy = e.changedTouches[0].clientY - from.current.y;
+    from.current = null;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    const forward = (dx < 0) === (document.documentElement.dir !== "rtl");
+    setTab(forward ? "find" : "create");
+  };
   return (
-    <div className="relative flex min-h-screen flex-col items-center px-4 py-8 sm:py-12">
+    <div className="relative flex min-h-screen flex-col items-center overflow-x-clip px-4 py-8 sm:py-12" onTouchStart={start} onTouchEnd={end}>
       {/* The photos are always there: full and sharp while the desk rests, dimmed and blurred behind it once someone taps. */}
       {behind && <PhotoShow photos={shots} resting={resting} onWake={() => setResting(false)} />}
       {!(resting && behind) && (
@@ -74,13 +92,6 @@ export function AccountDeskView({ ownerLang }: { ownerLang: Lang }) {
 
 /** The desk itself: the two tabs, the form, and the Owner's way out. */
 function DeskBody({ tab, setTab, round, behind, onLeave, onDone }: { tab: "create" | "find"; setTab(tab: "create" | "find"): void; round: number; behind: boolean; onLeave(): void; onDone(): void }) {
-  // Only after a tab was tapped: the form slides in from that tab's side (not when the desk first appears).
-  const [moved, setMoved] = useState(false);
-  const pick = (k: "create" | "find") => {
-    if (k === tab) return;
-    setMoved(true);
-    setTab(k);
-  };
   return (
     <>
       <div role="tablist" className="relative mb-6 grid w-full max-w-[40rem] grid-cols-2 gap-1 rounded-full bg-sunken p-1">
@@ -92,7 +103,7 @@ function DeskBody({ tab, setTab, round, behind, onLeave, onDone }: { tab: "creat
             type="button"
             role="tab"
             aria-selected={tab === k}
-            onClick={() => pick(k)}
+            onClick={() => setTab(k)}
             className={cx("relative flex h-12 items-center justify-center gap-2 rounded-full text-sm font-medium transition-colors duration-300", tab === k ? "text-accent-ink" : "text-ink hover:bg-ink/5")}
           >
             {k === "create" ? <UserRoundPlus size={18} aria-hidden /> : <Search size={18} aria-hidden />}
@@ -101,8 +112,13 @@ function DeskBody({ tab, setTab, round, behind, onLeave, onDone }: { tab: "creat
         ))}
       </div>
 
-      <div key={tab} className={cx("flex w-full flex-col items-center", moved && (tab === "find" ? "desk-slide-from-end" : "desk-slide-from-start"))}>
-        {tab === "create" ? <CreateAccount key={round} /> : <FindAccount key={round} onDone={onDone} />}
+      {/* Both forms stay in place: the one in use sits still, the other waits just off to its side, so switching is one glide. */}
+      <div className="relative -m-6 flex w-[calc(100%+3rem)] flex-col items-center overflow-clip p-6">
+        {(["create", "find"] as const).map((k) => (
+          <div key={k} data-side={k} inert={tab !== k} className={cx("desk-panel flex w-full flex-col items-center", tab === k ? "desk-panel-on" : "desk-panel-off")}>
+            {k === "create" ? <CreateAccount key={round} /> : <FindAccount key={round} onDone={onDone} />}
+          </div>
+        ))}
       </div>
 
       <button

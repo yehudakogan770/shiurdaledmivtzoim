@@ -4,6 +4,7 @@
  * becomes roughly 100 KB and still looks sharp on screen.
  */
 import { t } from "@/lib/i18n";
+import { weekOf } from "@/lib/dates";
 
 const FULL = 1280;
 const THUMB = 480;
@@ -155,7 +156,7 @@ export function mix(id: string) {
  * lighter photos take turns, and photos next to each other (and above and below, on the wall)
  * have different colours. Photos without a measured colour just go in their random spot.
  */
-export function arrange<T extends { id: string; color?: string | null }>(list: T[]): T[] {
+export function arrange<T extends { id: string; color?: string | null; user_id?: string }>(list: T[]): T[] {
   const items = list.map((p) => ({ p, c: p.color && /^#[0-9a-f]{6}$/i.test(p.color) ? hexToHsl(p.color) : null, r: mix(p.id) })).sort((a, b) => a.r - b.r);
   type Item = (typeof items)[number];
   const measured = items.filter((i) => i.c).sort((a, b) => a.c!.l - b.c!.l);
@@ -163,19 +164,31 @@ export function arrange<T extends { id: string; color?: string | null }>(list: T
   const dark = items.filter((i) => !i.c || i.c.l < middle);
   const light = items.filter((i) => i.c && i.c.l >= middle);
   // How well two photos set each other off: different brightness, and different colour (when both have colour).
+  // One person's photos are often of the same people, so they count heavily against sitting together.
   const apart = (a: Item, b: Item) => {
-    if (!a.c || !b.c) return 0.5;
+    const same = a.p.user_id && a.p.user_id === b.p.user_id ? -4 : 0;
+    if (!a.c || !b.c) return 0.5 + same;
     const dh = Math.abs(a.c.h - b.c.h);
-    return Math.abs(a.c.l - b.c.l) * 1.5 + (Math.min(dh, 360 - dh) / 180) * Math.min(a.c.s, b.c.s);
+    return Math.abs(a.c.l - b.c.l) * 1.5 + (Math.min(dh, 360 - dh) / 180) * Math.min(a.c.s, b.c.s) + same;
   };
   const out: Item[] = [];
   const startDark = (items[0]?.r ?? 0) % 2 === 0;
   while (dark.length || light.length) {
     const wantDark = (out.length % 2 === 0) === startDark;
-    const group = (wantDark ? dark : light).length ? (wantDark ? dark : light) : wantDark ? light : dark;
-    // Of the next few (still in random order), take the one that best stands apart from its neighbours.
-    let best = 0, bestScore = -1;
-    for (let i = 0; i < Math.min(6, group.length); i++) {
+    const last = out[out.length - 1]?.p.user_id;
+    const fresh = (g: Item[]) => g.some((i) => !last || i.p.user_id !== last);
+    let group = (wantDark ? dark : light).length ? (wantDark ? dark : light) : wantDark ? light : dark;
+    // Someone else's photo comes before the dark-and-light turn: switch groups if only the other has one.
+    if (!fresh(group)) {
+      const other = group === dark ? light : dark;
+      if (fresh(other)) group = other;
+    }
+    // Of the next few (still in random order), take the one that best stands apart from its neighbours;
+    // look further down the pile when the next few are all from the person who was just shown.
+    const first = group.findIndex((i) => !last || i.p.user_id !== last);
+    const look = Math.min(group.length, Math.max(6, first + 1));
+    let best = 0, bestScore = -Infinity;
+    for (let i = 0; i < look; i++) {
       const score = [1, 0.4, 0.8].reduce((s, w, back) => {
         const n = out[out.length - 1 - back];
         return n ? s + w * apart(group[i], n) : s;
@@ -192,7 +205,7 @@ export function arrange<T extends { id: string; color?: string | null }>(list: T
  * nearby goes in each big spot, and a photo taller than it is wide goes in each tall spot, so
  * nothing important is cut off. Only nearby photos swap, so the colour mix stays.
  */
-export function fitToSpots<T extends { width: number; height: number; color?: string | null }>(list: T[], spots: string[]): T[] {
+export function fitToSpots<T extends { width: number; height: number; color?: string | null; user_id?: string }>(list: T[], spots: string[]): T[] {
   const out = [...list];
   const shape = (p: T) => (p.width > 0 && p.height > 0 ? p.width / p.height : 1);
   const striking = (p: T) => {
@@ -208,7 +221,13 @@ export function fitToSpots<T extends { width: number; height: number; color?: st
       // Don't take a photo another big or tall spot right after this one needs more.
       if (spot === "h2" ? shape(out[j]) < shape(out[best]) - 0.05 : striking(out[j]) > striking(out[best]) + 0.05) best = j;
     }
-    if (best !== i) [out[i], out[best]] = [out[best], out[i]];
+    if (best === i) continue;
+    // A swap that would put one person's photos side by side isn't worth the better fit.
+    const clash = (list: T[]) => [i, best].some((k) => [k - 1, k + 1].some((n) => list[n] && list[k].user_id && list[n].user_id === list[k].user_id));
+    const tried = [...out];
+    [tried[i], tried[best]] = [tried[best], tried[i]];
+    if (clash(tried) && !clash(out)) continue;
+    [out[i], out[best]] = [out[best], out[i]];
   }
   return out;
 }
@@ -223,4 +242,17 @@ export function formatBytes(n: number) {
   if (n < 1024 * 1024) return `${Math.max(1, Math.round(n / 1024))} KB`;
   if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`;
   return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`;
+}
+
+/**
+ * The order photos are shown in, on the screen only (nothing stored changes): the newest week
+ * first, and inside each week everyone's photos mixed, with one person's kept apart.
+ */
+export function showOrder<T extends { id: string; created_at: string; color?: string | null; user_id?: string }>(photos: T[]): T[] {
+  const weeks = new Map<string, T[]>();
+  for (const p of photos) {
+    const w = weekOf(new Date(p.created_at));
+    weeks.set(w, [...(weeks.get(w) ?? []), p]);
+  }
+  return [...weeks.entries()].sort((a, b) => b[0].localeCompare(a[0])).flatMap(([, list]) => arrange(list));
 }
