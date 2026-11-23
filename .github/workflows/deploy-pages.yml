@@ -33,6 +33,13 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL || 'https://fkyzknggspsaeqguendg.supabase.co' }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_oIxp_hwqWel4gEPUqUciCg_DZ-0TU5V' }}
           NEXT_PUBLIC_GOOGLE_MAPS_KEY: ${{ vars.NEXT_PUBLIC_GOOGLE_MAPS_KEY }}
+      # The Android app keeps the whole site in one file; this is the newest copy for it to download.
+      - name: Build the app's copy of the site
+        run: node scripts/build-spa.mjs --app out
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL || 'https://fkyzknggspsaeqguendg.supabase.co' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_oIxp_hwqWel4gEPUqUciCg_DZ-0TU5V' }}
+          NEXT_PUBLIC_GOOGLE_MAPS_KEY: ${{ vars.NEXT_PUBLIC_GOOGLE_MAPS_KEY }}
       - name: Publish to the gh-pages branch
         uses: peaceiris/actions-gh-pages@v4
         with:

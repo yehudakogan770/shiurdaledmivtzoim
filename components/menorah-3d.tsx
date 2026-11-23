@@ -110,7 +110,7 @@ const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || "";
 export function MenorahStill({ className }: { className?: string }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={`${BASE_PATH}/menorah-770.webp`} alt="" draggable={false} className={cx("mx-auto block aspect-square w-full max-w-[340px] select-none", className)} />
+    <img src={process.env.NEXT_PUBLIC_MENORAH_SRC || `${BASE_PATH}/menorah-770.webp`} alt="" draggable={false} className={cx("mx-auto block aspect-square w-full max-w-[340px] select-none", className)} />
   );
 }
 

@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "SD Mivtzoim",
+    "slug": "sd-mivtzoim",
+    "owner": "tzvikogan",
+    "version": "1.0.0",
+    "orientation": "default",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": { "image": "./assets/splash-icon.png", "resizeMode": "contain", "backgroundColor": "#106a7a" },
+    "android": {
+      "package": "com.sdmivtzoim.app",
+      "versionCode": 1,
+      "adaptiveIcon": { "foregroundImage": "./assets/android-icon-foreground.png", "backgroundColor": "#106a7a" },
+      "permissions": ["CAMERA", "ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"]
+    }
+  }
+}

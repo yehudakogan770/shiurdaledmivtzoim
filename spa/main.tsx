@@ -1,4 +1,4 @@
-import { StrictMode, useCallback, useMemo, useState, type MouseEvent } from "react";
+import { StrictMode, useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
 import { createRoot } from "react-dom/client";
 import { AppShell } from "@/components/app-shell";
 import { Screen } from "@/components/screens";
@@ -17,6 +17,15 @@ function App() {
     setStack((s) => [...s.slice(-30), parseHref(href)]);
     window.scrollTo(0, 0);
   }, []);
+
+  // The Android app's back button asks this: go back a page if there is one (true), else it leaves the app.
+  useEffect(() => {
+    (window as unknown as { sdmBack?: () => boolean }).sdmBack = () => {
+      if (stack.length <= 1) return false;
+      setStack((s) => s.slice(0, -1));
+      return true;
+    };
+  }, [stack.length]);
 
   const nav = useMemo<Nav>(() => {
     function Link({ href, children, ...rest }: LinkProps) {
