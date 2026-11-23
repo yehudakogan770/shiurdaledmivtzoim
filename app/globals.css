@@ -690,3 +690,27 @@ input[type="date"]::-webkit-date-and-time-value {
   .photo-stage { transition: none; }
   .desk-pop { animation: none; }
 }
+
+/* The account desk's two tabs: the colored pill slides across, and the form slides in from the same side. */
+.desk-tab-pill {
+  width: calc((100% - 0.75rem) / 2);
+  transition: transform 0.35s cubic-bezier(0.3, 0.8, 0.3, 1);
+}
+.desk-tab-pill[data-tab="find"] {
+  transform: translateX(calc(100% + 0.25rem));
+}
+[dir="rtl"] .desk-tab-pill[data-tab="find"] {
+  transform: translateX(calc(-100% - 0.25rem));
+}
+@keyframes desk-slide {
+  from { opacity: 0; transform: translateX(var(--from)); }
+  to { opacity: 1; transform: none; }
+}
+.desk-slide-from-end { --from: 3.5rem; animation: desk-slide 0.35s cubic-bezier(0.3, 0.8, 0.3, 1) both; }
+.desk-slide-from-start { --from: -3.5rem; animation: desk-slide 0.35s cubic-bezier(0.3, 0.8, 0.3, 1) both; }
+[dir="rtl"] .desk-slide-from-end { --from: -3.5rem; }
+[dir="rtl"] .desk-slide-from-start { --from: 3.5rem; }
+@media (prefers-reduced-motion: reduce) {
+  .desk-tab-pill { transition: none; }
+  .desk-slide-from-end, .desk-slide-from-start { animation: none; }
+}

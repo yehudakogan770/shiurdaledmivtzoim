@@ -70,17 +70,26 @@ export function AccountDeskView({ ownerLang }: { ownerLang: Lang }) {
 
 /** The desk itself: the two tabs, the form, and the Owner's way out. */
 function DeskBody({ tab, setTab, round, behind, onLeave }: { tab: "create" | "find"; setTab(tab: "create" | "find"): void; round: number; behind: boolean; onLeave(): void }) {
+  // Only after a tab was tapped: the form slides in from that tab's side (not when the desk first appears).
+  const [moved, setMoved] = useState(false);
+  const pick = (k: "create" | "find") => {
+    if (k === tab) return;
+    setMoved(true);
+    setTab(k);
+  };
   return (
     <>
-      <div role="tablist" className="mb-6 grid w-full max-w-[40rem] grid-cols-2 gap-1 rounded-full bg-sunken p-1">
+      <div role="tablist" className="relative mb-6 grid w-full max-w-[40rem] grid-cols-2 gap-1 rounded-full bg-sunken p-1">
+        {/* The colored pill slides from one tab to the other. */}
+        <span aria-hidden data-tab={tab} className="desk-tab-pill absolute top-1 bottom-1 start-1 rounded-full bg-accent shadow-card" />
         {(["create", "find"] as const).map((k) => (
           <button
             key={k}
             type="button"
             role="tab"
             aria-selected={tab === k}
-            onClick={() => setTab(k)}
-            className={cx("flex h-12 items-center justify-center gap-2 rounded-full text-sm font-medium transition", tab === k ? "bg-accent text-accent-ink shadow-card" : "text-ink hover:bg-ink/5")}
+            onClick={() => pick(k)}
+            className={cx("relative flex h-12 items-center justify-center gap-2 rounded-full text-sm font-medium transition-colors duration-300", tab === k ? "text-accent-ink" : "text-ink hover:bg-ink/5")}
           >
             {k === "create" ? <UserRoundPlus size={18} aria-hidden /> : <Search size={18} aria-hidden />}
             {k === "create" ? t("Create an account") : t("Find my account")}
@@ -88,7 +97,9 @@ function DeskBody({ tab, setTab, round, behind, onLeave }: { tab: "create" | "fi
         ))}
       </div>
 
-      {tab === "create" ? <CreateAccount key={round} /> : <FindAccount key={round} />}
+      <div key={tab} className={cx("flex w-full flex-col items-center", moved && (tab === "find" ? "desk-slide-from-end" : "desk-slide-from-start"))}>
+        {tab === "create" ? <CreateAccount key={round} /> : <FindAccount key={round} />}
+      </div>
 
       <button
         type="button"
