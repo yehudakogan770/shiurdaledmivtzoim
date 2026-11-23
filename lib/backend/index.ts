@@ -36,8 +36,6 @@ export interface Backend {
   updatePassword(password: string): Promise<void>;
   /** Throws unless this is the signed-in person's current password. */
   verifyPassword(password: string): Promise<void>;
-  /** The account desk: is this that account's password? Never changes who is signed in. */
-  checkAccountPassword(account: { id: string; username?: string | null; email?: string | null }, password: string): Promise<boolean>;
   /** Change the username people sign in with. */
   changeUsername(username: string): Promise<void>;
   /** Change the email address; needsConfirmation when a link was sent to the new address first. */

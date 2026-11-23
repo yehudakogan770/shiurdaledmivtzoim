@@ -329,7 +329,8 @@ export function QuickLog({ week, userId }: { week: string; userId?: string }) {
   }
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+    <div className={cx("grid grid-cols-2 gap-3 sm:grid-cols-3", !userId && "lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6")}>
+      {/* The account desk's card is narrow even on a big screen, so there it stays three across. */}
       {counters.map((c) => (
         <QuickButton
           key={c.key}

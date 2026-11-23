@@ -242,32 +242,13 @@ function CreateAccount() {
  * Names only show once a few letters are typed, so nobody can scroll through everyone's accounts.
  */
 function FindAccount() {
-  const { people, me, auth } = useData();
+  const { people, me } = useData();
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<Profile | null>(null);
-  // Tapping a name isn't enough: the account opens only with its own password.
-  const [open, setOpen] = useState(false);
-  const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [wrong, setWrong] = useState(false);
   const back = () => {
     setPicked(null);
-    setOpen(false);
-    setPassword("");
-    setWrong(false);
     setQuery("");
   };
-  async function unlock(e: FormEvent) {
-    e.preventDefault();
-    if (!picked) return;
-    setBusy(true);
-    setWrong(false);
-    const ok = await auth.checkAccountPassword(picked, password).catch(() => false);
-    setBusy(false);
-    setPassword("");
-    if (ok) setOpen(true);
-    else setWrong(true);
-  }
   const q = cleanUsername(query);
   const found =
     q.length < 2
@@ -276,32 +257,6 @@ function FindAccount() {
           .filter((p) => p.id !== me?.id && ((p.username ?? "").toLowerCase().includes(q) || p.name.toLowerCase().includes(q)))
           .sort((a, b) => Number((b.username ?? "").toLowerCase() === q) - Number((a.username ?? "").toLowerCase() === q))
           .slice(0, 8);
-
-  if (picked && !open) {
-    return (
-      <form onSubmit={unlock} className="grid w-full max-w-[40rem] gap-5 rounded-[28px] bg-card px-5 py-8 sm:px-8">
-        <div className="flex items-center gap-4">
-          <Avatar name={picked.name} id={picked.id} src={picked.avatar_url} size={52} />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-2xl">{picked.name}</p>
-            {picked.username && <p className="text-sm text-muted">{handle(picked.username)}</p>}
-          </div>
-        </div>
-        <Field label={t("Password")} htmlFor="desk-find-password" hint={t("The password you use to sign in to this account.")}>
-          <Input id="desk-find-password" type="password" autoFocus required value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="off" />
-        </Field>
-        {wrong && <p className="rounded-2xl bg-danger-soft px-4 py-3 text-sm text-danger">{t("That isn't this account's password. Try again, or ask the admin for a new one.")}</p>}
-        <div className="flex justify-end gap-2">
-          <Button variant="ghost" onClick={back}>
-            {t("Back")}
-          </Button>
-          <Button type="submit" disabled={busy || !password}>
-            {busy ? t("Please wait…") : t("Continue")}
-          </Button>
-        </div>
-      </form>
-    );
-  }
 
   if (picked) {
     return (
@@ -329,7 +284,7 @@ function FindAccount() {
     <div className="grid w-full max-w-[40rem] gap-5 rounded-[28px] bg-card px-5 py-8 sm:px-8">
       <div>
         <h1 className="text-[2rem] leading-tight">{t("Find my account")}</h1>
-        <p className="mt-2 text-base text-muted">{t("Type your username, tap your name, then enter your password to log your Mivtzoim.")}</p>
+        <p className="mt-2 text-base text-muted">{t("Type your username, then tap your name to log your Mivtzoim.")}</p>
       </div>
       <Field label={t("Username")} htmlFor="desk-find">
         <Input
