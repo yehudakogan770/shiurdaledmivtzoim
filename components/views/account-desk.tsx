@@ -335,7 +335,8 @@ function FindAccount({ onDone }: { onDone(): void }) {
 /** How long the desk waits with nobody touching it before the photos take over. */
 const REST_AFTER = 5_000;
 const REST_WHILE_TYPING = 60_000;
-const SHOW_EACH = 6_000;
+/** A new photo this often; the cross-fade (2 seconds, in the CSS) is part of it. */
+const SHOW_EACH = 4_000;
 
 /**
  * The shared photos, filling the screen one after another, newest to oldest, then around again.
@@ -343,12 +344,38 @@ const SHOW_EACH = 6_000;
  * the desk, blurred and darkened, so the desk seems to come up out of them.
  */
 function PhotoShow({ photos, resting, onWake }: { photos: Photo[]; resting: boolean; onWake(): void }) {
-  const [i, setI] = useState(0);
+  // `at` counts up forever; the photo is `at` around the list. `from` is the one fading out under it.
+  const [at, setAt] = useState(0);
+  const [from, setFrom] = useState<number | null>(null);
   const wake = useRef(onWake);
   wake.current = onWake;
+  const list = useRef(photos);
+  list.current = photos;
   useEffect(() => {
-    const timer = setInterval(() => setI((n) => n + 1), SHOW_EACH);
-    return () => clearInterval(timer);
+    let stop = false;
+    let n = 0;
+    let timer: ReturnType<typeof setTimeout>;
+    const url = (k: number) => list.current[k % list.current.length]?.url ?? "";
+    // Get the next few ready while this one shows, so a slow connection never holds up the rhythm.
+    const ahead = () => {
+      for (let k = 1; k <= 3; k++) ready(url(n + k));
+    };
+    const step = async () => {
+      // Never fade to a photo that isn't fully loaded: wait for it (a broken one is skipped after a while).
+      await Promise.race([ready(url(n + 1)), new Promise((r) => setTimeout(r, 8000))]);
+      if (stop) return;
+      setFrom(n);
+      n += 1;
+      setAt(n);
+      ahead();
+      timer = setTimeout(step, SHOW_EACH);
+    };
+    ahead();
+    timer = setTimeout(step, SHOW_EACH);
+    return () => {
+      stop = true;
+      clearTimeout(timer);
+    };
   }, []);
   useEffect(() => {
     if (!resting) return;
@@ -356,17 +383,23 @@ function PhotoShow({ photos, resting, onWake }: { photos: Photo[]; resting: bool
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
   }, [resting]);
-  const now = photos[i % photos.length];
-  const next = photos[(i + 1) % photos.length];
+  const slide = (k: number, cls: string) => {
+    const p = photos[k % photos.length];
+    return (
+      <div key={k} className={cx("absolute inset-0", cls)}>
+        {/* The same photo, blurred, fills the edges a photo of another shape would leave empty. */}
+        <img src={p.thumbUrl ?? p.url} alt="" className="absolute inset-0 h-full w-full scale-110 object-cover opacity-60 blur-2xl" />
+        <img src={p.url} alt="" className="absolute inset-0 h-full w-full object-contain" />
+      </div>
+    );
+  };
   return (
     <>
       <div aria-hidden className="fixed inset-0 z-0 overflow-hidden bg-black">
         <div className={cx("photo-stage absolute inset-0", !resting && "photo-stage-back")}>
-          {/* The same photo, blurred, fills the edges a photo of another shape would leave empty. */}
-          <img key={`${now.id}-back`} src={now.thumbUrl ?? now.url} alt="" className="absolute inset-0 h-full w-full scale-110 object-cover opacity-60 blur-2xl" />
-          <img key={now.id} src={now.url} alt="" className="photo-show absolute inset-0 h-full w-full object-contain" />
-          {/* Loaded ahead, so the next one appears at once. */}
-          {next.id !== now.id && <img src={next.url} alt="" className="hidden" />}
+          {/* One long, even cross-fade: the last photo fades out underneath as the next fades in. */}
+          {from !== null && from !== at && photos.length > 1 && slide(from, "photo-out")}
+          {slide(at, from === null ? "" : "photo-in")}
         </div>
       </div>
       {resting && (
@@ -380,6 +413,20 @@ function PhotoShow({ photos, resting, onWake }: { photos: Photo[]; resting: bool
       )}
     </>
   );
+}
+
+/** Photos already fetched and decoded, so showing one never waits on the network. */
+const loaded = new Map<string, Promise<void>>();
+function ready(url: string) {
+  if (!url) return Promise.resolve();
+  let p = loaded.get(url);
+  if (!p) {
+    const img = new Image();
+    img.src = url;
+    p = img.decode().catch(() => {});
+    loaded.set(url, p);
+  }
+  return p;
 }
 
 /** Back to the Owner screens: only with the Owner's password. */
