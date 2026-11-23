@@ -62,6 +62,9 @@ export async function createClaudeBackend(): Promise<Backend | null> {
     async updatePassword() {},
     onPasswordRecovery() {},
     async verifyPassword() {},
+    async checkAccountPassword() {
+      return false;
+    },
     async changeUsername() {
       throw new Error(t("People here sign in with their Claude account."));
     },

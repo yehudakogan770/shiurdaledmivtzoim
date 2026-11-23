@@ -655,3 +655,15 @@ input[type="date"]::-webkit-date-and-time-value {
   :root:not([data-theme="light"]) .lw-teal { fill: #84d2e5; }
 }
 :root[data-theme="dark"] .lw-teal { fill: #84d2e5; }
+
+/* The account desk's resting slideshow: each photo fades in. */
+@keyframes photo-show {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.photo-show {
+  animation: photo-show 0.9s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .photo-show { animation: none; }
+}

@@ -209,6 +209,10 @@ export function createLocalBackend(): Backend {
       const p = s.profiles.find((x) => x.id === s.session);
       if (!p || p.password_hash !== (await hashPassword(password, p.id))) throw new Error(t("Your current password isn't right."));
     },
+    async checkAccountPassword(account, password) {
+      const p = load().profiles.find((x) => x.id === account.id);
+      return !!p?.password_hash && p.password_hash === (await hashPassword(password, p.id));
+    },
     async changeUsername(raw) {
       const username = normalizeUsername(raw);
       const s = load();

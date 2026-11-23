@@ -189,6 +189,8 @@ interface DataContextValue {
     changeEmail(email: string): Promise<{ needsConfirmation: boolean }>;
     /** Throws unless this is the signed-in person's current password. */
     verifyPassword(password: string): Promise<void>;
+    /** The account desk: is this that account's password? */
+    checkAccountPassword(account: { id: string; username?: string | null; email?: string | null }, password: string): Promise<boolean>;
     /** Checks the current password, then sets the new one. */
     changePassword(current: string, next: string): Promise<void>;
   };
@@ -652,6 +654,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         changeUsername: (username) => run(() => b.changeUsername(username)),
         changeEmail: (email) => run(() => b.changeEmail(email)),
         verifyPassword: (password) => b.verifyPassword(password),
+        checkAccountPassword: (account, password) => b.checkAccountPassword(account, password),
         changePassword: async (current, next) => {
           await b.verifyPassword(current);
           await b.updatePassword(next);

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { CircleCheck, Lock, Search, UserRoundPlus } from "lucide-react";
-import type { Profile } from "@/lib/types";
+import type { Photo, Profile } from "@/lib/types";
 import { currentWeek } from "@/lib/dates";
 import { QuickLog } from "./dashboard";
 import { getLang, setLanguage, t, type Lang } from "@/lib/i18n";
@@ -25,8 +25,35 @@ const same = (a: string, b: string) => a.normalize("NFKC").replace(/[\s\p{Cf}]/g
  * Getting back to the Owner screens takes the Owner's password.
  */
 export function AccountDeskView({ ownerLang }: { ownerLang: Lang }) {
+  const { photos } = useData();
   const [tab, setTab] = useState<"create" | "find">("create");
   const [leaving, setLeaving] = useState(false);
+  // Left alone for a while, the desk turns into a slideshow of the photos; a tap brings it back.
+  const [resting, setResting] = useState(false);
+  // Going to rest starts the forms over, so an account someone left open isn't waiting for the next person.
+  const [round, setRound] = useState(0);
+  useEffect(() => {
+    if (resting) return;
+    let timer = setTimeout(rest, REST_AFTER);
+    function rest() {
+      setResting(true);
+      setLeaving(false);
+      setTab("create");
+      setRound((n) => n + 1);
+    }
+    const awake = () => {
+      clearTimeout(timer);
+      timer = setTimeout(rest, REST_AFTER);
+    };
+    const events = ["pointerdown", "keydown", "input", "scroll"] as const;
+    for (const e of events) window.addEventListener(e, awake, { passive: true, capture: true });
+    return () => {
+      clearTimeout(timer);
+      for (const e of events) window.removeEventListener(e, awake, { capture: true });
+    };
+  }, [resting]);
+  const shots = photos.filter((p) => p.url);
+  if (resting && shots.length > 0) return <PhotoShow photos={shots} onWake={() => setResting(false)} />;
   return (
     <div className="flex min-h-screen flex-col items-center px-4 py-8 sm:py-12">
       <div role="tablist" className="mb-6 grid w-full max-w-[40rem] grid-cols-2 gap-1 rounded-full bg-sunken p-1">
@@ -45,7 +72,7 @@ export function AccountDeskView({ ownerLang }: { ownerLang: Lang }) {
         ))}
       </div>
 
-      {tab === "create" ? <CreateAccount /> : <FindAccount />}
+      {tab === "create" ? <CreateAccount key={round} /> : <FindAccount key={round} />}
 
       <button
         type="button"
@@ -189,9 +216,32 @@ function CreateAccount() {
  * Names only show once a few letters are typed, so nobody can scroll through everyone's accounts.
  */
 function FindAccount() {
-  const { people, me } = useData();
+  const { people, me, auth } = useData();
   const [query, setQuery] = useState("");
   const [picked, setPicked] = useState<Profile | null>(null);
+  // Tapping a name isn't enough: the account opens only with its own password.
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [wrong, setWrong] = useState(false);
+  const back = () => {
+    setPicked(null);
+    setOpen(false);
+    setPassword("");
+    setWrong(false);
+    setQuery("");
+  };
+  async function unlock(e: FormEvent) {
+    e.preventDefault();
+    if (!picked) return;
+    setBusy(true);
+    setWrong(false);
+    const ok = await auth.checkAccountPassword(picked, password).catch(() => false);
+    setBusy(false);
+    setPassword("");
+    if (ok) setOpen(true);
+    else setWrong(true);
+  }
   const q = cleanUsername(query);
   const found =
     q.length < 2
@@ -200,6 +250,32 @@ function FindAccount() {
           .filter((p) => p.id !== me?.id && ((p.username ?? "").toLowerCase().includes(q) || p.name.toLowerCase().includes(q)))
           .sort((a, b) => Number((b.username ?? "").toLowerCase() === q) - Number((a.username ?? "").toLowerCase() === q))
           .slice(0, 8);
+
+  if (picked && !open) {
+    return (
+      <form onSubmit={unlock} className="grid w-full max-w-[40rem] gap-5 rounded-[28px] bg-card px-5 py-8 sm:px-8">
+        <div className="flex items-center gap-4">
+          <Avatar name={picked.name} id={picked.id} src={picked.avatar_url} size={52} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-2xl">{picked.name}</p>
+            {picked.username && <p className="text-sm text-muted">{handle(picked.username)}</p>}
+          </div>
+        </div>
+        <Field label={t("Password")} htmlFor="desk-find-password" hint={t("The password you use to sign in to this account.")}>
+          <Input id="desk-find-password" type="password" autoFocus required value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="off" />
+        </Field>
+        {wrong && <p className="rounded-2xl bg-danger-soft px-4 py-3 text-sm text-danger">{t("That isn't this account's password. Try again, or ask the admin for a new one.")}</p>}
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={back}>
+            {t("Back")}
+          </Button>
+          <Button type="submit" disabled={busy || !password}>
+            {busy ? t("Please wait…") : t("Continue")}
+          </Button>
+        </div>
+      </form>
+    );
+  }
 
   if (picked) {
     return (
@@ -215,10 +291,7 @@ function FindAccount() {
         <QuickLog week={currentWeek()} userId={picked.id} />
         <Button
           className="mt-2 justify-self-center"
-          onClick={() => {
-            setPicked(null);
-            setQuery("");
-          }}
+          onClick={back}
         >
           {t("Done")}
         </Button>
@@ -230,7 +303,7 @@ function FindAccount() {
     <div className="grid w-full max-w-[40rem] gap-5 rounded-[28px] bg-card px-5 py-8 sm:px-8">
       <div>
         <h1 className="text-[2rem] leading-tight">{t("Find my account")}</h1>
-        <p className="mt-2 text-base text-muted">{t("Type your username, then tap your name to log your Mivtzoim.")}</p>
+        <p className="mt-2 text-base text-muted">{t("Type your username, tap your name, then enter your password to log your Mivtzoim.")}</p>
       </div>
       <Field label={t("Username")} htmlFor="desk-find">
         <Input
@@ -267,6 +340,45 @@ function FindAccount() {
         </div>
       )}
     </div>
+  );
+}
+
+/** How long the desk waits with nobody touching it before the photos take over. */
+const REST_AFTER = 60_000;
+const SHOW_EACH = 6_000;
+
+/**
+ * The resting desk: the shared photos fill the screen one after another, newest to oldest, then
+ * around again. Any tap or key brings the desk back.
+ */
+function PhotoShow({ photos, onWake }: { photos: Photo[]; onWake(): void }) {
+  const [i, setI] = useState(0);
+  const wake = useRef(onWake);
+  wake.current = onWake;
+  useEffect(() => {
+    const timer = setInterval(() => setI((n) => n + 1), SHOW_EACH);
+    const key = () => wake.current();
+    window.addEventListener("keydown", key);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("keydown", key);
+    };
+  }, []);
+  const now = photos[i % photos.length];
+  const next = photos[(i + 1) % photos.length];
+  return (
+    <button type="button" onClick={onWake} aria-label={t("Tap to start")} className="fixed inset-0 z-50 block h-full w-full cursor-pointer overflow-hidden bg-black">
+      {/* The same photo, blurred, fills the edges a photo of another shape would leave empty. */}
+      <img key={`${now.id}-back`} src={now.thumbUrl ?? now.url} alt="" className="absolute inset-0 h-full w-full scale-110 object-cover opacity-60 blur-2xl" />
+      <img key={now.id} src={now.url} alt="" className="photo-show absolute inset-0 h-full w-full object-contain" />
+      {/* Loaded ahead, so the next one appears at once. */}
+      {next.id !== now.id && <img src={next.url} alt="" className="hidden" />}
+      <span className="absolute inset-x-0 bottom-8 flex justify-center">
+        <span className="inline-flex items-center gap-3 rounded-full bg-black/55 py-2.5 ps-3 pe-6 text-base font-medium text-white backdrop-blur-sm">
+          <LogoMark className="h-8 w-8" /> {t("Tap to start")}
+        </span>
+      </span>
+    </button>
   );
 }
 

@@ -163,6 +163,18 @@ export function createSupabaseBackend(url: string, key: string): Backend {
       const { error } = await sb.auth.signInWithPassword({ email: data.user.email, password });
       if (error) throw new Error(t("Your current password isn't right."));
     },
+    async checkAccountPassword(account, password) {
+      let email = account.email;
+      if (!email && account.username) email = (await sb.rpc("login_email", { p_username: loginKey(account.username) })).data;
+      if (!email) return false;
+      // A separate, throw-away sign-in that is never saved, so the Owner stays signed in on the desk.
+      const check = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: "sdm-desk-check" } });
+      const { error } = await check.auth.signInWithPassword({ email, password });
+      if (error) return false;
+      // "local": forget it here only. (The default would sign the person out of their own phone too.)
+      await check.auth.signOut({ scope: "local" }).catch(() => {});
+      return true;
+    },
     async changeUsername(raw) {
       const username = normalizeUsername(raw);
       const id = await uid();
