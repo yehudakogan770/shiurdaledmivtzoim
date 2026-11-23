@@ -667,3 +667,26 @@ input[type="date"]::-webkit-date-and-time-value {
 @media (prefers-reduced-motion: reduce) {
   .photo-show { animation: none; }
 }
+
+/* Waking the desk: the photos sink back (blurred, darker, pushed in a little)… */
+.photo-stage {
+  transition: filter 0.7s ease, transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.photo-stage-back {
+  filter: blur(22px) brightness(0.5) saturate(1.2);
+  transform: scale(1.18);
+}
+/* …and the desk flies up out of them, from small and far to full size. */
+@keyframes desk-pop {
+  0% { opacity: 0; transform: perspective(900px) translateZ(-900px) scale(0.5); filter: blur(10px); }
+  60% { opacity: 1; filter: blur(0); }
+  82% { transform: perspective(900px) translateZ(0) scale(1.03); }
+  100% { opacity: 1; transform: none; filter: none; }
+}
+.desk-pop {
+  animation: desk-pop 0.75s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .photo-stage { transition: none; }
+  .desk-pop { animation: none; }
+}

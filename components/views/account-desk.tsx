@@ -53,9 +53,25 @@ export function AccountDeskView({ ownerLang }: { ownerLang: Lang }) {
     };
   }, [resting]);
   const shots = photos.filter((p) => p.url);
-  if (resting && shots.length > 0) return <PhotoShow photos={shots} onWake={() => setResting(false)} />;
+  const behind = shots.length > 0;
   return (
-    <div className="flex min-h-screen flex-col items-center px-4 py-8 sm:py-12">
+    <div className="relative flex min-h-screen flex-col items-center px-4 py-8 sm:py-12">
+      {/* The photos are always there: full and sharp while the desk rests, dimmed and blurred behind it once someone taps. */}
+      {behind && <PhotoShow photos={shots} resting={resting} onWake={() => setResting(false)} />}
+      {!(resting && behind) && (
+        <div key={round} className={cx("relative z-10 flex w-full flex-col items-center", behind && "desk-pop")}>
+          <DeskBody tab={tab} setTab={setTab} round={round} behind={behind} onLeave={() => setLeaving(true)} />
+        </div>
+      )}
+      {leaving && <LeaveDesk ownerLang={ownerLang} onClose={() => setLeaving(false)} />}
+    </div>
+  );
+}
+
+/** The desk itself: the two tabs, the form, and the Owner's way out. */
+function DeskBody({ tab, setTab, round, behind, onLeave }: { tab: "create" | "find"; setTab(tab: "create" | "find"): void; round: number; behind: boolean; onLeave(): void }) {
+  return (
+    <>
       <div role="tablist" className="mb-6 grid w-full max-w-[40rem] grid-cols-2 gap-1 rounded-full bg-sunken p-1">
         {(["create", "find"] as const).map((k) => (
           <button
@@ -76,16 +92,15 @@ export function AccountDeskView({ ownerLang }: { ownerLang: Lang }) {
 
       <button
         type="button"
-        onClick={() => setLeaving(true)}
-        className="mt-8 inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm text-muted hover:bg-ink/5"
+        onClick={onLeave}
+        className={cx("mt-8 inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm", behind ? "bg-black/35 text-white/90 backdrop-blur-sm hover:bg-black/50" : "text-muted hover:bg-ink/5")}
       >
         <Lock size={16} aria-hidden /> {t("Owner")}
       </button>
-
-      {leaving && <LeaveDesk ownerLang={ownerLang} onClose={() => setLeaving(false)} />}
-    </div>
+    </>
   );
 }
+
 
 /** Making a new account: the same details as signing up, each sign-in detail typed twice. */
 function CreateAccount() {
@@ -348,37 +363,47 @@ const REST_AFTER = 60_000;
 const SHOW_EACH = 6_000;
 
 /**
- * The resting desk: the shared photos fill the screen one after another, newest to oldest, then
- * around again. Any tap or key brings the desk back.
+ * The shared photos, filling the screen one after another, newest to oldest, then around again.
+ * Resting: they are the whole screen, and any tap or key wakes the desk. Awake: they stay behind
+ * the desk, blurred and darkened, so the desk seems to come up out of them.
  */
-function PhotoShow({ photos, onWake }: { photos: Photo[]; onWake(): void }) {
+function PhotoShow({ photos, resting, onWake }: { photos: Photo[]; resting: boolean; onWake(): void }) {
   const [i, setI] = useState(0);
   const wake = useRef(onWake);
   wake.current = onWake;
   useEffect(() => {
     const timer = setInterval(() => setI((n) => n + 1), SHOW_EACH);
+    return () => clearInterval(timer);
+  }, []);
+  useEffect(() => {
+    if (!resting) return;
     const key = () => wake.current();
     window.addEventListener("keydown", key);
-    return () => {
-      clearInterval(timer);
-      window.removeEventListener("keydown", key);
-    };
-  }, []);
+    return () => window.removeEventListener("keydown", key);
+  }, [resting]);
   const now = photos[i % photos.length];
   const next = photos[(i + 1) % photos.length];
   return (
-    <button type="button" onClick={onWake} aria-label={t("Tap to start")} className="fixed inset-0 z-50 block h-full w-full cursor-pointer overflow-hidden bg-black">
-      {/* The same photo, blurred, fills the edges a photo of another shape would leave empty. */}
-      <img key={`${now.id}-back`} src={now.thumbUrl ?? now.url} alt="" className="absolute inset-0 h-full w-full scale-110 object-cover opacity-60 blur-2xl" />
-      <img key={now.id} src={now.url} alt="" className="photo-show absolute inset-0 h-full w-full object-contain" />
-      {/* Loaded ahead, so the next one appears at once. */}
-      {next.id !== now.id && <img src={next.url} alt="" className="hidden" />}
-      <span className="absolute inset-x-0 bottom-8 flex justify-center">
-        <span className="inline-flex items-center gap-3 rounded-full bg-black/55 py-2.5 ps-3 pe-6 text-base font-medium text-white backdrop-blur-sm">
-          <LogoMark className="h-8 w-8" /> {t("Tap to start")}
-        </span>
-      </span>
-    </button>
+    <>
+      <div aria-hidden className="fixed inset-0 z-0 overflow-hidden bg-black">
+        <div className={cx("photo-stage absolute inset-0", !resting && "photo-stage-back")}>
+          {/* The same photo, blurred, fills the edges a photo of another shape would leave empty. */}
+          <img key={`${now.id}-back`} src={now.thumbUrl ?? now.url} alt="" className="absolute inset-0 h-full w-full scale-110 object-cover opacity-60 blur-2xl" />
+          <img key={now.id} src={now.url} alt="" className="photo-show absolute inset-0 h-full w-full object-contain" />
+          {/* Loaded ahead, so the next one appears at once. */}
+          {next.id !== now.id && <img src={next.url} alt="" className="hidden" />}
+        </div>
+      </div>
+      {resting && (
+        <button type="button" onClick={onWake} aria-label={t("Tap to start")} className="fixed inset-0 z-20 block h-full w-full cursor-pointer">
+          <span className="absolute inset-x-0 bottom-8 flex justify-center">
+            <span className="inline-flex items-center gap-3 rounded-full bg-black/55 py-2.5 ps-3 pe-6 text-base font-medium text-white backdrop-blur-sm">
+              <LogoMark className="h-8 w-8" /> {t("Tap to start")}
+            </span>
+          </span>
+        </button>
+      )}
+    </>
   );
 }
 
