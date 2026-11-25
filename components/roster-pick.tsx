@@ -57,6 +57,9 @@ export function RosterPick({
         aria-label={t("{who}, name", { who: label })}
         required={required}
         disabled={!shown}
+        // Until a yeshiva is picked this is plainly switched off: darker, small words, no arrow. Then it turns into a normal box.
+        className={shown ? undefined : "cursor-not-allowed !bg-ink/15 !text-xs !text-muted opacity-100"}
+        style={shown ? undefined : { backgroundImage: "none" }}
         value={picked?.id ?? ""}
         onChange={(e) => onPick(roster.find((r) => r.id === e.target.value) ?? null)}
       >
