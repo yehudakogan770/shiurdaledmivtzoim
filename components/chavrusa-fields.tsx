@@ -4,6 +4,9 @@ import { Plus, X } from "lucide-react";
 import { BLANK_CHAVRUSA, chavrusasOf, hebrewName, type Chavrusa } from "@/lib/chavrusa";
 import { Button, IconButton, Input, cx } from "./ui";
 import { t } from "@/lib/i18n";
+import { useData } from "@/lib/data";
+import { rosterDisplay } from "@/lib/roster";
+import { NotOnList, RosterPick } from "./roster-pick";
 
 /**
  * The Chavrusas on a route: each one's English name, and under it the Hebrew name and the
@@ -26,15 +29,33 @@ export function ChavrusaFields({
   forSomeoneElse?: boolean;
   max?: number;
 }) {
+  const { roster } = useData();
+  // With the Shiur Daled list set up, the English name is picked from it (yeshiva, then name), never typed.
+  const fromList = roster.length > 0;
   const list = value.length ? value : [BLANK_CHAVRUSA];
   const set = (i: number, patch: Partial<Chavrusa>) => onChange(list.map((c, j) => (j === i ? { ...c, ...patch } : c)));
   return (
     <div className="grid gap-3">
       {list.map((c, i) => {
-        const needHebrew = !!requireHebrew && !!c.name.trim();
+        const onList = !!c.roster && roster.some((r) => r.id === c.roster);
+        const needHebrew = !!requireHebrew && !!(fromList ? onList : c.name.trim());
+        // A name typed in before the list existed: shown as a reminder of who this row is.
+        const typed = fromList && !onList && c.name.trim() ? c.name.trim() : "";
         return (
           <div key={i} className="grid gap-2 rounded-2xl bg-paper p-3">
+            {typed && <p className="px-1 text-xs text-muted">{t("You wrote: {name}. Now pick it from the list.", { name: typed })}</p>}
             <div className="flex items-center gap-2">
+              {fromList ? (
+                <RosterPick
+                  key={`${i}-${list.length}`}
+                  idPrefix={`${idPrefix}-${i}`}
+                  label={i === 0 && !forSomeoneElse ? t("Your name") : t("Chavrusa {n}", { n: i + 1 })}
+                  value={onList ? c.roster : undefined}
+                  yeshiva={c.yeshiva}
+                  required={i === 0 || !!c.hebrew.trim() || !!c.mother.trim() || !!typed}
+                  onPick={(r) => set(i, r ? { name: rosterDisplay(r), yeshiva: r.yeshiva, roster: r.id } : { roster: undefined, yeshiva: undefined })}
+                />
+              ) : (
               <Input
                 id={`${idPrefix}-${i}`}
                 aria-label={t("Chavrusa {n}, English name", { n: i + 1 })}
@@ -44,6 +65,7 @@ export function ChavrusaFields({
                 placeholder={i === 0 && !forSomeoneElse ? t("Your name") : t("Chavrusa's name")}
                 autoComplete="off"
               />
+              )}
               {list.length > 1 && (
                 <IconButton aria-label={t("Remove Chavrusa {n}", { n: i + 1 })} onClick={() => onChange(list.filter((_, j) => j !== i))}>
                   <X size={18} />
@@ -88,13 +110,16 @@ export function ChavrusaFields({
         );
       })}
       <div className="flex items-center justify-between gap-2">
-        <p className="px-1 text-xs text-muted">{t("English name, then the Hebrew name and the mother's Hebrew name.")}</p>
+        <p className="px-1 text-xs text-muted">
+          {fromList ? t("Yeshiva and name, then the Hebrew name and the mother's Hebrew name.") : t("English name, then the Hebrew name and the mother's Hebrew name.")}
+        </p>
         {list.length < max && (
           <Button variant="ghost" className="h-9 shrink-0 px-3" onClick={() => onChange([...list, BLANK_CHAVRUSA])}>
             <Plus size={16} aria-hidden /> {t("Add another")}
           </Button>
         )}
       </div>
+      {fromList && <NotOnList />}
     </div>
   );
 }

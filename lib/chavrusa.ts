@@ -2,12 +2,16 @@
  * A Chavrusa on a route: the English name, and the Hebrew name with the mother's name
  * ("מנחם מענדל בן חנה"). Each one is kept as one text in the account's partners list:
  * the English name alone, or a small JSON text when there's a Hebrew name too, so older
- * accounts (just names) keep working and nothing in the database had to change.
+ * accounts (just names) keep working and nothing in the database had to change. A name
+ * picked from the Shiur Daled list also carries its yeshiva and which name on the list it is.
  */
 export interface Chavrusa {
   name: string;
   hebrew: string;
   mother: string;
+  /** Picked from the Shiur Daled list: the yeshiva, and which name on the list (its id). */
+  yeshiva?: string;
+  roster?: string;
 }
 
 export const BLANK_CHAVRUSA: Chavrusa = { name: "", hebrew: "", mother: "" };
@@ -17,7 +21,12 @@ export function parseChavrusa(raw: string): Chavrusa {
   if (text.startsWith("{")) {
     try {
       const c = JSON.parse(text);
-      return { name: String(c.n ?? "").trim(), hebrew: String(c.h ?? "").trim(), mother: String(c.m ?? "").trim() };
+      return {
+        name: String(c.n ?? "").trim(),
+        hebrew: String(c.h ?? "").trim(),
+        mother: String(c.m ?? "").trim(),
+        ...(c.r ? { yeshiva: String(c.y ?? ""), roster: String(c.r) } : {}),
+      };
     } catch {
       // Not ours after all: treat it as a plain name.
     }
@@ -29,6 +38,7 @@ export function encodeChavrusa(c: Chavrusa): string {
   const name = c.name.trim();
   const hebrew = c.hebrew.trim();
   const mother = c.mother.trim();
+  if (c.roster) return JSON.stringify({ n: name, h: hebrew, m: mother, y: c.yeshiva ?? "", r: c.roster });
   return hebrew || mother ? JSON.stringify({ n: name, h: hebrew, m: mother }) : name;
 }
 

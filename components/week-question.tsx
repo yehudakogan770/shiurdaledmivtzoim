@@ -2,6 +2,8 @@
 
 import { useRef, useState } from "react";
 import { Check, Footprints, Plus } from "lucide-react";
+import { rosterDisplay } from "@/lib/roster";
+import { NotOnList, RosterPick } from "./roster-pick";
 import { useData } from "@/lib/data";
 import { chavrusasOf } from "@/lib/chavrusa";
 import { currentWeek } from "@/lib/dates";
@@ -98,19 +100,24 @@ function SmallChoice({ selected, tone, onClick, children }: { selected: boolean;
 
 /** The small pop-up: just the names, a circle by each, and Other. */
 function WhoWent({ people, onChange, onClose }: { people: string[]; onChange(next: string[]): void; onClose(): void }) {
-  const { me } = useData();
+  const { me, roster } = useData();
   const [adding, setAdding] = useState(false);
   const [other, setOther] = useState("");
+  // With the Shiur Daled list set up, "Other" first asks whether the person is in Shiur Daled:
+  // if so they're picked from the list (yeshiva, then name); if not, the name is typed.
+  const [kind, setKind] = useState<null | "in" | "out">(null);
+  const askKind = roster.length > 0;
+  const add = (name: string) => {
+    if (name && !people.some((p) => p.toLowerCase() === name.toLowerCase())) onChange([...people, name]);
+    setOther("");
+    setAdding(false);
+    setKind(null);
+  };
   const names = chavrusasOf(me?.partners).map((c) => c.name || c.hebrew);
   // Anyone typed in under Other, who isn't one of the route's Chavrusas.
   const others = people.filter((p) => !names.includes(p));
   const toggle = (name: string) => onChange(people.includes(name) ? people.filter((p) => p !== name) : [...people, name]);
-  const addOther = () => {
-    const name = other.trim();
-    if (name && !people.some((p) => p.toLowerCase() === name.toLowerCase())) onChange([...people, name]);
-    setOther("");
-    setAdding(false);
-  };
+  const addOther = () => add(other.trim());
 
   // Someone went, so at least one name is needed before it closes.
   const ready = people.length > 0;
@@ -127,7 +134,24 @@ function WhoWent({ people, onChange, onClose }: { people: string[]; onChange(nex
           {[...names, ...others].map((name) => (
             <NameRow key={name} name={name} selected={people.includes(name)} onClick={() => toggle(name)} />
           ))}
-          {adding ? (
+          {adding && askKind && kind === null ? (
+            <div className="grid gap-2 py-1">
+              <p className="px-1 text-sm text-muted">{t("Is he in Shiur Daled?")}</p>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="tonal" onClick={() => setKind("in")}>
+                  {t("In Shiur Daled")}
+                </Button>
+                <Button type="button" variant="tonal" onClick={() => setKind("out")}>
+                  {t("Not in Shiur Daled")}
+                </Button>
+              </div>
+            </div>
+          ) : adding && askKind && kind === "in" ? (
+            <div className="grid gap-2 py-1">
+              <RosterPick idPrefix="who-went-other" label={t("Other")} onPick={(r) => r && add(rosterDisplay(r))} />
+              <NotOnList />
+            </div>
+          ) : adding ? (
             <form
               className="flex items-center gap-2 py-1"
               onSubmit={(e) => {

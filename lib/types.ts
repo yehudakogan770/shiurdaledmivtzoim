@@ -235,6 +235,15 @@ export interface ChanukahTester {
   created_at: string;
 }
 
+/** One person on the Shiur Daled list: only names on it can be on an account. Kept in the database, never in the code. */
+export interface RosterName {
+  id: string;
+  yeshiva: string;
+  last_name: string;
+  first_name: string;
+  created_at: string;
+}
+
 export interface Tables {
   profiles: Profile;
   groups: Group;
@@ -250,6 +259,7 @@ export interface Tables {
   posters: Poster;
   chanukah_entries: ChanukahEntry;
   chanukah_testers: ChanukahTester;
+  roster: RosterName;
 }
 
 export type TableName = keyof Tables;

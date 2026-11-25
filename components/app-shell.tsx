@@ -14,7 +14,8 @@ import { LogoMark, LogoWithName } from "./brand";
 import { LoginView } from "./views/login";
 import { SiteFooter } from "./site-footer";
 import { EditModeProvider } from "@/lib/edit-mode";
-import { HebrewNamesGate, missingHebrewNames } from "./hebrew-names-gate";
+import { HebrewNamesGate, missingHebrewNames, useListNamesInStep } from "./hebrew-names-gate";
+import { needsListNames } from "@/lib/roster";
 import { t } from "@/lib/i18n";
 import { setAccountDesk, useAccountDesk } from "@/lib/account-desk";
 import { AccountDeskView } from "./views/account-desk";
@@ -347,7 +348,8 @@ function TopAppBar({ onMenu }: { onMenu: () => void }) {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { status, error, me, guest, backend, toast, auth, isOwner, signInAsked } = useData();
+  const { status, error, me, guest, backend, toast, auth, isOwner, signInAsked, roster } = useData();
+  useListNamesInStep();
   const { path: rawPath, query, go, Link } = useNav();
   const path = rawPath.length > 1 ? rawPath.replace(/\/+$/, "") : rawPath;
   const [menuOpen, setMenuOpen] = useState(false);
@@ -465,7 +467,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </main>
       </div>
       {/* Everyone but the Owner fills in their Chavrusas' Hebrew names before using the site. */}
-      {me && !isOwner && backend?.hasAuth && missingHebrewNames(me.partners) && <HebrewNamesGate key={me.id} />}
+      {me && !isOwner && backend?.hasAuth && (missingHebrewNames(me.partners) || needsListNames(me.partners, roster)) && <HebrewNamesGate key={me.id} />}
       {me && !guest && !isOwner && <WhoWentPrompt />}
       {/* The Owner's messages wait until the Hebrew names are filled in. */}
       {me && !guest && !isOwner && !(backend?.hasAuth && missingHebrewNames(me.partners)) && <MessagePrompt />}

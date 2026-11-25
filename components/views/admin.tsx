@@ -17,6 +17,7 @@ import { PHOTOS_PROMO } from "../photos-promo";
 import { ChanukahTestCard } from "../chanukah-test";
 import { useNav } from "@/lib/nav";
 import { ChavrusaFields, ChavrusaNames } from "../chavrusa-fields";
+import { RosterCard } from "./roster-admin";
 import { Avatar, Badge, Button, ButtonLink, Card, Chip, CardTitle, CategoryIcon, Empty, Field, IconButton, Input, Modal, PageHeader, Select, Textarea, cx, listClass } from "../ui";
 import { sum } from "./dashboard";
 import { t, tn } from "@/lib/i18n";
@@ -49,6 +50,7 @@ export function AdminView() {
       {isOwner && <PostersCard />}
       {isOwner && <ChanukahTestCard />}
       <PeopleCard />
+      <RosterCard />
       <ExportCard />
       {isOwner && <PhotoDriveCard />}
       {/* The Owner's History already shows everyone's entries. */}

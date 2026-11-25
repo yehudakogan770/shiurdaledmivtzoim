@@ -22,6 +22,7 @@ import type {
   ReportCount,
   ReportViewer,
   ReportAccess,
+  RosterName,
   Poster,
   ChanukahEntry,
 } from "./types";
@@ -137,6 +138,8 @@ interface DataContextValue {
   canSeeReport: boolean;
   /** The weekly report's items and numbers; null until database update 016 is run (or not allowed). */
   report: { items: ReportItem[]; counts: ReportCount[] } | null;
+  /** The Shiur Daled names list; empty when it isn't set up, and then names are typed in freely. */
+  roster: RosterName[];
   /** The Owner: the accounts allowed to see the weekly report (besides admins). */
   reportViewers: string[];
   /** What this account may do on the weekly report. */
@@ -259,6 +262,10 @@ interface DataContextValue {
     deleteChanukahTests(): Promise<void>;
     /** The Owner: let an account test Chanukah, or stop it. */
     setChanukahTester(userId: string, allowed: boolean): Promise<void>;
+    /** Admins: the Shiur Daled names list. */
+    addRosterName(yeshiva: string, last: string, first: string): Promise<void>;
+    updateRosterName(id: string, patch: { yeshiva: string; last_name: string; first_name: string }): Promise<void>;
+    removeRosterName(id: string): Promise<void>;
     /** The Owner: what an account on the weekly report may do. */
     setReportAccess(userId: string, access: ReportAccess): Promise<void>;
     /** The weekly report's items (the Owner, admins, and accounts allowed to change them). */
@@ -308,6 +315,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [cards, setCards] = useState<Record<string, LocationCard>>({});
   // Who may see the weekly report: rows of report_viewers (empty until database update 016 is run).
   const [viewerRows, setViewerRows] = useState<ReportViewer[]>([]);
+  // The Shiur Daled names list (database update 023). Empty until it's run: then names are typed in, as before.
+  const [roster, setRoster] = useState<RosterName[]>([]);
   const [report, setReport] = useState<DataContextValue["report"]>(null);
   const [posters, setPosters] = useState<Poster[]>([]);
   const [chanukah, setChanukah] = useState<ChanukahEntry[] | null>(null);
@@ -351,6 +360,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     if (b.listPhotos) b.listPhotos().then(setPhotos, () => {});
     if (!user) setCards({});
     else if (b.listCards) b.listCards().then((list) => setCards(Object.fromEntries(list.map((c) => [c.location_id, c]))), () => {});
+    // The names list is needed before signing in too, for the sign-up form.
+    b.list("roster").then(setRoster, () => setRoster([]));
     if (!user) {
       // The sample: nothing logged, but the same mivtzoim everyone has.
       const categories = b.sharedMivtzoim ? await b.sharedMivtzoim().catch(() => []) : [];
@@ -593,6 +604,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       photos,
       cards,
       canSeeReport: me?.role === "admin" || viewerRows.some((v) => v.user_id === me?.id),
+      roster,
       reportViewers: viewerRows.map((v) => v.user_id),
       reportAccess: me?.role === "admin" ? "edit" : (viewerRows.find((v) => v.user_id === me?.id)?.access ?? "fill"),
       reportAccessOf: Object.fromEntries(viewerRows.map((v) => [v.user_id, v.access ?? "fill"])),
@@ -975,6 +987,26 @@ export function DataProvider({ children }: { children: ReactNode }) {
             setTesterRows((v) => v.filter((x) => x.id !== row.id));
           }
         },
+        addRosterName: async (yeshiva, last, first) => {
+          const row = { yeshiva: yeshiva.trim(), last_name: last.trim(), first_name: first.trim() };
+          if (!row.yeshiva || !row.last_name || !row.first_name) throw new Error(t("Fill in the yeshiva, the last name and the first name."));
+          if (roster.some((r) => r.yeshiva === row.yeshiva && r.last_name.toLowerCase() === row.last_name.toLowerCase() && r.first_name.toLowerCase() === row.first_name.toLowerCase()))
+            throw new Error(t("That name is already on this yeshiva's list."));
+          const saved = await b.insert("roster", row).catch((e: Error) => {
+            throw new Error(/roster|relation|schema cache/.test(e.message) ? t("Run database update 023 in Supabase first.") : e.message);
+          });
+          setRoster((r) => [...r, saved]);
+        },
+        updateRosterName: async (id, patch) => {
+          const clean = { yeshiva: patch.yeshiva.trim(), last_name: patch.last_name.trim(), first_name: patch.first_name.trim() };
+          if (!clean.yeshiva || !clean.last_name || !clean.first_name) throw new Error(t("Fill in the yeshiva, the last name and the first name."));
+          await b.update("roster", id, clean);
+          setRoster((r) => r.map((x) => (x.id === id ? { ...x, ...clean } : x)));
+        },
+        removeRosterName: async (id) => {
+          await b.remove("roster", id);
+          setRoster((r) => r.filter((x) => x.id !== id));
+        },
         setReportAccess: async (userId, access) => {
           const row = viewerRows.find((v) => v.user_id === userId);
           if (!row) return;
@@ -1111,7 +1143,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       actions: sampleOnly(value.actions, askSignIn),
       auth: { ...sampleOnly(value.auth, askSignIn), signIn, signUp, requestPasswordReset, updatePassword, finishRecovery, recovering },
     };
-  }, [backend, status, error, me, data, mine, settings, people, photos, cards, viewerRows, report, posters, chanukah, chanukahTotals, testerRows, recovering, toast, notify, refresh, load, signInAsked, askSignIn, closeSignIn]);
+  }, [backend, status, error, me, data, mine, settings, people, photos, cards, viewerRows, roster, report, posters, chanukah, chanukahTotals, testerRows, recovering, toast, notify, refresh, load, signInAsked, askSignIn, closeSignIn]);
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }
