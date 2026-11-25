@@ -12,7 +12,7 @@ import { useNav } from "@/lib/nav";
 import { setAccountDesk } from "@/lib/account-desk";
 import { handle } from "@/lib/admin";
 import { cleanUsername } from "@/lib/backend";
-import { BLANK_CHAVRUSA, encodeChavrusa, type Chavrusa } from "@/lib/chavrusa";
+import { BLANK_CHAVRUSA, chavrusasOf, encodeChavrusa, type Chavrusa } from "@/lib/chavrusa";
 import { ChavrusaFields } from "../chavrusa-fields";
 import { LanguageButtons } from "../language-picker";
 import { LogoMark } from "../brand";
@@ -269,14 +269,20 @@ function FindAccount({ onDone }: { onDone(): void }) {
     setPicked(null);
     setQuery("");
   };
-  const q = cleanUsername(query);
+  // By username, account (route) name, email, or the name of anyone on the account.
+  const q = query.normalize("NFKC").replace(/\p{Cf}/gu, "").trim().toLowerCase();
+  const names = (p: Profile) => chavrusasOf(p.partners).flatMap((c) => [c.name, c.hebrew]);
+  const hit = (p: Profile) => [p.username, p.name, p.email, ...names(p)].some((v) => (v ?? "").toLowerCase().includes(q));
+  const exact = (p: Profile) => Number([p.username, p.email].some((v) => (v ?? "").toLowerCase() === q));
   const found =
     q.length < 2
       ? []
       : people
-          .filter((p) => p.id !== me?.id && ((p.username ?? "").toLowerCase().includes(q) || p.name.toLowerCase().includes(q)))
-          .sort((a, b) => Number((b.username ?? "").toLowerCase() === q) - Number((a.username ?? "").toLowerCase() === q))
+          .filter((p) => p.id !== me?.id && hit(p))
+          .sort((a, b) => exact(b) - exact(a))
           .slice(0, 8);
+  // The person's own name under the account name, when that's what they searched by.
+  const who = (p: Profile) => chavrusasOf(p.partners).map((c) => c.name || c.hebrew).filter(Boolean).join(", ");
 
   if (picked) {
     return (
@@ -308,9 +314,9 @@ function FindAccount({ onDone }: { onDone(): void }) {
     <div className="grid w-full max-w-[40rem] gap-5 rounded-[28px] bg-card px-5 py-8 sm:px-8">
       <div>
         <h1 className="text-[2rem] leading-tight">{t("Find my account")}</h1>
-        <p className="mt-2 text-base text-muted">{t("Type your username, then tap your name to log your Mivtzoim.")}</p>
+        <p className="mt-2 text-base text-muted">{t("Type your username, your account name, your email or your own name, then tap your account to log your Mivtzoim.")}</p>
       </div>
-      <Field label={t("Username")} htmlFor="desk-find">
+      <Field label={t("Username, account name, email or your name")} htmlFor="desk-find">
         <Input
           id="desk-find"
           value={query}
@@ -335,12 +341,12 @@ function FindAccount({ onDone }: { onDone(): void }) {
                 <Avatar name={p.name} id={p.id} src={p.avatar_url} size={40} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-lg font-medium">{p.name}</span>
-                  {p.username && <span className="block text-sm text-muted">{handle(p.username)}</span>}
+                  <span className="block truncate text-sm text-muted">{[p.username && handle(p.username), who(p)].filter(Boolean).join(" · ")}</span>
                 </span>
               </button>
             ))
           ) : (
-            <p className="px-1 text-sm text-muted">{t("No account with that username. Check the spelling, or create an account.")}</p>
+            <p className="px-1 text-sm text-muted">{t("No account found. Check the spelling, or create an account.")}</p>
           )}
         </div>
       )}
