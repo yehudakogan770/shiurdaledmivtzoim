@@ -1,9 +1,9 @@
 import type { RosterName } from "./types";
 import { chavrusasOf } from "./chavrusa";
 
-/** "Mendy Abenaim": how a name from the list shows around the site. */
+/** "Mendel Cohen": how a name from the list shows around the site. */
 export const rosterDisplay = (r: RosterName) => `${r.first_name} ${r.last_name}`.trim();
-/** "Abenaim, Mendy": how it shows in the drop-down, so it's found by last name. */
+/** "Cohen, Mendel": how it shows in the drop-down, so it's found by last name. */
 export const rosterLabel = (r: RosterName) => [r.last_name, r.first_name].filter(Boolean).join(", ");
 
 const byText = (a: string, b: string) => a.localeCompare(b, "en", { sensitivity: "base" });
