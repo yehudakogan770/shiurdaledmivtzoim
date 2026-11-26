@@ -73,8 +73,9 @@ export function PosterPrompt() {
   if (shown.image_url === PHOTOS_PROMO) return <PhotosPromoCard onClose={close} />;
   return (
     <Modal onClose={close} blur>
-      <div role="dialog" aria-modal="true" aria-label={t("Poster")} onClick={(e) => e.stopPropagation()} className="relative w-full max-w-md">
-        <img src={shown.image_url} alt="" className="max-h-[80dvh] w-full rounded-[28px] object-contain shadow-pop" />
+      <div role="dialog" aria-modal="true" aria-label={t("Poster")} onClick={(e) => e.stopPropagation()} className="relative w-fit max-w-md">
+        {/* The frame hugs the picture, so a tall poster on a wide screen has no pale band beside it. */}
+        <img src={shown.image_url} alt="" className="block h-auto max-h-[80dvh] w-auto max-w-full rounded-[28px] shadow-pop" />
         <button type="button" onClick={close} aria-label={t("Close")} className="absolute top-3 end-3 grid h-10 w-10 place-items-center rounded-full bg-black/55 text-white backdrop-blur-sm">
           <X size={22} />
         </button>
