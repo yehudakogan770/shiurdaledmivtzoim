@@ -8,6 +8,8 @@ import type { Area } from "./types";
  */
 const common: Area = {
   he: {
+    "Try again": "נסה שוב",
+    "The connection dropped. Check your internet and try again.": "החיבור נפל. בדוק את האינטרנט ונסה שוב.",
     "{who}, yeshiva": "{who}, ישיבה",
     "{who}, name": "{who}, שם",
     "Yeshiva": "ישיבה",
@@ -66,6 +68,8 @@ const common: Area = {
     "Crown Hts": "קראון הייטס",
   },
   fr: {
+    "Try again": "Réessayer",
+    "The connection dropped. Check your internet and try again.": "La connexion a été coupée. Vérifie ton internet et réessaie.",
     "{who}, yeshiva": "{who}, yeshiva",
     "{who}, name": "{who}, nom",
     "Yeshiva": "Yeshiva",
@@ -124,6 +128,8 @@ const common: Area = {
     "Crown Hts": "Crown Hts",
   },
   es: {
+    "Try again": "Intentar de nuevo",
+    "The connection dropped. Check your internet and try again.": "Se cortó la conexión. Revisa tu internet e inténtalo de nuevo.",
     "{who}, yeshiva": "{who}, yeshivá",
     "{who}, name": "{who}, nombre",
     "Yeshiva": "Yeshivá",

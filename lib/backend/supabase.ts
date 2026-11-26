@@ -9,7 +9,20 @@ function siteUrl() {
 }
 
 function fail(error: { message: string } | null) {
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(dropped(error.message) ? t("The connection dropped. Check your internet and try again.") : error.message);
+}
+
+/** The request never reached the database (no signal, a dropped connection): browsers word this differently. */
+const dropped = (message: string) => /Load failed|Failed to fetch|NetworkError|network connection|timed out/i.test(message);
+
+/** Runs a read again (after a short wait) when the connection dropped, up to three tries in all. */
+async function again<T extends { error: { message: string } | null }>(ask: () => PromiseLike<T>): Promise<T> {
+  let res = await ask();
+  for (let i = 0; i < 2 && res.error && dropped(res.error.message); i++) {
+    await new Promise((r) => setTimeout(r, 700 * (i + 1)));
+    res = await ask();
+  }
+  return res;
 }
 
 /**
@@ -192,7 +205,8 @@ export function createSupabaseBackend(url: string, key: string): Backend {
       const PAGE = 1000;
       const rows: Tables[typeof table][] = [];
       for (let from = 0; ; from += PAGE) {
-        const { data, error } = await sb.from(table).select("*").order("id").range(from, from + PAGE - 1);
+        // A weak phone signal can drop one request: ask again a couple of times before giving up.
+        const { data, error } = await again(() => sb.from(table).select("*").order("id").range(from, from + PAGE - 1));
         fail(error);
         rows.push(...((data ?? []) as Tables[typeof table][]));
         if (!data || data.length < PAGE) return rows;
@@ -221,10 +235,15 @@ export function createSupabaseBackend(url: string, key: string): Backend {
       return data as string;
     },
     async names(ids) {
-      const { data } = await sb.from("profiles").select("id, name, partners").in("id", ids);
+      // In batches: hundreds of ids in one request make an address too long to send.
+      const data: { id: string; name: string; partners: string[] | null }[] = [];
+      for (let i = 0; i < ids.length; i += 100) {
+        const res = await again(() => sb.from("profiles").select("id, name, partners").in("id", ids.slice(i, i + 100)));
+        if (res.data) data.push(...res.data);
+      }
       const out: Record<string, string> = {};
       for (const id of ids) {
-        const p = data?.find((x) => x.id === id);
+        const p = data.find((x) => x.id === id);
         out[id] = p ? displayName(p) : "Someone";
       }
       return out;

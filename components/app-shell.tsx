@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { History, Images, LayoutDashboard, LogIn, LogOut, Map, Menu, ShieldCheck, Sunset, UserRound, UserRoundPlus, ChartColumn } from "lucide-react";
+import { History, Images, LayoutDashboard, RotateCw, LogIn, LogOut, Map, Menu, ShieldCheck, Sunset, UserRound, UserRoundPlus, ChartColumn } from "lucide-react";
 import { handle } from "@/lib/admin";
 import { useData } from "@/lib/data";
 import { displayName } from "@/lib/types";
@@ -394,6 +394,10 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="mx-auto max-w-md py-20 text-center">
         <p className="text-2xl">{t("We couldn't load your data")}</p>
         <p className="mt-2 text-muted">{error}</p>
+        {/* Usually a weak signal: one tap tries again, without having to find the browser's reload. */}
+        <Button className="mt-6" onClick={() => window.location.reload()}>
+          <RotateCw size={16} aria-hidden /> {t("Try again")}
+        </Button>
       </div>
     );
   } else if (desk && isOwner) {
