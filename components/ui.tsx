@@ -313,7 +313,11 @@ export function Modal({ onClose, blur, children }: { onClose(): void; blur?: boo
     const block = (e: Event) => {
       const box = panel.current;
       const inside = box && e.target instanceof Node && box.contains(e.target);
-      const scrolls = box && box.scrollHeight > box.clientHeight + 1;
+      // The pop-up scrolls when it, or anything inside it around the finger, is taller than its space.
+      let scrolls = false;
+      for (let el = inside && e.target instanceof Element ? e.target : null; el && box; el = el === box ? null : el.parentElement) {
+        if (el.scrollHeight > el.clientHeight + 1 && (el === box || /auto|scroll/.test(getComputedStyle(el).overflowY))) scrolls = true;
+      }
       if (e.type === "touchmove" && (e as TouchEvent).touches.length > 1) return e.preventDefault();
       if (!(inside && scrolls) && e.cancelable) e.preventDefault();
     };

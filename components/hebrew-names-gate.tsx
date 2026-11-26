@@ -52,7 +52,7 @@ export function HebrewNamesGate() {
         aria-labelledby="hebrew-title"
         onSubmit={save}
         onClick={(e) => e.stopPropagation()}
-        className="grid max-h-[92dvh] w-full max-w-md gap-4 overflow-y-auto rounded-[28px] bg-card p-6 shadow-pop"
+        className="grid w-full max-w-md gap-4 rounded-[28px] bg-card p-6 shadow-pop"
       >
         <span className="grid h-12 w-12 place-items-center rounded-2xl bg-accent-soft text-accent-on-soft">
           {pick ? <ListChecks size={22} aria-hidden /> : <Languages size={22} aria-hidden />}
