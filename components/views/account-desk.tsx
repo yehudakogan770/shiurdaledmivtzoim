@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type FormEvent, type TouchEvent } from "react";
-import { CircleCheck, Heart, Lock, MapPin, Plus, Search, Trash2, UserRoundPlus } from "lucide-react";
+import { CircleCheck, ListChecks, Lock, MapPin, Plus, Search, Trash2, UserRoundPlus } from "lucide-react";
 import type { Photo, Profile } from "@/lib/types";
 import { showOrder } from "@/lib/photos";
 import { currentWeek } from "@/lib/dates";
@@ -441,7 +441,7 @@ function ThankYou({ person, onStops, onClose }: { person: Profile; onStops(): vo
   return (
     <div className="grid w-full max-w-[40rem] justify-items-center gap-4 rounded-[28px] bg-card px-6 py-12 text-center sm:px-10">
       <span className="flame-fill grid h-16 w-16 place-items-center rounded-full">
-        <Heart size={30} aria-hidden />
+        <ListChecks size={32} strokeWidth={2.2} aria-hidden />
       </span>
       <h1 className="text-[2rem] leading-tight">{t("Thank you for filling out the Duch!")}</h1>
       <p className="text-base text-muted">{t("Every Mivtza you log is counted. See you next week.")}</p>
