@@ -695,17 +695,15 @@ input[type="date"]::-webkit-date-and-time-value {
   .desk-pop { animation: none; }
 }
 
-/* The account desk's two tabs: the colored pill glides across, and the two forms glide with it. */
+/* The account desk's three tabs: the colored pill glides across (--at is which tab), and the forms glide with it. */
 .desk-tab-pill {
-  width: calc((100% - 0.75rem) / 2);
+  width: calc((100% - 1rem) / 3);
+  transform: translateX(calc(var(--at, 0) * (100% + 0.25rem)));
   transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
 }
-.desk-tab-pill[data-tab="find"] {
-  transform: translateX(calc(100% + 0.25rem));
-}
-[dir="rtl"] .desk-tab-pill[data-tab="find"] {
-  transform: translateX(calc(-100% - 0.25rem));
+[dir="rtl"] .desk-tab-pill {
+  transform: translateX(calc(var(--at, 0) * (-100% - 0.25rem)));
 }
 .desk-panel {
   transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.35s ease;
@@ -719,10 +717,10 @@ input[type="date"]::-webkit-date-and-time-value {
   opacity: 0;
   pointer-events: none;
 }
-.desk-panel-off[data-side="create"] { transform: translateX(-45%); }
-.desk-panel-off[data-side="find"] { transform: translateX(45%); }
-[dir="rtl"] .desk-panel-off[data-side="create"] { transform: translateX(45%); }
-[dir="rtl"] .desk-panel-off[data-side="find"] { transform: translateX(-45%); }
+.desk-panel-off[data-off="before"] { transform: translateX(-45%); }
+.desk-panel-off[data-off="after"] { transform: translateX(45%); }
+[dir="rtl"] .desk-panel-off[data-off="before"] { transform: translateX(45%); }
+[dir="rtl"] .desk-panel-off[data-off="after"] { transform: translateX(-45%); }
 @media (prefers-reduced-motion: reduce) {
   .desk-tab-pill, .desk-panel { transition: none; }
 }

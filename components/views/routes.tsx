@@ -24,7 +24,7 @@ const STOP_TYPES = ["Store", "Office", "Home", "Hospital", "Campus", "Street cor
 /** A stop type in the site's language ("Home" here is a house, not the Home page). */
 const typeLabel = (type: string) => (type === "Home" ? (getLang() === "en" ? "Home" : t("Home (a house)")) : t(type));
 
-type StopDraft = {
+export type StopDraft = {
   name: string;
   address: string;
   type: string;
@@ -38,10 +38,10 @@ type StopDraft = {
   /** The saved card picture was taken off. */
   cardRemoved?: boolean;
 };
-const blankStop: StopDraft = { name: "", address: "", type: "Store", notes: "", contact: "", phone: "", email: "", website: "", card: null };
+export const blankStop: StopDraft = { name: "", address: "", type: "Store", notes: "", contact: "", phone: "", email: "", website: "", card: null };
 
 /** What gets saved: a new card picture, removing the old one, or leaving it as is. */
-function toInput(d: StopDraft): StopInput {
+export function toInput(d: StopDraft): StopInput {
   return { ...d, card: d.card?.blob ? d.card.blob : d.cardRemoved ? null : undefined };
 }
 
@@ -114,7 +114,7 @@ export function RoutesView() {
   );
 }
 
-function StopFields({ value, onChange, idPrefix }: { value: StopDraft; onChange(v: StopDraft): void; idPrefix: string }) {
+export function StopFields({ value, onChange, idPrefix }: { value: StopDraft; onChange(v: StopDraft): void; idPrefix: string }) {
   const [more, setMore] = useState(!!(value.contact || value.phone || value.email || value.website || value.card));
   const [viewing, setViewing] = useState(false);
   const field = (key: "contact" | "phone" | "email" | "website", label: string, props: Partial<React.ComponentProps<typeof Input>>) => (

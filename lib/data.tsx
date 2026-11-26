@@ -214,7 +214,10 @@ interface DataContextValue {
     deleteGroup(groupId: string): Promise<void>;
     createRoute(input: { name: string; description?: string; group_id: string | null; stops: StopInput[] }): Promise<Route>;
     deleteRoute(routeId: string): Promise<void>;
-    addStop(routeId: string, stop: StopInput): Promise<void>;
+    /** `forUser`: the Owner adding it at the account desk for that account. */
+    addStop(routeId: string, stop: StopInput, forUser?: string): Promise<void>;
+    /** The Owner, at the account desk: a first route for an account that has none. */
+    createRouteFor(userId: string, name: string): Promise<Route>;
     removeStop(stopId: string): Promise<void>;
     toggleStop(stop: RouteLocation): Promise<void>;
     resetRoute(routeId: string): Promise<void>;
@@ -793,7 +796,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
             }
             await b.remove("routes", routeId);
           }),
-        addStop: (routeId, s) =>
+        createRouteFor: (userId, name) =>
+          run(async () => {
+            // The database lets an account make only its own routes, so the Owner makes it and then hands it over.
+            const route = await b.insert("routes", { name: name.trim() || t("My route"), description: null, group_id: null, created_by: uid() });
+            if (userId !== uid()) await b.update("routes", route.id, { created_by: userId });
+            return { ...route, created_by: userId };
+          }),
+        addStop: (routeId, s, forUser) =>
           run(async () => {
             const loc = await b.insert("locations", {
               name: s.name.trim(),
@@ -802,13 +812,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
               notes: s.notes?.trim() || null,
               created_by: uid(),
             });
+            // Added at the account desk for someone else: the place (and its card) becomes theirs.
+            const owner = forUser && forUser !== uid() ? forUser : uid();
+            if (owner !== uid()) await b.update("locations", loc.id, { created_by: owner });
             const before = data.stops.filter((x) => x.route_id === routeId).sort((x, y) => x.position - y.position);
             const last = Math.max(-1, ...before.map((x) => x.position));
             // Still in distance order (nobody moved a stop)? Then the new stop takes its place in it;
             // otherwise it goes at the end, keeping the order the person chose.
             const sorted = await inDistanceOrder(before);
             const added = await b.insert("route_locations", { route_id: routeId, location_id: loc.id, position: last + 1, completed: false });
-            await saveCardFor(loc.id, uid(), s);
+            await saveCardFor(loc.id, owner, s);
             if (sorted) await saveOrder(await orderByDistance([...before.map(withAddress), { ...added, address: loc.address }]));
           }),
         sortStops: (routeId) =>
