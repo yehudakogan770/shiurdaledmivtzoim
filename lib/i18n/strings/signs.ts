@@ -3,6 +3,11 @@ import type { Area } from "./types";
 /** The Sign Creator (admins). The words typed onto a sign are never translated. */
 const signs: Area = {
   he: {
+    "Bold": "מודגש",
+    "Italic": "נטוי",
+    "Underline": "קו תחתון",
+    "Line through": "קו חוצה",
+    "{what}: style": "{what}: סגנון",
     "{what}: font": "{what}: גופן",
     "Left": "שמאל",
     "Center": "מרכז",
@@ -26,6 +31,11 @@ const signs: Area = {
     "The sign couldn't be downloaded. Please try again.": "לא ניתן היה להוריד את השלט. נסו שוב.",
   },
   fr: {
+    "Bold": "Gras",
+    "Italic": "Italique",
+    "Underline": "Souligné",
+    "Line through": "Barré",
+    "{what}: style": "{what} : style",
     "{what}: font": "{what} : police",
     "Left": "Gauche",
     "Center": "Centre",
@@ -49,6 +59,11 @@ const signs: Area = {
     "The sign couldn't be downloaded. Please try again.": "Impossible de télécharger l'affiche. Veuillez réessayer.",
   },
   es: {
+    "Bold": "Negrita",
+    "Italic": "Cursiva",
+    "Underline": "Subrayado",
+    "Line through": "Tachado",
+    "{what}: style": "{what}: estilo",
     "{what}: font": "{what}: fuente",
     "Left": "Izquierda",
     "Center": "Centro",

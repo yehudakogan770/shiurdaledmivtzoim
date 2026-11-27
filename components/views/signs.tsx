@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Download, FileText, RotateCcw, Signpost } from "lucide-react";
 import { useData } from "@/lib/data";
 import { t } from "@/lib/i18n";
-import { BLANK_SIGN, HEADER_FONTS, SIGN_ALIGNS, TEXT_FONTS, drawSign, loadSignFonts, naturalAlign, signPdf, type SignAlign, type SignFont, type SignText } from "@/lib/sign";
+import { BLANK_SIGN, HEADER_FONTS, SIGN_ALIGNS, TEXT_FONTS, drawSign, loadSignFonts, naturalAlign, signPdf, type SignAlign, type SignFont, type SignStyle, type SignText } from "@/lib/sign";
 import { Button, Card, CardTitle, Empty, PageHeader, Textarea, cx } from "../ui";
 
 /**
@@ -32,7 +32,7 @@ function Creator() {
     try {
       const d = JSON.parse(localStorage.getItem(DRAFT) || "null");
       const side = (v: unknown) => (SIGN_ALIGNS.includes(v as SignAlign) ? (v as SignAlign) : undefined);
-      if (typeof d?.header === "string" && typeof d?.text === "string") setSign({ header: d.header, text: d.text, headerAlign: side(d.headerAlign), textAlign: side(d.textAlign), headerFont: d.headerFont, textFont: d.textFont });
+      if (typeof d?.header === "string" && typeof d?.text === "string") setSign({ header: d.header, text: d.text, headerAlign: side(d.headerAlign), textAlign: side(d.textAlign), headerFont: d.headerFont, textFont: d.textFont, headerStyle: d.headerStyle ?? undefined, textStyle: d.textStyle ?? undefined });
     } catch {
       // No draft.
     }
@@ -74,7 +74,10 @@ function Creator() {
             <CardTitle sub={t("The big words at the top. Press Enter to start a new line.")}>{t("Header")}</CardTitle>
             <div className="px-6 pb-5">
               <Textarea aria-label={t("Header")} dir="auto" rows={2} value={sign.header} onChange={(e) => setSign({ ...sign, header: e.target.value })} />
-              <Sides label={t("Header")} value={sign.headerAlign ?? naturalAlign(sign.header)} onChange={(headerAlign) => setSign({ ...sign, headerAlign })} />
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
+                <Sides label={t("Header")} value={sign.headerAlign ?? naturalAlign(sign.header)} onChange={(headerAlign) => setSign({ ...sign, headerAlign })} />
+                <Styles label={t("Header")} value={sign.headerStyle ?? {}} onChange={(headerStyle) => setSign({ ...sign, headerStyle })} />
+              </div>
               <Fonts label={t("Header")} fonts={HEADER_FONTS} value={sign.headerFont} onChange={(headerFont) => setSign({ ...sign, headerFont })} />
             </div>
           </Card>
@@ -82,7 +85,10 @@ function Creator() {
             <CardTitle sub={t("The regular text under the header. Leave an empty line for a space between parts.")}>{t("Text")}</CardTitle>
             <div className="px-6 pb-5">
               <Textarea aria-label={t("Text")} dir="auto" rows={7} value={sign.text} onChange={(e) => setSign({ ...sign, text: e.target.value })} />
-              <Sides label={t("Text")} value={sign.textAlign ?? naturalAlign(sign.text)} onChange={(textAlign) => setSign({ ...sign, textAlign })} />
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
+                <Sides label={t("Text")} value={sign.textAlign ?? naturalAlign(sign.text)} onChange={(textAlign) => setSign({ ...sign, textAlign })} />
+                <Styles label={t("Text")} value={sign.textStyle ?? {}} onChange={(textStyle) => setSign({ ...sign, textStyle })} />
+              </div>
               <Fonts label={t("Text")} fonts={TEXT_FONTS} value={sign.textFont} onChange={(textFont) => setSign({ ...sign, textFont })} />
             </div>
           </Card>
@@ -131,7 +137,7 @@ function Sides({ label, value, onChange }: { label: string; value: SignAlign; on
   };
   return (
     // Always left to right, so "left" is on the left in Hebrew too.
-    <div role="group" dir="ltr" aria-label={t("{what}: which side it leans to", { what: label })} className="mt-3 flex flex-wrap gap-1.5">
+    <div role="group" dir="ltr" aria-label={t("{what}: which side it leans to", { what: label })} className="flex flex-wrap gap-1.5">
       {SIGN_ALIGNS.map((a) => (
         <button
           key={a}
@@ -168,6 +174,33 @@ function Fonts({ label, fonts, value, onChange }: { label: string; fonts: SignFo
           className={cx("h-10 rounded-lg px-3.5 text-base transition-colors", f === chosen ? "bg-accent text-accent-ink" : "bg-sunken text-muted hover:bg-ink/8 hover:text-ink")}
         >
           {f.name}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Bold, italic, underline and line-through: each one switches on and off. */
+function Styles({ label, value, onChange }: { label: string; value: SignStyle; onChange(v: SignStyle): void }) {
+  const kinds: [keyof SignStyle, string, string, string][] = [
+    ["bold", "B", t("Bold"), "font-bold"],
+    ["italic", "I", t("Italic"), "font-serif italic"],
+    ["underline", "U", t("Underline"), "underline underline-offset-2"],
+    ["strike", "S", t("Line through"), "line-through"],
+  ];
+  return (
+    <div role="group" dir="ltr" aria-label={t("{what}: style", { what: label })} className="flex flex-wrap gap-1.5">
+      {kinds.map(([key, letter, name, look]) => (
+        <button
+          key={key}
+          type="button"
+          title={name}
+          aria-label={name}
+          aria-pressed={!!value[key]}
+          onClick={() => onChange({ ...value, [key]: !value[key] })}
+          className={cx("grid h-10 w-11 place-items-center rounded-lg text-lg transition-colors", look, value[key] ? "bg-accent text-accent-ink" : "bg-sunken text-muted hover:bg-ink/8 hover:text-ink")}
+        >
+          {letter}
         </button>
       ))}
     </div>
