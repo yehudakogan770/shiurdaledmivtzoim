@@ -250,3 +250,9 @@ These stay only in the old chat. **Download them before the old account closes**
 - Collected the files into `handoff-files/`, and wrote CLAUDE.md and this HANDOFF.md.
 
 **Where to pick up:** see "Left to do" above. Most likely the owner will want help with the Drive connection, the Confirm-email change, or new signs/posters for the next week or the raffle.
+
+## Sign Creator (`/signs`, admins)
+- Page: `components/views/signs.tsx`. Drawing, fonts and the PDF: `lib/sign.ts`. Logo paths: `lib/sign-logo.ts`.
+- A sign is a header and text (lines of words, each with bold / italic / underline / line-through), plus side, font, size, capitals and place on the page. The gray top and bottom bars are the same on every sign.
+- The sign is drawn on a canvas word by word (so Hebrew and English mix correctly) and downloaded as a PNG or a one-page PDF, 8.5x11.
+- Saved signs are rows in the `signs` table (migration 024): words and choices only, no pictures. Without the table the page still works and says saving needs update 024.

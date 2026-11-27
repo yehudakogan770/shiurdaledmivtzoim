@@ -244,6 +244,14 @@ export interface RosterName {
   created_at: string;
 }
 
+/** A sign kept from the Sign Creator: only what was typed and chosen, never a picture. */
+export interface SavedSign {
+  id: string;
+  name: string;
+  data: import("./sign").SignText;
+  created_at: string;
+}
+
 export interface Tables {
   profiles: Profile;
   groups: Group;
@@ -260,6 +268,7 @@ export interface Tables {
   chanukah_entries: ChanukahEntry;
   chanukah_testers: ChanukahTester;
   roster: RosterName;
+  signs: SavedSign;
 }
 
 export type TableName = keyof Tables;

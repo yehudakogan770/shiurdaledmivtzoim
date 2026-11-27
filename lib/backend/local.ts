@@ -54,6 +54,7 @@ function empty(): Store {
     chanukah_entries: [],
     chanukah_testers: [],
     roster: [],
+    signs: [],
   };
 }
 
