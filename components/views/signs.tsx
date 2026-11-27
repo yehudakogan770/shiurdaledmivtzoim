@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
-import { Download, FileText, FolderOpen, Minus, Plus, RotateCcw, Save, Signpost, Trash2 } from "lucide-react";
+import { Download, FileText, FolderOpen, Minus, Plus, Printer, RotateCcw, Save, Signpost, Trash2 } from "lucide-react";
 import { useData } from "@/lib/data";
 import { t } from "@/lib/i18n";
 import type { SavedSign } from "@/lib/types";
@@ -53,7 +53,7 @@ function Creator() {
   const [fit, setFit] = useState<SignFit | null>(null);
   // Goes up on "Start over", so the new sign isn't saved over the one that was open.
   const [fresh, setFresh] = useState(0);
-  const [busy, setBusy] = useState<"png" | "pdf" | null>(null);
+  const [busy, setBusy] = useState<"png" | "pdf" | "print" | null>(null);
   const preview = useRef<HTMLCanvasElement>(null);
   const loaded = useRef(false);
   const headerBox = useRef<RichHandle>(null);
@@ -98,6 +98,41 @@ function Creator() {
       setTimeout(() => URL.revokeObjectURL(a.href), 30_000);
     } catch {
       notify(t("The sign couldn't be downloaded. Please try again."));
+    }
+    setBusy(null);
+  }
+
+  /** Sends the sign to the printer: for a moment the page holds only the sign, filling the sheet. */
+  async function print() {
+    setBusy("print");
+    try {
+      const page = document.createElement("canvas");
+      await drawSign(page, sign, 3);
+      const blob = await new Promise<Blob>((done, fail) => page.toBlob((b) => (b ? done(b) : fail(new Error())), "image/png"));
+      const img = document.createElement("img");
+      img.id = "sign-print";
+      img.alt = "";
+      const rules = document.createElement("style");
+      // On paper everything else is hidden and the sign covers the whole sheet, with no margins.
+      rules.textContent = "@media screen{#sign-print{display:none}}@media print{@page{size:letter;margin:0}html,body{margin:0!important;padding:0!important;background:#fff!important}body>*:not(#sign-print){display:none!important}#sign-print{display:block;width:100%;height:auto}}";
+      await new Promise((done, fail) => {
+        img.onload = done;
+        img.onerror = fail;
+        img.src = URL.createObjectURL(blob);
+      });
+      document.head.appendChild(rules);
+      document.body.appendChild(img);
+      const tidy = () => {
+        URL.revokeObjectURL(img.src);
+        img.remove();
+        rules.remove();
+      };
+      // Some phones come back from the print screen without saying so, so tidy up later as well.
+      window.addEventListener("afterprint", tidy, { once: true });
+      setTimeout(tidy, 10 * 60_000);
+      window.print();
+    } catch {
+      notify(t("The sign couldn't be printed. Download the PDF and print that instead."));
     }
     setBusy(null);
   }
@@ -153,7 +188,10 @@ function Creator() {
           <canvas ref={preview} aria-label={t("How the sign looks")} className="mx-auto h-auto w-full rounded-xl shadow-[0_10px_40px_rgba(0,0,0,.18)] landscape:max-h-[calc(100dvh-12rem)] landscape:w-auto landscape:max-w-full" />
           {fit?.shrunk && <p className="text-sm text-muted">{t("The size you chose doesn't fit on the page, so the sign made it smaller.")}</p>}
           <div className="flex flex-wrap gap-2">
-            <Button type="button" disabled={!!busy} onClick={() => download("pdf")}>
+            <Button type="button" disabled={!!busy} onClick={print}>
+              <Printer size={18} aria-hidden /> {busy === "print" ? t("Making it…") : t("Print")}
+            </Button>
+            <Button type="button" variant="tonal" disabled={!!busy} onClick={() => download("pdf")}>
               <FileText size={18} aria-hidden /> {busy === "pdf" ? t("Making it…") : t("Download PDF")}
             </Button>
             <Button type="button" variant="tonal" disabled={!!busy} onClick={() => download("png")}>

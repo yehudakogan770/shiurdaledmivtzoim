@@ -3,6 +3,8 @@ import type { Area } from "./types";
 /** The Sign Creator (admins). The words typed onto a sign are never translated. */
 const signs: Area = {
   he: {
+    "Print": "הדפס",
+    "The sign couldn't be printed. Download the PDF and print that instead.": "לא ניתן היה להדפיס את השלט. הורידו את ה־PDF והדפיסו אותו.",
     "Capital letters": "אותיות גדולות",
     "{what}: size": "{what}: גודל",
     "Automatic size": "גודל אוטומטי",
@@ -55,6 +57,8 @@ const signs: Area = {
     "The sign couldn't be downloaded. Please try again.": "לא ניתן היה להוריד את השלט. נסו שוב.",
   },
   fr: {
+    "Print": "Imprimer",
+    "The sign couldn't be printed. Download the PDF and print that instead.": "Impossible d'imprimer l'affiche. Téléchargez le PDF et imprimez-le.",
     "Capital letters": "Majuscules",
     "{what}: size": "{what} : taille",
     "Automatic size": "Taille automatique",
@@ -107,6 +111,8 @@ const signs: Area = {
     "The sign couldn't be downloaded. Please try again.": "Impossible de télécharger l'affiche. Veuillez réessayer.",
   },
   es: {
+    "Print": "Imprimir",
+    "The sign couldn't be printed. Download the PDF and print that instead.": "No se pudo imprimir el cartel. Descarga el PDF e imprímelo.",
     "Capital letters": "Mayúsculas",
     "{what}: size": "{what}: tamaño",
     "Automatic size": "Tamaño automático",
