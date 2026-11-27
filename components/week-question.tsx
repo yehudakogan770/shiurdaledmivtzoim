@@ -165,7 +165,7 @@ function WhoWent({ people, onChange, onClose }: { people: string[]; onChange(nex
               </Button>
             </form>
           ) : (
-            <button type="button" onClick={() => setAdding(true)} className="flex h-11 items-center gap-3 rounded-[14px] px-2 text-start text-accent hover:bg-accent/8">
+            <button type="button" onClick={() => setAdding(true)} className="flex h-11 items-center gap-3 rounded-xl px-2 text-start text-accent hover:bg-accent/8">
               <span aria-hidden className="grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 border-dashed border-accent">
                 <Plus size={14} strokeWidth={2.6} />
               </span>
@@ -183,7 +183,7 @@ function WhoWent({ people, onChange, onClose }: { people: string[]; onChange(nex
 
 function NameRow({ name, selected, onClick }: { name: string; selected: boolean; onClick(): void }) {
   return (
-    <button type="button" role="checkbox" aria-checked={selected} onClick={onClick} className="flex h-11 items-center gap-3 rounded-[14px] px-2 text-start hover:bg-ink/5">
+    <button type="button" role="checkbox" aria-checked={selected} onClick={onClick} className="flex h-11 items-center gap-3 rounded-xl px-2 text-start hover:bg-ink/5">
       <span aria-hidden className={cx("grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 transition-colors", selected ? "border-accent bg-accent text-accent-ink" : "border-outline")}>
         {selected && <Check size={14} strokeWidth={3} />}
       </span>

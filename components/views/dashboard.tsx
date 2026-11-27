@@ -237,7 +237,7 @@ function PersonalHome() {
       )}
 
       {week !== thisWeek && (
-        <p role="status" className="rounded-[20px] bg-candle-soft px-5 py-3 text-sm text-candle-on-soft">
+        <p role="status" className="rounded-2xl bg-candle-soft px-5 py-3 text-sm text-candle-on-soft">
           {t("You're looking at the week of {week}. Anything you add, remove or change here counts for that week.", { week: weekTitle(week) })}
         </p>
       )}

@@ -102,7 +102,7 @@ export function Empty({ title, icon: Icon, children, action }: { title: string; 
   return (
     <div className="px-6 py-12 text-center">
       {Icon && (
-        <span className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-[20px] bg-accent-soft text-accent-on-soft">
+        <span className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-2xl bg-accent-soft text-accent-on-soft">
           <Icon size={28} />
         </span>
       )}

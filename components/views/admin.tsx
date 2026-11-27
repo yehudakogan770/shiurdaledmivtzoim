@@ -759,7 +759,7 @@ function PersonDetails({ person }: { person: Profile }) {
   // One box per mivtza (hidden ones too if this person has history with them).
   const totals: [string, number][] = reportColumns(builtins, shared, rows).map((c) => [c.label, sum(rows.filter(c.matches))]);
   return (
-    <div className="mx-4 mb-4 grid gap-4 rounded-[20px] bg-paper p-4">
+    <div className="mx-4 mb-4 grid gap-4 rounded-2xl bg-paper p-4">
       {/* Admin accounts don't log Mivtzoim, so they have no counts. */}
       {!admin && <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {totals.map(([label, value]) => (

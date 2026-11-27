@@ -119,12 +119,12 @@ export function LogView() {
                 const tone = TONE[c.type];
                 const Icon = c.icon ?? tone.icon;
                 return (
-                  <div key={c.key} className={cx("rounded-[20px] transition-colors", item ? tone.on : "bg-paper")}>
+                  <div key={c.key} className={cx("rounded-2xl transition-colors", item ? tone.on : "bg-paper")}>
                     <button
                       type="button"
                       aria-pressed={!!item}
                       onClick={() => toggle(c.key)}
-                      className={cx("flex w-full min-w-0 items-center gap-3 rounded-[20px] p-3 text-start", !item && "hover:bg-sunken")}
+                      className={cx("flex w-full min-w-0 items-center gap-3 rounded-2xl p-3 text-start", !item && "hover:bg-sunken")}
                     >
                       <span className={cx("grid h-11 w-11 shrink-0 place-items-center rounded-full", item ? tone.chip : "bg-card text-muted")}>
                         {item ? <Check size={20} /> : <Icon size={20} />}
