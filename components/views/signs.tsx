@@ -161,7 +161,7 @@ function Creator() {
             )}
           </Part>
 
-          <Part title={t("Bottom line")} hint={t("The text inside the black bar at the bottom.")} on={sign.footer.on} onToggle={(on) => set({ footer: { ...sign.footer, on } })}>
+          <Part title={t("Bottom line")} hint={t("The text inside the bar at the bottom.")} on={sign.footer.on} onToggle={(on) => set({ footer: { ...sign.footer, on } })}>
             <Textarea aria-label={t("Bottom line")} rows={2} value={sign.footer.text} onChange={(e) => set({ footer: { ...sign.footer, text: e.target.value } })} />
           </Part>
         </div>

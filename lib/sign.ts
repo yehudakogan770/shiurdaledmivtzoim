@@ -28,6 +28,9 @@ const M = 50;
 const SANS = `"Google Sans Flex", system-ui, sans-serif`;
 // Anton has no Hebrew letters; Secular One draws those, just as heavy.
 const BIG = `Anton, "Secular One", Impact, "Arial Narrow", sans-serif`;
+// The top and bottom bars are dark gray, not solid black.
+const BAR = "#4d4d4d";
+const STRIPE = "#ababab";
 const HEBREW = /[֐-׿]/;
 
 /** The fonts the sign needs. Anton is only used here, so it is fetched when this page opens. */
@@ -48,11 +51,11 @@ export async function loadSignFonts() {
 }
 
 let logo: Promise<HTMLImageElement> | null = null;
-/** The logo in white (with light gray where the black-and-white logo is gray), for the black bar. */
+/** The logo in white (with light gray where the black-and-white logo is gray), for the gray bar. */
 function whiteLogo() {
   logo ??= new Promise((done, fail) => {
     const [x, y, w, h] = BW_LOGO_BOX;
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${x} ${y} ${w} ${h}" width="${w * 2}" height="${h * 2}" fill="#fff">${BW_LOGO.replaceAll(`fill="#666"`, `fill="#c4c4c4"`)}</svg>`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${x} ${y} ${w} ${h}" width="${w * 2}" height="${h * 2}" fill="#fff">${BW_LOGO.replaceAll(`fill="#666"`, `fill="#d6d6d6"`)}</svg>`;
     const img = new Image();
     img.onload = () => done(img);
     img.onerror = fail;
@@ -187,9 +190,9 @@ export async function drawSign(canvas: HTMLCanvasElement, sign: SignText, photos
 
   // The top bar: logo on the left, בס״ד on the right, and a gray stripe under it.
   const TOP = 128;
-  ctx.fillStyle = "#000";
+  ctx.fillStyle = BAR;
   ctx.fillRect(0, 0, W, TOP);
-  ctx.fillStyle = "#8c8c8c";
+  ctx.fillStyle = STRIPE;
   ctx.fillRect(0, TOP, W, 10);
   if (mark) ctx.drawImage(mark, M, 28, (72 * BW_LOGO_BOX[2]) / BW_LOGO_BOX[3], 72);
   ctx.fillStyle = "#fff";
@@ -204,9 +207,9 @@ export async function drawSign(canvas: HTMLCanvasElement, sign: SignText, photos
   ctx.font = `600 15px ${SANS}`;
   const footLines = sign.footer.on ? wrapParts(ctx, sign.footer.text.trim(), W - M * 2) : [];
   const footH = footLines.length ? Math.max(84, footLines.length * 23 + 46) : 30;
-  ctx.fillStyle = "#8c8c8c";
+  ctx.fillStyle = STRIPE;
   ctx.fillRect(0, H - footH - 10, W, 10);
-  ctx.fillStyle = "#000";
+  ctx.fillStyle = BAR;
   ctx.fillRect(0, H - footH, W, footH);
   ctx.fillStyle = "#fff";
   ctx.textAlign = "center";
