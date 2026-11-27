@@ -5,21 +5,19 @@ import { BW_LOGO, BW_LOGO_BOX } from "./sign-logo";
  * into a picture or a PDF. Everything is drawn by hand so the download looks exactly like the preview.
  */
 export interface SignText {
-  sticker: { on: boolean; text: string };
-  /** The three lines of the big headline; the middle one is gray. Empty lines are left out. */
-  headline: [string, string, string];
-  body: { on: boolean; text: string };
-  details: { on: boolean; lines: string[] };
-  footer: { on: boolean; text: string };
+  /** The big header. A new line in the box is a new line on the sign. */
+  header: string;
+  /** The regular text under it. */
+  text: string;
 }
 
 export const BLANK_SIGN: SignText = {
-  sticker: { on: true, text: "This Friday!" },
-  headline: ["Mivtza", "Chanukah", "Kickoff"],
-  body: { on: true, text: "Come get your menorahs, candles and route before you head out." },
-  details: { on: true, lines: ["Friday, 12:30 PM", "770 Eastern Parkway, Downstairs", "Bring your Chavrusa"] },
-  footer: { on: true, text: "If you have any money in your Pushka, please help out Mivtzoim · Cash App $sdmivtzoim87 · Zelle sdmivtzoim87@gmail.com" },
+  header: "Mivtza Chanukah Kickoff",
+  text: "Come get your menorahs, candles and route before you head out.\n\nThis Friday, 12:30 PM\n770 Eastern Parkway, Downstairs",
 };
+
+/** The bottom bar's words are the same on every sign. */
+const FOOT = "If you have any money in your Pushka, please help out Mivtzoim · Cash App $sdmivtzoim87 · Zelle sdmivtzoim87@gmail.com";
 
 /** The page, measured in its own units; the canvas is these times `scale`. */
 const W = 850;
@@ -30,6 +28,8 @@ const SANS = `"Google Sans Flex", "David Libre", system-ui, sans-serif`;
 const BIG = `Anton, "David Libre", Impact, "Arial Narrow", sans-serif`;
 /** A headline line: Hebrew letters are drawn a little larger, to stand as tall as the English capitals. */
 const bigFont = (size: number, text: string) => `${HEBREW.test(text) ? `700 ${size * 1.22}` : `400 ${size}`}px ${BIG}`;
+/** The regular text: Hebrew is drawn bold and a little larger, to match the English beside it. */
+const smallFont = (size: number, text: string) => `${HEBREW.test(text) ? `700 ${size * 1.12}` : `600 ${size}`}px ${SANS}`;
 // The top and bottom bars are dark gray, not solid black.
 const BAR = "#4d4d4d";
 const STRIPE = "#ababab";
@@ -119,70 +119,8 @@ function put(ctx: Ctx, text: string, x: number, y: number, width: number, rtl: b
   ctx.textAlign = "left";
 }
 
-function box(ctx: Ctx, x: number, y: number, w: number, h: number, r: number) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
-}
-
-/** A white piece with a black outline and a solid black shadow: prints cleanly on any printer. */
-function piece(ctx: Ctx, x: number, y: number, w: number, h: number, r: number, drop = 7) {
-  ctx.fillStyle = "#000";
-  box(ctx, x + drop, y + drop, w, h, r);
-  ctx.fill();
-  ctx.fillStyle = "#fff";
-  box(ctx, x, y, w, h, r);
-  ctx.fill();
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = "#000";
-  ctx.stroke();
-}
-
-/** Turns around the middle of a piece, draws it, and turns back. */
-function tilted(ctx: Ctx, cx: number, cy: number, degrees: number, draw: () => void) {
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate((degrees * Math.PI) / 180);
-  ctx.translate(-cx, -cy);
-  draw();
-  ctx.restore();
-}
-
-export type SignPhoto = HTMLCanvasElement | HTMLImageElement;
-const sizeOf = (p: SignPhoto) => (p instanceof HTMLImageElement ? [p.naturalWidth, p.naturalHeight] : [p.width, p.height]);
-
-/** A gray copy of a photo (made once, when it is picked), no bigger than the print needs. */
-export function grayCopy(img: HTMLImageElement): HTMLCanvasElement {
-  const k = Math.min(1, 1800 / Math.max(img.naturalWidth, img.naturalHeight));
-  const c = document.createElement("canvas");
-  c.width = Math.max(1, Math.round(img.naturalWidth * k));
-  c.height = Math.max(1, Math.round(img.naturalHeight * k));
-  const ctx = c.getContext("2d")!;
-  ctx.drawImage(img, 0, 0, c.width, c.height);
-  const data = ctx.getImageData(0, 0, c.width, c.height);
-  const d = data.data;
-  for (let i = 0; i < d.length; i += 4) d[i] = d[i + 1] = d[i + 2] = Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]);
-  ctx.putImageData(data, 0, 0);
-  return c;
-}
-
-/** A photo in a white frame, filling the frame (the edges that don't fit are trimmed evenly). */
-function framed(ctx: Ctx, photo: SignPhoto, x: number, y: number, w: number, h: number) {
-  piece(ctx, x, y, w, h, 8);
-  const pad = 12;
-  const [iw, ih] = sizeOf(photo);
-  const [bw, bh] = [w - pad * 2, h - pad * 2];
-  const k = Math.max(bw / iw, bh / ih);
-  const [sw, sh] = [bw / k, bh / k];
-  ctx.drawImage(photo, (iw - sw) / 2, (ih - sh) / 2, sw, sh, x + pad, y + pad, bw, bh);
-}
-
 /** Draws the whole sign. `scale` 3 gives a print-quality page (2550 x 3300). */
-export async function drawSign(canvas: HTMLCanvasElement, sign: SignText, photos: SignPhoto[], scale: number) {
+export async function drawSign(canvas: HTMLCanvasElement, sign: SignText, scale: number) {
   const mark = await whiteLogo().catch(() => null);
   canvas.width = W * scale;
   canvas.height = H * scale;
@@ -192,7 +130,7 @@ export async function drawSign(canvas: HTMLCanvasElement, sign: SignText, photos
   ctx.fillStyle = "#fff";
   ctx.fillRect(0, 0, W, H);
 
-  // The top bar: logo on the left, בס״ד on the right, and a gray stripe under it.
+  // The top bar: logo on the left, בס״ד on the right, and a lighter stripe under it.
   const TOP = 128;
   ctx.fillStyle = BAR;
   ctx.fillRect(0, 0, W, TOP);
@@ -205,154 +143,86 @@ export async function drawSign(canvas: HTMLCanvasElement, sign: SignText, photos
   ctx.textAlign = "right";
   ctx.fillText("בס״ד", W - 36, 46);
   ctx.direction = "ltr";
-  ctx.textAlign = "left";
 
-  // The bottom bar matches the top one; the bottom text sits inside it, in white.
+  // The bottom bar matches the top one, with the same words on every sign.
   ctx.font = `600 15px ${SANS}`;
-  const footLines = sign.footer.on ? wrapParts(ctx, sign.footer.text.trim(), W - M * 2) : [];
-  const footH = footLines.length ? Math.max(84, footLines.length * 23 + 46) : 30;
+  const footLines = wrapParts(ctx, FOOT, W - M * 2);
+  const footH = Math.max(84, footLines.length * 23 + 46);
   ctx.fillStyle = STRIPE;
   ctx.fillRect(0, H - footH - 10, W, 10);
   ctx.fillStyle = BAR;
   ctx.fillRect(0, H - footH, W, footH);
   ctx.fillStyle = "#fff";
   ctx.textAlign = "center";
-  footLines.forEach((line, i) => {
-    ctx.direction = startsHebrew(sign.footer.text) ? "rtl" : "ltr";
-    ctx.fillText(line, W / 2, H - footH / 2 - ((footLines.length - 1) * 23) / 2 + i * 23 + 5);
-  });
-  ctx.direction = "ltr";
+  footLines.forEach((line, i) => ctx.fillText(line, W / 2, H - footH / 2 - ((footLines.length - 1) * 23) / 2 + i * 23 + 5));
   ctx.textAlign = "left";
 
-  // Everything between the two bars. First measure it, so it can be sized to fill the page.
-  const top = TOP + 10 + 38;
-  const bottom = H - footH - 10 - 34;
+  // Between the bars: the header, then the text. Both are measured first, then sized to fill the page.
+  const top = TOP + 10 + 44;
+  const bottom = H - footH - 10 - 44;
   const wide = W - M * 2;
-  const stickerText = sign.sticker.on ? sign.sticker.text.trim().toUpperCase() : "";
-  const bodyText = sign.body.on ? sign.body.text.trim() : "";
-  const detailLines = sign.details.on ? sign.details.lines.map((l) => l.trim()).filter(Boolean) : [];
-  const heads = sign.headline.map((l, i) => ({ text: l.trim().toUpperCase(), gray: i === 1 })).filter((l) => l.text);
-  // One photo sits beside the details; more than one get a row of their own.
-  const beside = detailLines.length > 0 && photos.length === 1;
-  const photoRow = photos.length > 0 && !beside;
+  const header = sign.header.trim().toUpperCase();
+  const paragraphs = sign.text.trim() ? sign.text.trim().split("\n").map((x) => x.trim()) : [];
 
-  ctx.font = `600 27px ${SANS}`;
-  const body = wrap(ctx, bodyText, wide).lines;
-  const cardW = beside ? wide - 300 - 26 : wide;
-  ctx.font = `700 25px ${SANS}`;
-  const details = detailLines.map((l) => wrap(ctx, l, cardW - 52).lines);
-  const cardH = details.length ? details.reduce((n, d) => n + d.length * 32 + 26, 0) + 16 : 0;
-
-  // The headline starts big and shrinks until every word fits across and the page fits down.
-  const measure = (size: number) => {
-    ctx.font = `400 ${size}px ${BIG}`;
-    const cap = ctx.measureText("H").actualBoundingBoxAscent || size * 0.72;
+  const ownLines = header.includes("\n");
+  // Hebrew text keeps every line on the right, even a line that starts with a number.
+  const textRtl = startsHebrew(sign.text);
+  const measure = (big: number, small: number) => {
     let tooWide = false;
-    const lines = heads.flatMap((h) => {
-      const w = wrap(ctx, h.text, wide);
+    const cap = ((ctx.font = `400 ${big}px ${BIG}`), ctx.measureText("H").actualBoundingBoxAscent || big * 0.72);
+    const gap = big * 0.15;
+    const lines = header.split("\n").flatMap((part) => {
+      // Every Hebrew line gets the same room (measured on a plain letter), so the lines are evenly
+      // spaced whether or not they have a tall ל or a hanging ך.
+      const hebrew = HEBREW.test(part);
+      ctx.font = bigFont(big, part);
+      const w = wrap(ctx, part, wide);
+      // Lines the person chose themselves are kept whole: the words get smaller rather than split.
+      tooWide ||= w.tooWide || (ownLines && w.lines.length > 1);
+      const up = hebrew ? ctx.measureText("ה").actualBoundingBoxAscent : cap;
+      return w.lines.map((text) => ({ text, up, down: hebrew ? big * 0.12 : 0 }));
+    });
+    const hangs = lines.length && /[ךןףץק]/.test(lines[lines.length - 1].text) ? big * 0.14 : 0;
+    const lineH = small * 1.4;
+    const body = paragraphs.flatMap((para) => {
+      // An empty line in the box leaves a little space between paragraphs.
+      if (!para) return [{ text: "", h: lineH * 0.55, rtl: false }];
+      ctx.font = smallFont(small, para);
+      const w = wrap(ctx, para, wide);
       tooWide ||= w.tooWide;
-      return w.lines.map((text) => {
-        // Each line takes just the room its own letters need, so Hebrew lines sit as close as English ones.
-        ctx.font = bigFont(size, text);
-        const m = ctx.measureText(text);
-        if (m.width > wide) tooWide = true;
-        ctx.font = `400 ${size}px ${BIG}`;
-        return { text, gray: h.gray, up: HEBREW.test(text) ? m.actualBoundingBoxAscent : cap, down: HEBREW.test(text) ? m.actualBoundingBoxDescent : 0 };
-      });
+      return w.lines.map((text) => ({ text, h: lineH, rtl: textRtl }));
     });
-    const gap = size * 0.15;
-    let need = 0;
-    if (stickerText) need += 56 + (lines.length ? 30 : 0);
-    need += lines.reduce((n, l) => n + l.up + l.down + gap, 0) - (lines.length ? gap : 0);
-    if (body.length) need += (need ? 26 : 0) + body.length * 35 - 8;
-    if (cardH) need += (need ? 34 : 0) + (beside ? Math.max(cardH, 250) : cardH);
-    if (photoRow) need += (need ? 34 : 0) + 230;
-    return { size, gap, lines, need, fits: !tooWide && need <= bottom - top };
+    const headH = lines.reduce((n, l) => n + l.up + l.down + gap, 0) - (lines.length ? gap - hangs : 0);
+    const between = lines.length && body.length ? Math.max(42, big * 0.3) : 0;
+    const bodyH = body.reduce((n, l) => n + l.h, 0) - (body.length ? lineH - small : 0);
+    const need = headH + between + bodyH;
+    return { big, small, gap, lines, body, lineH, between, hangs, need, fits: !tooWide && need <= bottom - top };
   };
-  const biggest = photos.length ? 190 : 236;
-  let head = measure(heads.length ? biggest : 0);
-  for (let size = biggest - 6; heads.length && !head.fits && size >= 44; size -= 6) head = measure(size);
-
-  // Space left over makes the photos bigger; the rest is shared above and below.
-  let spare = Math.max(0, bottom - top - head.need);
-  const grow = photos.length ? Math.min(spare, photoRow ? (photos.length === 1 ? 300 : 190) : 130) : 0;
-  spare -= grow;
-  let y = top + spare * 0.4;
-
-  if (stickerText) {
-    ctx.font = bigFont(28, stickerText);
-    const w = Math.min(wide, ctx.measureText(stickerText).width + 48);
-    // A Hebrew sticker sits on the right, where Hebrew starts.
-    const rtl = startsHebrew(stickerText);
-    const x = rtl ? W - M - w : M;
-    tilted(ctx, x + w / 2, y + 28, rtl ? 3.5 : -3.5, () => {
-      piece(ctx, x, y, w, 56, 12, 6);
-      ctx.fillStyle = "#000";
-      ctx.textAlign = "center";
-      ctx.direction = rtl ? "rtl" : "ltr";
-      ctx.fillText(stickerText, x + w / 2, y + 39, w - 30);
-      ctx.direction = "ltr";
-      ctx.textAlign = "left";
-    });
-    y += 56 + (head.lines.length ? 30 : 0);
+  // Start big and step down together until every word fits across and the page fits down.
+  // The text only gets smaller when there is a lot of it, never just because the header had to.
+  let fit = measure(220, 46);
+  for (let k = 1; !fit.fits && k > 0.2; k -= 0.04) {
+    for (let small = 46; !fit.fits && small >= Math.max(18, 46 * Math.sqrt(k)); small -= 3) fit = measure(Math.max(40, 220 * k), small);
   }
 
-  const headRtl = startsHebrew(heads[0]?.text ?? "");
-  for (const line of head.lines) {
-    ctx.fillStyle = line.gray ? "#7a7a7a" : "#000";
-    ctx.font = bigFont(head.size, line.text);
-    put(ctx, line.text, M, y + line.up, wide, headRtl);
-    y += line.up + line.down + head.gap;
+  // What's left over is shared above and below, a little more below.
+  let y = top + Math.max(0, bottom - top - fit.need) * 0.42;
+  const rtl = startsHebrew(header);
+  ctx.fillStyle = "#000";
+  for (const line of fit.lines) {
+    ctx.font = bigFont(fit.big, line.text);
+    put(ctx, line.text, M, y + line.up, wide, rtl);
+    y += line.up + line.down + fit.gap;
   }
-  if (head.lines.length) y -= head.gap;
+  if (fit.lines.length) y += fit.hangs - fit.gap + fit.between;
 
-  if (body.length) {
-    if (y > top + spare * 0.4) y += 26;
-    ctx.font = `600 27px ${SANS}`;
-    ctx.fillStyle = "#222";
-    body.forEach((line, i) => put(ctx, line, M, y + 25 + i * 35, wide, startsHebrew(bodyText)));
-    y += body.length * 35 - 8;
-  }
-
-  if (cardH) {
-    if (y > top + spare * 0.4) y += 34;
-    const rowH = beside ? Math.max(cardH, 250) + grow : cardH;
-    const cardY = y + (beside ? (rowH - cardH) / 2 : 0);
-    tilted(ctx, M + cardW / 2, cardY + cardH / 2, beside ? -1.5 : -0.8, () => {
-      piece(ctx, M, cardY, cardW, cardH, 20);
-      let at = cardY + 8;
-      details.forEach((lines, i) => {
-        if (i) {
-          ctx.setLineDash([8, 7]);
-          ctx.lineWidth = 2;
-          ctx.strokeStyle = "#9a9a9a";
-          ctx.beginPath();
-          ctx.moveTo(M + 26, at);
-          ctx.lineTo(M + cardW - 26, at);
-          ctx.stroke();
-          ctx.setLineDash([]);
-        }
-        ctx.font = `700 25px ${SANS}`;
-        ctx.fillStyle = "#000";
-        lines.forEach((line, j) => put(ctx, line, M + 26, at + 13 + 24 + j * 32, cardW - 52, startsHebrew(detailLines[i])));
-        at += lines.length * 32 + 26;
-      });
-    });
-    if (beside) tilted(ctx, W - M - 150, y + rowH / 2, 3.5, () => framed(ctx, photos[0], W - M - 300, y, 300, rowH));
-    y += rowH;
-  }
-
-  if (photoRow) {
-    if (y > top + spare * 0.4) y += 34;
-    const gap = 26;
-    const h = 230 + grow;
-    const each = (wide - gap * (photos.length - 1)) / photos.length;
-    // A single photo keeps a friendly shape rather than stretching across the whole page.
-    const w = photos.length === 1 ? Math.min(wide, h * 1.45) : each;
-    photos.forEach((photo, i) => {
-      const x = photos.length === 1 ? (W - w) / 2 : M + i * (each + gap);
-      tilted(ctx, x + w / 2, y + h / 2, photos.length === 1 ? 2 : [-2.5, 2, -1.5][i % 3], () => framed(ctx, photo, x, y, w, h));
-    });
+  ctx.fillStyle = "#222";
+  for (const line of fit.body) {
+    if (line.text) {
+      ctx.font = smallFont(fit.small, line.text);
+      put(ctx, line.text, M, y + fit.small * 0.92, wide, line.rtl);
+    }
+    y += line.h;
   }
 }
 

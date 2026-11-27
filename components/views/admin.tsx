@@ -1270,7 +1270,7 @@ function SignsLinkCard() {
           </span>
           <span className="min-w-0 flex-1">
             <span className="block text-lg font-medium">{t("Sign Creator")}</span>
-            <span className="block text-sm text-muted">{t("Make a sign to print: type your words, add photos, and download it.")}</span>
+            <span className="block text-sm text-muted">{t("Make a sign to print: type a header and your text, and download it.")}</span>
           </span>
           <ChevronRight size={20} aria-hidden className="text-muted rtl:rotate-180" />
         </div>
