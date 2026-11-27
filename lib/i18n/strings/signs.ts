@@ -3,6 +3,13 @@ import type { Area } from "./types";
 /** The Sign Creator (admins). The words typed onto a sign are never translated. */
 const signs: Area = {
   he: {
+    "Left": "שמאל",
+    "Center": "מרכז",
+    "Right": "ימין",
+    "Full, ends left": "מלא, מסתיים בשמאל",
+    "Full, ends center": "מלא, מסתיים במרכז",
+    "Full, ends right": "מלא, מסתיים בימין",
+    "{what}: which side it leans to": "{what}: לאיזה צד זה נוטה",
     "Sign Creator": "יוצר השלטים",
     "Make a sign to print: type a header and your text, and download it.": "צרו שלט להדפסה: הקלידו כותרת וטקסט, והורידו אותו.",
     "Type a header and your text, then download the sign ready to print.": "הקלידו כותרת וטקסט, והורידו את השלט מוכן להדפסה.",
@@ -18,6 +25,13 @@ const signs: Area = {
     "The sign couldn't be downloaded. Please try again.": "לא ניתן היה להוריד את השלט. נסו שוב.",
   },
   fr: {
+    "Left": "Gauche",
+    "Center": "Centre",
+    "Right": "Droite",
+    "Full, ends left": "Plein, finit à gauche",
+    "Full, ends center": "Plein, finit au centre",
+    "Full, ends right": "Plein, finit à droite",
+    "{what}: which side it leans to": "{what} : de quel côté il penche",
     "Sign Creator": "Créateur d'affiches",
     "Make a sign to print: type a header and your text, and download it.": "Créez une affiche à imprimer : écrivez un titre et votre texte, puis téléchargez-la.",
     "Type a header and your text, then download the sign ready to print.": "Écrivez un titre et votre texte, puis téléchargez l'affiche, prête à imprimer.",
@@ -33,6 +47,13 @@ const signs: Area = {
     "The sign couldn't be downloaded. Please try again.": "Impossible de télécharger l'affiche. Veuillez réessayer.",
   },
   es: {
+    "Left": "Izquierda",
+    "Center": "Centro",
+    "Right": "Derecha",
+    "Full, ends left": "Completo, termina a la izquierda",
+    "Full, ends center": "Completo, termina en el centro",
+    "Full, ends right": "Completo, termina a la derecha",
+    "{what}: which side it leans to": "{what}: hacia qué lado se inclina",
     "Sign Creator": "Creador de carteles",
     "Make a sign to print: type a header and your text, and download it.": "Crea un cartel para imprimir: escribe un título y tu texto, y descárgalo.",
     "Type a header and your text, then download the sign ready to print.": "Escribe un título y tu texto, y descarga el cartel listo para imprimir.",

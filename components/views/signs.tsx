@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { Download, FileText, RotateCcw, Signpost } from "lucide-react";
 import { useData } from "@/lib/data";
 import { t } from "@/lib/i18n";
-import { BLANK_SIGN, drawSign, loadSignFonts, signPdf, type SignText } from "@/lib/sign";
-import { Button, Card, CardTitle, Empty, PageHeader, Textarea } from "../ui";
+import { BLANK_SIGN, SIGN_ALIGNS, drawSign, loadSignFonts, naturalAlign, signPdf, type SignAlign, type SignText } from "@/lib/sign";
+import { Button, Card, CardTitle, Chip, Empty, PageHeader, Textarea } from "../ui";
 
 /**
  * The Sign Creator, for admins: type a header and some text, and download the sign as a picture
@@ -31,7 +31,8 @@ function Creator() {
     // What was typed stays on this device, so a sign can be finished later.
     try {
       const d = JSON.parse(localStorage.getItem(DRAFT) || "null");
-      if (typeof d?.header === "string" && typeof d?.text === "string") setSign({ header: d.header, text: d.text });
+      const side = (v: unknown) => (SIGN_ALIGNS.includes(v as SignAlign) ? (v as SignAlign) : undefined);
+      if (typeof d?.header === "string" && typeof d?.text === "string") setSign({ header: d.header, text: d.text, headerAlign: side(d.headerAlign), textAlign: side(d.textAlign) });
     } catch {
       // No draft.
     }
@@ -73,12 +74,14 @@ function Creator() {
             <CardTitle sub={t("The big words at the top. Press Enter to start a new line.")}>{t("Header")}</CardTitle>
             <div className="px-6 pb-5">
               <Textarea aria-label={t("Header")} dir="auto" rows={2} value={sign.header} onChange={(e) => setSign({ ...sign, header: e.target.value })} />
+              <Sides label={t("Header")} value={sign.headerAlign ?? naturalAlign(sign.header)} onChange={(headerAlign) => setSign({ ...sign, headerAlign })} />
             </div>
           </Card>
           <Card>
             <CardTitle sub={t("The regular text under the header. Leave an empty line for a space between parts.")}>{t("Text")}</CardTitle>
             <div className="px-6 pb-5">
               <Textarea aria-label={t("Text")} dir="auto" rows={7} value={sign.text} onChange={(e) => setSign({ ...sign, text: e.target.value })} />
+              <Sides label={t("Text")} value={sign.textAlign ?? naturalAlign(sign.text)} onChange={(textAlign) => setSign({ ...sign, textAlign })} />
             </div>
           </Card>
         </div>
@@ -98,6 +101,27 @@ function Creator() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Which side the words lean to. "Full" stretches each line across; the last line finishes on the side named. */
+function Sides({ label, value, onChange }: { label: string; value: SignAlign; onChange(v: SignAlign): void }) {
+  const names: Record<SignAlign, string> = {
+    left: t("Left"),
+    center: t("Center"),
+    right: t("Right"),
+    "full-left": t("Full, ends left"),
+    "full-center": t("Full, ends center"),
+    "full-right": t("Full, ends right"),
+  };
+  return (
+    <div role="group" aria-label={t("{what}: which side it leans to", { what: label })} className="mt-3 flex flex-wrap gap-2">
+      {SIGN_ALIGNS.map((a) => (
+        <Chip key={a} selected={a === value} onClick={() => onChange(a)}>
+          {names[a]}
+        </Chip>
+      ))}
     </div>
   );
 }

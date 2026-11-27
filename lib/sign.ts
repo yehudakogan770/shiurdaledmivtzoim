@@ -9,7 +9,16 @@ export interface SignText {
   header: string;
   /** The regular text under it. */
   text: string;
+  /** Which side each one leans to. Left out means left for English and right for Hebrew. */
+  headerAlign?: SignAlign;
+  textAlign?: SignAlign;
 }
+
+/** "full" stretches every line edge to edge; its second word says where the last line finishes. */
+export type SignAlign = "left" | "center" | "right" | "full-left" | "full-center" | "full-right";
+export const SIGN_ALIGNS: SignAlign[] = ["left", "center", "right", "full-left", "full-center", "full-right"];
+/** The side a sign leans to when none was chosen. */
+export const naturalAlign = (text: string): SignAlign => (startsHebrew(text) ? "right" : "left");
 
 export const BLANK_SIGN: SignText = {
   header: "Mivtza Chanukah Kickoff",
@@ -110,13 +119,46 @@ function wrapParts(ctx: Ctx, text: string, max: number) {
 /** Text that starts with a Hebrew letter reads from the right; all its lines then start at the right edge. */
 const startsHebrew = (text: string) => HEBREW.test(text.match(/[A-Za-z\u0590-\u05FF]/)?.[0] ?? "");
 
-/** One line of text starting at the left edge, or at the right edge for Hebrew. */
-function put(ctx: Ctx, text: string, x: number, y: number, width: number, rtl: boolean) {
+/** One line of text, leaning to the chosen side. `last` is the final line of its paragraph. */
+function put(ctx: Ctx, text: string, x: number, y: number, width: number, rtl: boolean, align: SignAlign, last: boolean) {
+  const full = align.startsWith("full");
+  const side = (full ? align.slice(5) : align) as "left" | "center" | "right";
+  if (full && !last && stretched(ctx, text, x, y, width, rtl)) return;
   ctx.direction = rtl ? "rtl" : "ltr";
-  ctx.textAlign = rtl ? "right" : "left";
-  ctx.fillText(text, rtl ? x + width : x, y);
+  ctx.textAlign = side;
+  ctx.fillText(text, side === "left" ? x : side === "right" ? x + width : x + width / 2, y);
   ctx.direction = "ltr";
   ctx.textAlign = "left";
+}
+
+/** Draws a line edge to edge, with the extra room shared between its words. False if it can't be. */
+function stretched(ctx: Ctx, text: string, x: number, y: number, width: number, rtl: boolean) {
+  const words = text.split(" ").filter(Boolean);
+  const sizes = words.map((w) => ctx.measureText(w).width);
+  const used = sizes.reduce((a, b) => a + b, 0);
+  // A short line pulled across the whole page would be mostly gaps.
+  if (words.length < 2 || used < width * 0.6) return false;
+  // The order the words appear in from left to right: Hebrew runs right to left, and English
+  // or numbers inside it still read left to right (and the other way around).
+  const order = words.map((_, i) => i);
+  if (rtl) order.reverse();
+  const foreign = (i: number) => HEBREW.test(words[i]) !== rtl;
+  for (let i = 0; i < order.length; i++) {
+    let j = i;
+    while (j < order.length && foreign(order[j])) j++;
+    if (j - i > 1) order.splice(i, j - i, ...order.slice(i, j).reverse());
+    i = Math.max(i, j - 1);
+  }
+  const gap = (width - used) / (words.length - 1);
+  let at = x;
+  ctx.textAlign = "left";
+  for (const i of order) {
+    ctx.direction = HEBREW.test(words[i]) ? "rtl" : "ltr";
+    ctx.fillText(words[i], at, y);
+    at += sizes[i] + gap;
+  }
+  ctx.direction = "ltr";
+  return true;
 }
 
 /** Draws the whole sign. `scale` 3 gives a print-quality page (2550 x 3300). */
@@ -186,11 +228,11 @@ export async function drawSign(canvas: HTMLCanvasElement, sign: SignText, scale:
     const lineH = small * 1.4;
     const body = paragraphs.flatMap((para) => {
       // An empty line in the box leaves a little space between paragraphs.
-      if (!para) return [{ text: "", h: lineH * 0.55, rtl: false }];
+      if (!para) return [{ text: "", h: lineH * 0.55, rtl: false, last: true }];
       ctx.font = smallFont(small, para);
       const w = wrap(ctx, para, wide);
       tooWide ||= w.tooWide;
-      return w.lines.map((text) => ({ text, h: lineH, rtl: textRtl }));
+      return w.lines.map((text, i) => ({ text, h: lineH, rtl: textRtl, last: i === w.lines.length - 1 }));
     });
     const headH = lines.reduce((n, l) => n + l.up + l.down + gap, 0) - (lines.length ? gap - hangs : 0);
     const between = lines.length && body.length ? Math.max(42, big * 0.3) : 0;
@@ -209,18 +251,21 @@ export async function drawSign(canvas: HTMLCanvasElement, sign: SignText, scale:
   let y = top + Math.max(0, bottom - top - fit.need) * 0.42;
   const rtl = startsHebrew(header);
   ctx.fillStyle = "#000";
-  for (const line of fit.lines) {
+  const headerAlign = sign.headerAlign ?? naturalAlign(header);
+  const textAlign = sign.textAlign ?? naturalAlign(sign.text);
+  // The header is one block: only its very last line counts as the finishing line.
+  fit.lines.forEach((line, i) => {
     ctx.font = bigFont(fit.big, line.text);
-    put(ctx, line.text, M, y + line.up, wide, rtl);
+    put(ctx, line.text, M, y + line.up, wide, rtl, headerAlign, i === fit.lines.length - 1);
     y += line.up + line.down + fit.gap;
-  }
+  });
   if (fit.lines.length) y += fit.hangs - fit.gap + fit.between;
 
   ctx.fillStyle = "#222";
   for (const line of fit.body) {
     if (line.text) {
       ctx.font = smallFont(fit.small, line.text);
-      put(ctx, line.text, M, y + fit.small * 0.92, wide, line.rtl);
+      put(ctx, line.text, M, y + fit.small * 0.92, wide, line.rtl, textAlign, line.last);
     }
     y += line.h;
   }
