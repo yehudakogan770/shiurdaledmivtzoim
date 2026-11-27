@@ -25,9 +25,11 @@ export const BLANK_SIGN: SignText = {
 const W = 850;
 const H = 1100;
 const M = 50;
-const SANS = `"Google Sans Flex", system-ui, sans-serif`;
-// Anton has no Hebrew letters; Secular One draws those, just as heavy.
-const BIG = `Anton, "Secular One", Impact, "Arial Narrow", sans-serif`;
+// Hebrew is always drawn in David Libre, the same font as the בס״ד (the other fonts have no Hebrew letters).
+const SANS = `"Google Sans Flex", "David Libre", system-ui, sans-serif`;
+const BIG = `Anton, "David Libre", Impact, "Arial Narrow", sans-serif`;
+/** A headline line: Hebrew letters are drawn a little larger, to stand as tall as the English capitals. */
+const bigFont = (size: number, text: string) => `${HEBREW.test(text) ? `700 ${size * 1.22}` : `400 ${size}`}px ${BIG}`;
 // The top and bottom bars are dark gray, not solid black.
 const BAR = "#4d4d4d";
 const STRIPE = "#ababab";
@@ -39,7 +41,7 @@ export async function loadSignFonts() {
     const link = document.createElement("link");
     link.id = "sign-fonts";
     link.rel = "stylesheet";
-    link.href = "https://fonts.googleapis.com/css2?family=Anton&family=Secular+One&display=swap";
+    link.href = "https://fonts.googleapis.com/css2?family=Anton&display=swap";
     document.head.appendChild(link);
     await new Promise((done) => {
       link.onload = done;
@@ -47,7 +49,7 @@ export async function loadSignFonts() {
     });
   }
   // A font that can't be fetched (no internet) just falls back to a plain one.
-  await Promise.all([`400 100px Anton`, `400 100px "Secular One"`, `600 27px "Google Sans Flex"`, `700 25px "Google Sans Flex"`, `700 22px "David Libre"`].map((f) => document.fonts.load(f, "Aבס").catch(() => null)));
+  await Promise.all([`400 100px Anton`, `600 27px "Google Sans Flex"`, `700 25px "Google Sans Flex"`, `700 22px "David Libre"`].map((f) => document.fonts.load(f, "Aבס").catch(() => null)));
 }
 
 let logo: Promise<HTMLImageElement> | null = null;
@@ -249,19 +251,23 @@ export async function drawSign(canvas: HTMLCanvasElement, sign: SignText, photos
     const lines = heads.flatMap((h) => {
       const w = wrap(ctx, h.text, wide);
       tooWide ||= w.tooWide;
-      return w.lines.map((text) => ({ text, gray: h.gray }));
+      return w.lines.map((text) => {
+        // Each line takes just the room its own letters need, so Hebrew lines sit as close as English ones.
+        ctx.font = bigFont(size, text);
+        const m = ctx.measureText(text);
+        if (m.width > wide) tooWide = true;
+        ctx.font = `400 ${size}px ${BIG}`;
+        return { text, gray: h.gray, up: HEBREW.test(text) ? m.actualBoundingBoxAscent : cap, down: HEBREW.test(text) ? m.actualBoundingBoxDescent : 0 };
+      });
     });
-    // Hebrew letters stand taller than English capitals and some hang below the line.
-    const hebrew = lines.some((l) => HEBREW.test(l.text));
-    const lineH = cap + size * (hebrew ? 0.34 : 0.15);
-    const drop = lines.length && HEBREW.test(lines[lines.length - 1].text) ? size * 0.2 : 0;
+    const gap = size * 0.15;
     let need = 0;
     if (stickerText) need += 56 + (lines.length ? 30 : 0);
-    need += lines.length * lineH + drop - (lines.length ? size * 0.15 : 0);
+    need += lines.reduce((n, l) => n + l.up + l.down + gap, 0) - (lines.length ? gap : 0);
     if (body.length) need += (need ? 26 : 0) + body.length * 35 - 8;
     if (cardH) need += (need ? 34 : 0) + (beside ? Math.max(cardH, 250) : cardH);
     if (photoRow) need += (need ? 34 : 0) + 230;
-    return { size, cap, lineH, drop, lines, need, fits: !tooWide && need <= bottom - top };
+    return { size, gap, lines, need, fits: !tooWide && need <= bottom - top };
   };
   const biggest = photos.length ? 190 : 236;
   let head = measure(heads.length ? biggest : 0);
@@ -274,7 +280,7 @@ export async function drawSign(canvas: HTMLCanvasElement, sign: SignText, photos
   let y = top + spare * 0.4;
 
   if (stickerText) {
-    ctx.font = `400 28px ${BIG}`;
+    ctx.font = bigFont(28, stickerText);
     const w = Math.min(wide, ctx.measureText(stickerText).width + 48);
     // A Hebrew sticker sits on the right, where Hebrew starts.
     const rtl = startsHebrew(stickerText);
@@ -291,14 +297,14 @@ export async function drawSign(canvas: HTMLCanvasElement, sign: SignText, photos
     y += 56 + (head.lines.length ? 30 : 0);
   }
 
-  ctx.font = `400 ${head.size}px ${BIG}`;
   const headRtl = startsHebrew(heads[0]?.text ?? "");
   for (const line of head.lines) {
     ctx.fillStyle = line.gray ? "#7a7a7a" : "#000";
-    put(ctx, line.text, M, y + head.cap, wide, headRtl);
-    y += head.lineH;
+    ctx.font = bigFont(head.size, line.text);
+    put(ctx, line.text, M, y + line.up, wide, headRtl);
+    y += line.up + line.down + head.gap;
   }
-  if (head.lines.length) y += head.drop - head.size * 0.15;
+  if (head.lines.length) y -= head.gap;
 
   if (body.length) {
     if (y > top + spare * 0.4) y += 26;
