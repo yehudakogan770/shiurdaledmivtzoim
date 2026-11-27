@@ -22,8 +22,8 @@
                   <img src="https://sdmivtzoim.com/icon-192.png" width="44" height="44" alt="" style="display:block;border:0;border-radius:10px;box-shadow:0 0 0 2px rgba(255,255,255,0.35);">
                 </td>
                 <td style="vertical-align:middle;font-family:${tQ};color:#ffffff;">
-                  <div style="font-size:19px;font-weight:700;letter-spacing:0.2px;line-height:1.2;">Shiur Daled Mivtzoim</div>
-                  <div style="font-size:12px;letter-spacing:1.6px;text-transform:uppercase;opacity:0.8;line-height:1.6;">sdmivtzoim.com</div>
+                  <!-- One line, level with the middle of the logo. (A web address here gets turned into a dark blue link by Gmail.) -->
+                  <div style="font-size:21px;font-weight:700;letter-spacing:0.2px;line-height:44px;">Shiur Daled Mivtzoim</div>
                 </td>
               </tr>
             </table>
