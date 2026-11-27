@@ -46,7 +46,7 @@ export function DreidelView_() {
   }
 
   if (mode === "local") return <LocalGame onExit={() => setMode("spin")} />;
-  if (mode === "online" && state.phase === "night") return <OnlineGame joinCode={query.join} onExit={() => setMode("spin")} />;
+  if (mode === "online") return <OnlineGame joinCode={query.join} onExit={() => setMode("spin")} />;
 
   const go = (direction: 1 | -1 = 1) => {
     if (spinning) return;
@@ -68,7 +68,8 @@ export function DreidelView_() {
       <h1 className="pt-2 text-[2.2rem] leading-tight">
         <span className="chanukah-gold">{t("Dreidel")}</span>
       </h1>
-      {state.phase === "night" && (
+      {/* The games are open from the countdown week, so people get to know them before Chanukah. */}
+      {(
         <div className="mx-auto mt-4 grid max-w-md gap-3">
           <button
             type="button"
@@ -89,10 +90,6 @@ export function DreidelView_() {
           <p className="text-xs text-muted">{t("Or spin just for fun below.")}</p>
         </div>
       )}
-      {state.phase !== "night" && (
-        <p className="mx-auto mt-2 max-w-sm rounded-2xl bg-white/10 px-4 py-2 text-sm">{t("Come back on Chanukah to play dreidel with your friends.")}</p>
-      )}
-
       <DreidelView
         design={design}
         spin={spin}

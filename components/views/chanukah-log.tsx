@@ -26,12 +26,17 @@ const STEPS = 4;
 export function ChanukahLogView() {
   const { me, guest, chanukah } = useData();
   const { query } = useNav();
+  const state = useChanukahNow();
   const editing = query.edit ? chanukah?.find((e) => e.id === query.edit) : undefined;
   if (!me || guest) {
     return <Empty title={t("Sign in to log Chanukah")} icon={MenorahIcon} />;
   }
   if (chanukah === null) {
     return <Empty title={t("Chanukah isn't set up yet")}>{t("Ask the Owner to run database update 019 in Supabase.")}</Empty>;
+  }
+  // Chanukah can only be logged on Chanukah (from the morning of the first candle), not the week before.
+  if (state.phase === "countdown" || state.phase === "off") {
+    return <Empty title={t("Chanukah logging opens on Chanukah")} icon={MenorahIcon}>{t("Come back on the day of the first candle.")}</Empty>;
   }
   if (query.edit && !editing) {
     return <Empty title={t("That entry isn't here anymore")} />;

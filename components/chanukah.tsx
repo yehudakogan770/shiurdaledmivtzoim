@@ -149,8 +149,14 @@ export function ChanukahHero() {
         </>
       )}
 
-      {/* The week before, every candle burns; on the day of the first candle they wait for the lighting. */}
-      <Menorah3D lit={state.phase === "countdown" ? 8 : n} className="mt-3" fallback={<MenorahStill />} />
+      {/*
+        The week before, the site only looks like Chanukah and counts down. The menorah, the totals
+        and logging are kept as a surprise for the day of the first candle (they have to be there
+        that Friday morning: the first candle is lit before Shabbos).
+      */}
+      {state.phase !== "countdown" && (
+        <>
+      <Menorah3D lit={n} className="mt-3" fallback={<MenorahStill />} />
 
       <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-accent">{t("The Shiur So Far")}</p>
       <div className="mx-auto mt-2 grid max-w-md grid-cols-3">
@@ -177,6 +183,8 @@ export function ChanukahHero() {
           <MenorahIcon size={30} className="relative" />
           <span className="relative">{t("Log Chanukah")}</span>
         </button>
+      )}
+        </>
       )}
     </section>
   );

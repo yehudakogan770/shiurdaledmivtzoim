@@ -3,6 +3,8 @@ import type { Area } from "./types";
 /** Chanukah: the top of Home, the log form, History and test mode (components/chanukah*.tsx). */
 const chanukah: Area = {
   he: {
+    "Chanukah logging opens on Chanukah": "רישום חנוכה נפתח בחנוכה",
+    "Come back on the day of the first candle.": "חזרו ביום של הנר הראשון.",
     "A menorah with {n} candles lit": "מנורה עם {n} נרות דולקים",
     "A menorah, not lit yet": "מנורה, עוד לא דולקת",
     "Create an account to log Chanukah.": "פתחו חשבון כדי לרשום את חנוכה.",
@@ -271,6 +273,8 @@ const chanukah: Area = {
     "Light before Shabbos, by {time}": "מדליקים לפני שבת, עד {time}",
   },
   fr: {
+    "Chanukah logging opens on Chanukah": "L'enregistrement de Hanouka ouvre à Hanouka",
+    "Come back on the day of the first candle.": "Revenez le jour de la première bougie.",
     "A menorah with {n} candles lit": "Une ménorah avec {n} bougies allumées",
     "A menorah, not lit yet": "Une ménorah, pas encore allumée",
     "Create an account to log Chanukah.": "Créez un compte pour noter Hanouka.",
@@ -538,6 +542,8 @@ const chanukah: Area = {
     "Light before Shabbos, by {time}": "Allumer avant Chabbat, au plus tard à {time}",
   },
   es: {
+    "Chanukah logging opens on Chanukah": "El registro de Janucá se abre en Janucá",
+    "Come back on the day of the first candle.": "Vuelve el día de la primera vela.",
     "A menorah with {n} candles lit": "Una menorá con {n} velas encendidas",
     "A menorah, not lit yet": "Una menorá, todavía sin encender",
     "Create an account to log Chanukah.": "Crea una cuenta para registrar Janucá.",
