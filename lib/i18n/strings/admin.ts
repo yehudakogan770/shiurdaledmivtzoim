@@ -3,6 +3,11 @@ import type { Area } from "./types";
 /** The Admin page: site settings, the shared mivtzoim, people, the Excel export and all activity. */
 const admin: Area = {
   he: {
+    "The welcome text people see on the sign-up screen.": "טקסט הפתיחה שאנשים רואים במסך ההרשמה.",
+    "The site name, the welcome text, and the Mivtzoim everyone logs.": "שם האתר, טקסט הפתיחה והמבצעים שכולם רושמים.",
+    "Find an account, change its details, set a new password, or make someone an admin.": "מצאו חשבון, שנו את הפרטים שלו, קבעו סיסמה חדשה או הפכו מישהו למנהל.",
+    "The Shiur Daled names people choose from, by yeshiva.": "שמות שיעור ד׳ שאנשים בוחרים מהם, לפי ישיבה.",
+    "Everything everyone logged, newest first.": "כל מה שכולם רשמו, מהחדש לישן.",
     "Fill in the yeshiva, the last name and the first name.": "מלא את הישיבה, שם המשפחה והשם הפרטי.",
     "That name is already on this yeshiva's list.": "השם הזה כבר ברשימה של הישיבה הזו.",
     "Run database update 023 in Supabase first.": "קודם הרץ את עדכון מסד הנתונים 023 ב-Supabase.",
@@ -189,6 +194,11 @@ const admin: Area = {
     "Show all {n} accounts": "הצג את כל {n} החשבונות",
   },
   fr: {
+    "The welcome text people see on the sign-up screen.": "Le texte d'accueil affiché sur l'écran d'inscription.",
+    "The site name, the welcome text, and the Mivtzoim everyone logs.": "Le nom du site, le texte d'accueil et les Mivtzoim que tout le monde enregistre.",
+    "Find an account, change its details, set a new password, or make someone an admin.": "Trouvez un compte, modifiez ses informations, définissez un nouveau mot de passe ou nommez un administrateur.",
+    "The Shiur Daled names people choose from, by yeshiva.": "Les noms de Shiur Daled que les gens choisissent, par yeshiva.",
+    "Everything everyone logged, newest first.": "Tout ce que chacun a enregistré, du plus récent au plus ancien.",
     "Fill in the yeshiva, the last name and the first name.": "Remplis la yeshiva, le nom et le prénom.",
     "That name is already on this yeshiva's list.": "Ce nom est déjà dans la liste de cette yeshiva.",
     "Run database update 023 in Supabase first.": "Lance d'abord la mise à jour 023 dans Supabase.",
@@ -375,6 +385,11 @@ const admin: Area = {
     "Show all {n} accounts": "Afficher les {n} comptes",
   },
   es: {
+    "The welcome text people see on the sign-up screen.": "El texto de bienvenida que se ve en la pantalla de registro.",
+    "The site name, the welcome text, and the Mivtzoim everyone logs.": "El nombre del sitio, el texto de bienvenida y los Mivtzoim que todos registran.",
+    "Find an account, change its details, set a new password, or make someone an admin.": "Busca una cuenta, cambia sus datos, pon una contraseña nueva o haz administrador a alguien.",
+    "The Shiur Daled names people choose from, by yeshiva.": "Los nombres de Shiur Daled que la gente elige, por yeshiva.",
+    "Everything everyone logged, newest first.": "Todo lo que todos registraron, lo más nuevo primero.",
     "Fill in the yeshiva, the last name and the first name.": "Completa la yeshivá, el apellido y el nombre.",
     "That name is already on this yeshiva's list.": "Ese nombre ya está en la lista de esta yeshivá.",
     "Run database update 023 in Supabase first.": "Primero ejecuta la actualización 023 en Supabase.",

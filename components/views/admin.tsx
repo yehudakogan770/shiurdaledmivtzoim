@@ -1,8 +1,8 @@
 "use client";
 
 import { PhotoDriveCard } from "../photo-drive-card";
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
-import { ChevronDown, ChevronRight, ChevronUp, Download, ClipboardList, Eye, EyeOff, KeyRound, Flame, Megaphone, Pencil, Search, ShieldCheck, Sparkles, Trash2, Users, ChartColumn, ImagePlus, Signpost, X } from "lucide-react";
+import { useMemo, useState, type ComponentType, type FormEvent, type ReactNode } from "react";
+import { ChevronDown, ChevronRight, ChevronUp, Download, ClipboardList, Eye, EyeOff, KeyRound, Flame, Megaphone, Pencil, Globe, History, Mail, Printer, Search, ShieldCheck, Sparkles, Trash2, Users, ChartColumn, ImagePlus, Signpost, X } from "lucide-react";
 import { TefillinIcon } from "../icons";
 import { bringBackFrom, categoryName, hiddenNowOrLater, hiddenRanges, hideFrom, orderedMivtzoim, reportColumns, type BuiltinType } from "@/lib/categories";
 import { dayWithParsha, weekTitle } from "@/lib/parsha";
@@ -20,10 +20,11 @@ import { ChavrusaFields, ChavrusaNames } from "../chavrusa-fields";
 import { RosterCard } from "./roster-admin";
 import { Avatar, Badge, Button, ButtonLink, Card, Chip, CardTitle, CategoryIcon, Empty, Field, IconButton, Input, Modal, PageHeader, Select, Textarea, cx, listClass } from "../ui";
 import { sum } from "./dashboard";
-import { t, tn } from "@/lib/i18n";
+import { isRtl, t, tn } from "@/lib/i18n";
 
 export function AdminView() {
   const { isAdmin, isOwner } = useData();
+  const { Link, query } = useNav();
   if (!isAdmin) {
     return (
       <Card>
@@ -33,44 +34,95 @@ export function AdminView() {
       </Card>
     );
   }
-  return (
-    <div className="grid grid-cols-1 gap-3">
-      <PageHeader title={t("Admin")} subtitle={t("Edit the website and manage everyone who uses it.")} />
-      {isOwner ? (
-        // The Owner edits the site name, announcement and mivtzoim right on the Home page.
+  const sections: Section[] = [
+    {
+      id: "website",
+      icon: Globe,
+      tone: "accent",
+      title: t("Website"),
+      sub: isOwner ? t("The welcome text people see on the sign-up screen.") : t("The site name, the welcome text, and the Mivtzoim everyone logs."),
+      // The Owner edits the site name, announcement and mivtzoim right on the Home page.
+      body: isOwner ? (
         <SiteSettingsCard welcomeOnly />
       ) : (
         <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
           <SiteSettingsCard />
           <SharedCategoriesCard />
         </div>
-      )}
-      <ReportLinkCard />
-      <SignsLinkCard />
-      {isOwner && <EmailCard />}
-      {isOwner && <PostersCard />}
-      {isOwner && <ChanukahTestCard />}
-      <PeopleCard />
-      <RosterCard />
-      <ExportCard />
-      {isOwner && <PhotoDriveCard />}
-      {/* The Owner's History already shows everyone's entries. */}
-      {!isOwner && <ActivityCard />}
+      ),
+    },
+    { id: "report", href: "/report", icon: ChartColumn, tone: "sage", title: "Weekly report", sub: "How many of each item were sold each week, and how many are needed for next week." },
+    { id: "signs", href: "/signs", icon: Signpost, tone: "candle", title: t("Sign Creator"), sub: t("Make a sign to print: type a header and your text, and download it.") },
+    { id: "email", owner: true, href: "/email", icon: Mail, tone: "accent", title: "Emails", sub: "Write an email and send it from your Gmail to everyone with an account, or to people you choose." },
+    { id: "poster", owner: true, icon: Megaphone, tone: "candle", title: "Poster", sub: "A picture that pops up for everyone when they open the site.", body: <PostersCard /> },
+    { id: "people", icon: Users, tone: "sage", title: t("People"), sub: t("Find an account, change its details, set a new password, or make someone an admin."), body: <PeopleCard /> },
+    { id: "names", icon: ClipboardList, tone: "ink", title: t("Names list"), sub: t("The Shiur Daled names people choose from, by yeshiva."), body: <RosterCard /> },
+    { id: "export", icon: Download, tone: "accent", title: t("Export to Excel"), sub: t("Everyone's Mivtzoim for the Duch. Opens in Excel, Google Sheets or Numbers."), body: <ExportCard /> },
+    { id: "drive", owner: true, icon: Printer, tone: "sage", title: t("Print copies in Google Drive"), sub: "Save every shared photo large in your Google Drive, ready to print.", body: <PhotoDriveCard /> },
+    { id: "chanukah", owner: true, icon: Flame, tone: "candle", title: t("Chanukah test mode"), sub: "See Chanukah ahead of time on this phone, and try logging.", body: <ChanukahTestCard /> },
+    // The Owner's History already shows everyone's entries.
+    { id: "activity", owner: false, icon: History, tone: "ink", title: t("All activity"), sub: t("Everything everyone logged, newest first."), body: <ActivityCard /> },
+  ];
+  const mine = sections.filter((x) => x.owner === undefined || x.owner === isOwner);
+  const open = mine.find((x) => x.id === query.open && x.body);
+
+  // One action opened: just that action, with a way back to the list.
+  if (open) {
+    return (
+      <div className="grid grid-cols-1 gap-3">
+        <div className="px-1 pt-2">
+          <Link href="/admin" className="-ms-3 inline-flex h-9 items-center gap-1 rounded-full px-3 text-sm font-medium text-muted hover:bg-ink/8 hover:text-ink">
+            {isRtl() ? "→" : "←"} {t("Admin")}
+          </Link>
+        </div>
+        {open.body}
+      </div>
+    );
+  }
+  return (
+    <div className="grid grid-cols-1 gap-3">
+      <PageHeader title={t("Admin")} subtitle={t("Edit the website and manage everyone who uses it.")} />
+      {mine.map((x) => (
+        <Link key={x.id} href={x.href ?? `/admin?open=${x.id}`} className="block">
+          <Card className="transition hover:brightness-[.98]">
+            <div className="flex items-center gap-4 px-6 py-5">
+              <span className={cx("grid h-12 w-12 shrink-0 place-items-center rounded-2xl", TONES[x.tone])}>
+                <x.icon size={22} aria-hidden />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-lg font-medium">{x.title}</span>
+                <span className="block text-sm text-muted">{x.sub}</span>
+              </span>
+              <ChevronRight size={20} aria-hidden className="shrink-0 text-muted rtl:rotate-180" />
+            </div>
+          </Card>
+        </Link>
+      ))}
     </div>
   );
 }
 
-/** The Owner: write an email to everyone (or chosen people). */
-function EmailCard() {
-  return (
-    <Card>
-      <CardTitle sub="Write an email and send it from your Gmail to everyone with an account, or to people you choose." action={<ButtonLink href="/email">Write an Email</ButtonLink>}>
-        Emails
-      </CardTitle>
-      <div className="pb-2" />
-    </Card>
-  );
+/**
+ * One admin action on the Admin page: a row with an icon, what it is and what it does. It opens
+ * its own page (`href`) or its own screen here (`body`). `owner` true is for the Owner only,
+ * false for the other admins only.
+ */
+interface Section {
+  id: string;
+  owner?: boolean;
+  href?: string;
+  icon: ComponentType<{ size?: number }>;
+  tone: keyof typeof TONES;
+  title: string;
+  sub: string;
+  body?: ReactNode;
 }
+const TONES = {
+  accent: "bg-accent-soft text-accent-on-soft",
+  candle: "bg-candle-soft text-candle-on-soft",
+  sage: "bg-sage-soft text-sage-on-soft",
+  ink: "bg-secondary-soft text-secondary-on-soft",
+};
 
 function SiteSettingsCard({ welcomeOnly }: { welcomeOnly?: boolean }) {
   if (welcomeOnly) {
@@ -1255,48 +1307,6 @@ function MessagePerson({ person }: { person: Profile }) {
         </Modal>
       )}
     </>
-  );
-}
-
-/** The way into the Sign Creator. */
-function SignsLinkCard() {
-  const { Link } = useNav();
-  return (
-    <Link href="/signs" className="block">
-      <Card className="transition hover:brightness-[.98]">
-        <div className="flex items-center gap-4 px-6 py-5">
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-candle-soft text-candle-on-soft">
-            <Signpost size={22} aria-hidden />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-lg font-medium">{t("Sign Creator")}</span>
-            <span className="block text-sm text-muted">{t("Make a sign to print: type a header and your text, and download it.")}</span>
-          </span>
-          <ChevronRight size={20} aria-hidden className="text-muted rtl:rotate-180" />
-        </div>
-      </Card>
-    </Link>
-  );
-}
-
-/** The Owner: the way into the weekly report. */
-function ReportLinkCard() {
-  const { Link } = useNav();
-  return (
-    <Link href="/report" className="block">
-      <Card className="transition hover:brightness-[.98]">
-        <div className="flex items-center gap-4 px-6 py-5">
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-sage-soft text-sage-on-soft">
-            <ChartColumn size={22} aria-hidden />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-lg font-medium">Weekly report</span>
-            <span className="block text-sm text-muted">How many of each item were sold each week, and how many are needed for next week.</span>
-          </span>
-          <ChevronRight size={20} aria-hidden className="text-muted rtl:rotate-180" />
-        </div>
-      </Card>
-    </Link>
   );
 }
 

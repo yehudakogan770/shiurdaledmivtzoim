@@ -107,7 +107,7 @@ export function ChanukahHero() {
   return (
     <section className="-mx-4 px-4 pt-2 pb-4 text-center sm:-mx-6 sm:px-6">
       {state.testing && (
-        <Link href="/admin#chanukah-test" className="mx-auto mb-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-1.5 text-xs font-medium text-ink">
+        <Link href="/admin?open=chanukah" className="mx-auto mb-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-1.5 text-xs font-medium text-ink">
           <FlaskConical size={14} aria-hidden />
           {state.phase === "night" ? t("Test mode · Night {n}", { n }) : state.phase === "eve" ? t("Test mode · The day of the first candle") : t("Test mode · The countdown week")}
         </Link>
