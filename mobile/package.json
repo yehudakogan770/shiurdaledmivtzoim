@@ -15,7 +15,7 @@
     "start": "expo start",
     "android": "expo start --android",
     "site": "node ../scripts/build-spa.mjs --app assets/site && node -e \"const f='assets/site/app.json',j=require('./'+f);j.packedAt=Date.now();require('fs').writeFileSync(f,JSON.stringify(j))\"",
-    "build:apk": "eas build --platform android --profile preview"
+    "build:apk": "npx eas-cli build --platform android --profile preview"
   },
   "private": true
 }

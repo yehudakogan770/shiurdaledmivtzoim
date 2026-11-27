@@ -2,7 +2,7 @@
 
 import { PhotoDriveCard } from "../photo-drive-card";
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
-import { ChevronDown, ChevronRight, ChevronUp, Download, ClipboardList, Eye, EyeOff, KeyRound, Flame, Megaphone, Pencil, Search, ShieldCheck, Sparkles, Trash2, Users, ChartColumn, ImagePlus, X } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp, Download, ClipboardList, Eye, EyeOff, KeyRound, Flame, Megaphone, Pencil, Search, ShieldCheck, Sparkles, Trash2, Users, ChartColumn, ImagePlus, Signpost, X } from "lucide-react";
 import { TefillinIcon } from "../icons";
 import { bringBackFrom, categoryName, hiddenNowOrLater, hiddenRanges, hideFrom, orderedMivtzoim, reportColumns, type BuiltinType } from "@/lib/categories";
 import { dayWithParsha, weekTitle } from "@/lib/parsha";
@@ -46,6 +46,7 @@ export function AdminView() {
         </div>
       )}
       <ReportLinkCard />
+      <SignsLinkCard />
       {isOwner && <EmailCard />}
       {isOwner && <PostersCard />}
       {isOwner && <ChanukahTestCard />}
@@ -1254,6 +1255,27 @@ function MessagePerson({ person }: { person: Profile }) {
         </Modal>
       )}
     </>
+  );
+}
+
+/** The way into the Sign Creator. */
+function SignsLinkCard() {
+  const { Link } = useNav();
+  return (
+    <Link href="/signs" className="block">
+      <Card className="transition hover:brightness-[.98]">
+        <div className="flex items-center gap-4 px-6 py-5">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-candle-soft text-candle-on-soft">
+            <Signpost size={22} aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-lg font-medium">{t("Sign Creator")}</span>
+            <span className="block text-sm text-muted">{t("Make a sign to print: type your words, add photos, and download it.")}</span>
+          </span>
+          <ChevronRight size={20} aria-hidden className="text-muted rtl:rotate-180" />
+        </div>
+      </Card>
+    </Link>
   );
 }
 

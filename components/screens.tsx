@@ -12,6 +12,7 @@ import { ChanukahLogView } from "./views/chanukah-log";
 import { DreidelPage } from "./views/dreidel";
 import { EmailView } from "./views/email";
 import { UnsubscribeView } from "./views/unsubscribe";
+import { SignsView } from "./views/signs";
 
 /** Path to screen, shared by the Next.js pages and the single-file build. */
 export const SCREENS: Record<string, () => React.JSX.Element> = {
@@ -32,6 +33,7 @@ export const SCREENS: Record<string, () => React.JSX.Element> = {
   "/dreidel": DreidelPage,
   "/email": EmailView,
   "/unsubscribe": UnsubscribeView,
+  "/signs": SignsView,
   // The old address of the Owner's page, before it became the weekly report.
   "/finances": ReportView,
   // The account desk fills the whole screen (see AppShell); this is only its address.
