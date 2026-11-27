@@ -3,6 +3,7 @@ import type { Area } from "./types";
 /** The Sign Creator (admins). The words typed onto a sign are never translated. */
 const signs: Area = {
   he: {
+    "{what}: font": "{what}: גופן",
     "Left": "שמאל",
     "Center": "מרכז",
     "Right": "ימין",
@@ -25,6 +26,7 @@ const signs: Area = {
     "The sign couldn't be downloaded. Please try again.": "לא ניתן היה להוריד את השלט. נסו שוב.",
   },
   fr: {
+    "{what}: font": "{what} : police",
     "Left": "Gauche",
     "Center": "Centre",
     "Right": "Droite",
@@ -47,6 +49,7 @@ const signs: Area = {
     "The sign couldn't be downloaded. Please try again.": "Impossible de télécharger l'affiche. Veuillez réessayer.",
   },
   es: {
+    "{what}: font": "{what}: fuente",
     "Left": "Izquierda",
     "Center": "Centro",
     "Right": "Derecha",

@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { Download, FileText, RotateCcw, Signpost } from "lucide-react";
 import { useData } from "@/lib/data";
 import { t } from "@/lib/i18n";
-import { BLANK_SIGN, SIGN_ALIGNS, drawSign, loadSignFonts, naturalAlign, signPdf, type SignAlign, type SignText } from "@/lib/sign";
-import { Button, Card, CardTitle, Chip, Empty, PageHeader, Textarea } from "../ui";
+import { BLANK_SIGN, HEADER_FONTS, SIGN_ALIGNS, TEXT_FONTS, drawSign, loadSignFonts, naturalAlign, signPdf, type SignAlign, type SignFont, type SignText } from "@/lib/sign";
+import { Button, Card, CardTitle, Empty, PageHeader, Textarea, cx } from "../ui";
 
 /**
  * The Sign Creator, for admins: type a header and some text, and download the sign as a picture
@@ -32,7 +32,7 @@ function Creator() {
     try {
       const d = JSON.parse(localStorage.getItem(DRAFT) || "null");
       const side = (v: unknown) => (SIGN_ALIGNS.includes(v as SignAlign) ? (v as SignAlign) : undefined);
-      if (typeof d?.header === "string" && typeof d?.text === "string") setSign({ header: d.header, text: d.text, headerAlign: side(d.headerAlign), textAlign: side(d.textAlign) });
+      if (typeof d?.header === "string" && typeof d?.text === "string") setSign({ header: d.header, text: d.text, headerAlign: side(d.headerAlign), textAlign: side(d.textAlign), headerFont: d.headerFont, textFont: d.textFont });
     } catch {
       // No draft.
     }
@@ -75,6 +75,7 @@ function Creator() {
             <div className="px-6 pb-5">
               <Textarea aria-label={t("Header")} dir="auto" rows={2} value={sign.header} onChange={(e) => setSign({ ...sign, header: e.target.value })} />
               <Sides label={t("Header")} value={sign.headerAlign ?? naturalAlign(sign.header)} onChange={(headerAlign) => setSign({ ...sign, headerAlign })} />
+              <Fonts label={t("Header")} fonts={HEADER_FONTS} value={sign.headerFont} onChange={(headerFont) => setSign({ ...sign, headerFont })} />
             </div>
           </Card>
           <Card>
@@ -82,6 +83,7 @@ function Creator() {
             <div className="px-6 pb-5">
               <Textarea aria-label={t("Text")} dir="auto" rows={7} value={sign.text} onChange={(e) => setSign({ ...sign, text: e.target.value })} />
               <Sides label={t("Text")} value={sign.textAlign ?? naturalAlign(sign.text)} onChange={(textAlign) => setSign({ ...sign, textAlign })} />
+              <Fonts label={t("Text")} fonts={TEXT_FONTS} value={sign.textFont} onChange={(textFont) => setSign({ ...sign, textFont })} />
             </div>
           </Card>
         </div>
@@ -105,7 +107,19 @@ function Creator() {
   );
 }
 
-/** Which side the words lean to. "Full" stretches each line across; the last line finishes on the side named. */
+/**
+ * Which side the words lean to, shown the way writing programs do: little lines. In the "full"
+ * ones every line reaches both edges, and the short last line shows where the text finishes.
+ */
+const LINES: Record<SignAlign, [number, number][]> = {
+  left: [[3, 21], [3, 14], [3, 21], [3, 11]],
+  center: [[3, 21], [7, 17], [3, 21], [8.5, 15.5]],
+  right: [[3, 21], [10, 21], [3, 21], [13, 21]],
+  "full-left": [[3, 21], [3, 21], [3, 21], [3, 12]],
+  "full-center": [[3, 21], [3, 21], [3, 21], [7.5, 16.5]],
+  "full-right": [[3, 21], [3, 21], [3, 21], [12, 21]],
+};
+
 function Sides({ label, value, onChange }: { label: string; value: SignAlign; onChange(v: SignAlign): void }) {
   const names: Record<SignAlign, string> = {
     left: t("Left"),
@@ -116,11 +130,45 @@ function Sides({ label, value, onChange }: { label: string; value: SignAlign; on
     "full-right": t("Full, ends right"),
   };
   return (
-    <div role="group" aria-label={t("{what}: which side it leans to", { what: label })} className="mt-3 flex flex-wrap gap-2">
+    // Always left to right, so "left" is on the left in Hebrew too.
+    <div role="group" dir="ltr" aria-label={t("{what}: which side it leans to", { what: label })} className="mt-3 flex flex-wrap gap-1.5">
       {SIGN_ALIGNS.map((a) => (
-        <Chip key={a} selected={a === value} onClick={() => onChange(a)}>
-          {names[a]}
-        </Chip>
+        <button
+          key={a}
+          type="button"
+          title={names[a]}
+          aria-label={names[a]}
+          aria-pressed={a === value}
+          onClick={() => onChange(a)}
+          className={cx("grid h-10 w-11 place-items-center rounded-lg transition-colors", a === value ? "bg-accent text-accent-ink" : "bg-sunken text-muted hover:bg-ink/8 hover:text-ink", a === "full-left" && "ms-2")}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+            {LINES[a].map(([from, to], i) => (
+              <path key={i} d={`M${from} ${5 + i * 4.7}H${to}`} />
+            ))}
+          </svg>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** The fonts to choose from, each button written in its own font. */
+function Fonts({ label, fonts, value, onChange }: { label: string; fonts: SignFont[]; value?: string; onChange(id: string): void }) {
+  const chosen = fonts.find((f) => f.id === value) ?? fonts[0];
+  return (
+    <div role="group" dir="ltr" aria-label={t("{what}: font", { what: label })} className="mt-2 flex flex-wrap gap-1.5">
+      {fonts.map((f) => (
+        <button
+          key={f.id}
+          type="button"
+          aria-pressed={f === chosen}
+          onClick={() => onChange(f.id)}
+          style={{ fontFamily: f.css }}
+          className={cx("h-10 rounded-lg px-3.5 text-base transition-colors", f === chosen ? "bg-accent text-accent-ink" : "bg-sunken text-muted hover:bg-ink/8 hover:text-ink")}
+        >
+          {f.name}
+        </button>
       ))}
     </div>
   );

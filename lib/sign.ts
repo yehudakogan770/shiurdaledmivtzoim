@@ -12,6 +12,9 @@ export interface SignText {
   /** Which side each one leans to. Left out means left for English and right for Hebrew. */
   headerAlign?: SignAlign;
   textAlign?: SignAlign;
+  /** The id of a font from HEADER_FONTS and TEXT_FONTS. Left out means the first one. */
+  headerFont?: string;
+  textFont?: string;
 }
 
 /** "full" stretches every line edge to edge; its second word says where the last line finishes. */
@@ -32,25 +35,58 @@ const FOOT = "If you have any money in your Pushka, please help out Mivtzoim · 
 const W = 850;
 const H = 1100;
 const M = 50;
-// Hebrew is always drawn in David Libre, the same font as the בס״ד (the other fonts have no Hebrew letters).
+/**
+ * A font choice. Each one says how its English and its Hebrew are drawn: some fonts have both,
+ * and the ones without Hebrew letters borrow David Libre (the font of the בס״ד).
+ */
+export interface SignFont {
+  id: string;
+  name: string;
+  /** For the page's own buttons. */
+  css: string;
+  english: string;
+  hebrew: string;
+  /** Hebrew letters are drawn this much larger, to stand as tall as the English beside them. */
+  grow: number;
+}
+const face = (id: string, name: string, family: string, english: number, hebrew = english, grow = 1.1, hebrewFamily = family): SignFont => ({
+  id,
+  name,
+  css: `"${family}", "David Libre", sans-serif`,
+  english: `${english} SIZEpx "${family}", "${hebrewFamily}", sans-serif`,
+  hebrew: `${hebrew} SIZEpx "${family}", "${hebrewFamily}", sans-serif`,
+  grow,
+});
+export const HEADER_FONTS: SignFont[] = [
+  face("anton", "Anton", "Anton", 400, 700, 1.22, "David Libre"),
+  face("rubik", "Rubik", "Rubik", 900),
+  face("secular", "Secular One", "Secular One", 400),
+  face("suez", "Suez One", "Suez One", 400),
+  face("frank", "Frank Ruhl Libre", "Frank Ruhl Libre", 900),
+];
+export const TEXT_FONTS: SignFont[] = [
+  face("sans", "Google Sans", "Google Sans Flex", 600, 700, 1.12, "David Libre"),
+  face("rubik", "Rubik", "Rubik", 500),
+  face("heebo", "Heebo", "Heebo", 500),
+  face("assistant", "Assistant", "Assistant", 600),
+  face("frank", "Frank Ruhl Libre", "Frank Ruhl Libre", 500),
+];
+const fontOf = (list: SignFont[], id?: string) => list.find((f) => f.id === id) ?? list[0];
+/** The font for one line, at a size. */
+const fontAt = (font: SignFont, size: number, text: string) => (HEBREW.test(text) ? font.hebrew.replace("SIZE", String(size * font.grow)) : font.english.replace("SIZE", String(size)));
 const SANS = `"Google Sans Flex", "David Libre", system-ui, sans-serif`;
-const BIG = `Anton, "David Libre", Impact, "Arial Narrow", sans-serif`;
-/** A headline line: Hebrew letters are drawn a little larger, to stand as tall as the English capitals. */
-const bigFont = (size: number, text: string) => `${HEBREW.test(text) ? `700 ${size * 1.22}` : `400 ${size}`}px ${BIG}`;
-/** The regular text: Hebrew is drawn bold and a little larger, to match the English beside it. */
-const smallFont = (size: number, text: string) => `${HEBREW.test(text) ? `700 ${size * 1.12}` : `600 ${size}`}px ${SANS}`;
 // The top and bottom bars are dark gray, not solid black.
 const BAR = "#4d4d4d";
 const STRIPE = "#ababab";
 const HEBREW = /[֐-׿]/;
 
-/** The fonts the sign needs. Anton is only used here, so it is fetched when this page opens. */
+/** The fonts the signs can use. Most are only used here, so they are fetched when this page opens. */
 export async function loadSignFonts() {
   if (!document.getElementById("sign-fonts")) {
     const link = document.createElement("link");
     link.id = "sign-fonts";
     link.rel = "stylesheet";
-    link.href = "https://fonts.googleapis.com/css2?family=Anton&display=swap";
+    link.href = "https://fonts.googleapis.com/css2?family=Anton&family=Assistant:wght@600&family=Frank+Ruhl+Libre:wght@500;900&family=Heebo:wght@500&family=Rubik:wght@500;900&family=Secular+One&family=Suez+One&display=swap";
     document.head.appendChild(link);
     await new Promise((done) => {
       link.onload = done;
@@ -58,7 +94,8 @@ export async function loadSignFonts() {
     });
   }
   // A font that can't be fetched (no internet) just falls back to a plain one.
-  await Promise.all([`400 100px Anton`, `600 27px "Google Sans Flex"`, `700 25px "Google Sans Flex"`, `700 22px "David Libre"`].map((f) => document.fonts.load(f, "Aבס").catch(() => null)));
+  const all = [...HEADER_FONTS, ...TEXT_FONTS].flatMap((f) => [f.english, f.hebrew]).map((f) => f.replace("SIZE", "40"));
+  await Promise.all([...new Set(all), `700 22px "David Libre"`].map((f) => document.fonts.load(f, "Aבס").catch(() => null)));
 }
 
 let logo: Promise<HTMLImageElement> | null = null;
@@ -206,18 +243,21 @@ export async function drawSign(canvas: HTMLCanvasElement, sign: SignText, scale:
   const header = sign.header.trim().toUpperCase();
   const paragraphs = sign.text.trim() ? sign.text.trim().split("\n").map((x) => x.trim()) : [];
 
+  const headFont = fontOf(HEADER_FONTS, sign.headerFont);
+  const textFont = fontOf(TEXT_FONTS, sign.textFont);
   const ownLines = header.includes("\n");
   // Hebrew text keeps every line on the right, even a line that starts with a number.
   const textRtl = startsHebrew(sign.text);
   const measure = (big: number, small: number) => {
     let tooWide = false;
-    const cap = ((ctx.font = `400 ${big}px ${BIG}`), ctx.measureText("H").actualBoundingBoxAscent || big * 0.72);
-    const gap = big * 0.15;
+    const cap = ((ctx.font = fontAt(headFont, big, "H")), ctx.measureText("H").actualBoundingBoxAscent || big * 0.72);
+    // Anton is tall and narrow and can sit tight; the wider fonts need a little more air between lines.
+    const gap = big * (headFont.id === "anton" ? 0.15 : 0.21);
     const lines = header.split("\n").flatMap((part) => {
       // Every Hebrew line gets the same room (measured on a plain letter), so the lines are evenly
       // spaced whether or not they have a tall ל or a hanging ך.
       const hebrew = HEBREW.test(part);
-      ctx.font = bigFont(big, part);
+      ctx.font = fontAt(headFont, big, part);
       const w = wrap(ctx, part, wide);
       // Lines the person chose themselves are kept whole: the words get smaller rather than split.
       tooWide ||= w.tooWide || (ownLines && w.lines.length > 1);
@@ -229,7 +269,7 @@ export async function drawSign(canvas: HTMLCanvasElement, sign: SignText, scale:
     const body = paragraphs.flatMap((para) => {
       // An empty line in the box leaves a little space between paragraphs.
       if (!para) return [{ text: "", h: lineH * 0.55, rtl: false, last: true }];
-      ctx.font = smallFont(small, para);
+      ctx.font = fontAt(textFont, small, para);
       const w = wrap(ctx, para, wide);
       tooWide ||= w.tooWide;
       return w.lines.map((text, i) => ({ text, h: lineH, rtl: textRtl, last: i === w.lines.length - 1 }));
@@ -247,15 +287,15 @@ export async function drawSign(canvas: HTMLCanvasElement, sign: SignText, scale:
     for (let small = 46; !fit.fits && small >= Math.max(18, 46 * Math.sqrt(k)); small -= 3) fit = measure(Math.max(40, 220 * k), small);
   }
 
-  // What's left over is shared above and below, a little more below.
-  let y = top + Math.max(0, bottom - top - fit.need) * 0.42;
+  // What's left over is shared evenly above and below, so the words sit in the middle of the page.
+  let y = top + Math.max(0, bottom - top - fit.need) * 0.5;
   const rtl = startsHebrew(header);
   ctx.fillStyle = "#000";
   const headerAlign = sign.headerAlign ?? naturalAlign(header);
   const textAlign = sign.textAlign ?? naturalAlign(sign.text);
   // The header is one block: only its very last line counts as the finishing line.
   fit.lines.forEach((line, i) => {
-    ctx.font = bigFont(fit.big, line.text);
+    ctx.font = fontAt(headFont, fit.big, line.text);
     put(ctx, line.text, M, y + line.up, wide, rtl, headerAlign, i === fit.lines.length - 1);
     y += line.up + line.down + fit.gap;
   });
@@ -264,7 +304,7 @@ export async function drawSign(canvas: HTMLCanvasElement, sign: SignText, scale:
   ctx.fillStyle = "#222";
   for (const line of fit.body) {
     if (line.text) {
-      ctx.font = smallFont(fit.small, line.text);
+      ctx.font = fontAt(textFont, fit.small, line.text);
       put(ctx, line.text, M, y + fit.small * 0.92, wide, line.rtl, textAlign, line.last);
     }
     y += line.h;
