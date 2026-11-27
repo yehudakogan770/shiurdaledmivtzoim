@@ -79,7 +79,8 @@ function Creator() {
       const page = document.createElement("canvas");
       await drawSign(page, sign, photos, 3);
       const blob = kind === "pdf" ? await signPdf(page) : await new Promise<Blob>((done, fail) => page.toBlob((b) => (b ? done(b) : fail(new Error())), "image/png"));
-      const name = (sign.headline.join(" ").trim().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") || "sign") + "." + kind;
+      // English letters only: some browsers drop a file name that has Hebrew in it.
+      const name = (sign.headline.join(" ").trim().replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "") || "sign") + "." + kind;
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
       a.download = name;
@@ -100,7 +101,8 @@ function Creator() {
   return (
     <div className="grid grid-cols-1 gap-3">
       <PageHeader title={t("Sign Creator")} subtitle={t("Type your words, choose what the sign has, and download it ready to print.")} back={{ href: "/admin", label: t("Admin") }} />
-      <div className="grid grid-cols-1 items-start gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] xl:grid-cols-[minmax(0,1fr)_minmax(0,30rem)]">
+      {/* Upright screens stack the boxes over the sign; sideways screens (of any size) put them side by side. */}
+      <div className="grid grid-cols-1 items-start gap-3 landscape:grid-cols-[minmax(0,1fr)_min(30rem,42%)]">
         <div className="grid grid-cols-1 gap-3">
           <Part title={t("Sticker")} hint={t("The small tilted label at the top, like \"This Friday!\".")} on={sign.sticker.on} onToggle={(on) => set({ sticker: { ...sign.sticker, on } })}>
             <Input aria-label={t("Sticker")} value={sign.sticker.text} placeholder={t("This Sunday!")} onChange={(e) => set({ sticker: { ...sign.sticker, text: e.target.value } })} />
@@ -166,8 +168,8 @@ function Creator() {
           </Part>
         </div>
 
-        <div className="grid gap-3 lg:sticky lg:top-4">
-          <canvas ref={preview} aria-label={t("How the sign looks")} className="h-auto w-full rounded-xl shadow-[0_10px_40px_rgba(0,0,0,.18)]" />
+        <div className="grid gap-3 landscape:sticky landscape:top-20 lg:landscape:top-4">
+          <canvas ref={preview} aria-label={t("How the sign looks")} className="mx-auto h-auto w-full rounded-xl landscape:max-h-[calc(100dvh-12rem)] landscape:w-auto landscape:max-w-full shadow-[0_10px_40px_rgba(0,0,0,.18)]" />
           <div className="flex flex-wrap gap-2">
             <Button type="button" disabled={!!busy} onClick={() => download("pdf")}>
               <FileText size={18} aria-hidden /> {busy === "pdf" ? t("Making it…") : t("Download PDF")}

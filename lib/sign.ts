@@ -105,9 +105,11 @@ function wrapParts(ctx: Ctx, text: string, max: number) {
   return lines;
 }
 
-/** One line of text starting at the left edge; Hebrew starts at the right edge instead. */
-function put(ctx: Ctx, text: string, x: number, y: number, width: number) {
-  const rtl = HEBREW.test(text);
+/** Text that starts with a Hebrew letter reads from the right; all its lines then start at the right edge. */
+const startsHebrew = (text: string) => HEBREW.test(text.match(/[A-Za-z\u0590-\u05FF]/)?.[0] ?? "");
+
+/** One line of text starting at the left edge, or at the right edge for Hebrew. */
+function put(ctx: Ctx, text: string, x: number, y: number, width: number, rtl: boolean) {
   ctx.direction = rtl ? "rtl" : "ltr";
   ctx.textAlign = rtl ? "right" : "left";
   ctx.fillText(text, rtl ? x + width : x, y);
@@ -214,7 +216,7 @@ export async function drawSign(canvas: HTMLCanvasElement, sign: SignText, photos
   ctx.fillStyle = "#fff";
   ctx.textAlign = "center";
   footLines.forEach((line, i) => {
-    ctx.direction = HEBREW.test(line) ? "rtl" : "ltr";
+    ctx.direction = startsHebrew(sign.footer.text) ? "rtl" : "ltr";
     ctx.fillText(line, W / 2, H - footH / 2 - ((footLines.length - 1) * 23) / 2 + i * 23 + 5);
   });
   ctx.direction = "ltr";
@@ -249,14 +251,17 @@ export async function drawSign(canvas: HTMLCanvasElement, sign: SignText, photos
       tooWide ||= w.tooWide;
       return w.lines.map((text) => ({ text, gray: h.gray }));
     });
-    const lineH = cap + size * 0.15;
+    // Hebrew letters stand taller than English capitals and some hang below the line.
+    const hebrew = lines.some((l) => HEBREW.test(l.text));
+    const lineH = cap + size * (hebrew ? 0.34 : 0.15);
+    const drop = lines.length && HEBREW.test(lines[lines.length - 1].text) ? size * 0.2 : 0;
     let need = 0;
     if (stickerText) need += 56 + (lines.length ? 30 : 0);
-    need += lines.length * lineH - (lines.length ? size * 0.15 : 0);
+    need += lines.length * lineH + drop - (lines.length ? size * 0.15 : 0);
     if (body.length) need += (need ? 26 : 0) + body.length * 35 - 8;
     if (cardH) need += (need ? 34 : 0) + (beside ? Math.max(cardH, 250) : cardH);
     if (photoRow) need += (need ? 34 : 0) + 230;
-    return { size, cap, lineH, lines, need, fits: !tooWide && need <= bottom - top };
+    return { size, cap, lineH, drop, lines, need, fits: !tooWide && need <= bottom - top };
   };
   const biggest = photos.length ? 190 : 236;
   let head = measure(heads.length ? biggest : 0);
@@ -271,29 +276,35 @@ export async function drawSign(canvas: HTMLCanvasElement, sign: SignText, photos
   if (stickerText) {
     ctx.font = `400 28px ${BIG}`;
     const w = Math.min(wide, ctx.measureText(stickerText).width + 48);
-    tilted(ctx, M + w / 2, y + 28, -3.5, () => {
-      piece(ctx, M, y, w, 56, 12, 6);
+    // A Hebrew sticker sits on the right, where Hebrew starts.
+    const rtl = startsHebrew(stickerText);
+    const x = rtl ? W - M - w : M;
+    tilted(ctx, x + w / 2, y + 28, rtl ? 3.5 : -3.5, () => {
+      piece(ctx, x, y, w, 56, 12, 6);
       ctx.fillStyle = "#000";
       ctx.textAlign = "center";
-      ctx.fillText(stickerText, M + w / 2, y + 39, w - 30);
+      ctx.direction = rtl ? "rtl" : "ltr";
+      ctx.fillText(stickerText, x + w / 2, y + 39, w - 30);
+      ctx.direction = "ltr";
       ctx.textAlign = "left";
     });
     y += 56 + (head.lines.length ? 30 : 0);
   }
 
   ctx.font = `400 ${head.size}px ${BIG}`;
+  const headRtl = startsHebrew(heads[0]?.text ?? "");
   for (const line of head.lines) {
     ctx.fillStyle = line.gray ? "#7a7a7a" : "#000";
-    put(ctx, line.text, M, y + head.cap, wide);
+    put(ctx, line.text, M, y + head.cap, wide, headRtl);
     y += head.lineH;
   }
-  if (head.lines.length) y -= head.size * 0.15;
+  if (head.lines.length) y += head.drop - head.size * 0.15;
 
   if (body.length) {
     if (y > top + spare * 0.4) y += 26;
     ctx.font = `600 27px ${SANS}`;
     ctx.fillStyle = "#222";
-    body.forEach((line, i) => put(ctx, line, M, y + 25 + i * 35, wide));
+    body.forEach((line, i) => put(ctx, line, M, y + 25 + i * 35, wide, startsHebrew(bodyText)));
     y += body.length * 35 - 8;
   }
 
@@ -317,7 +328,7 @@ export async function drawSign(canvas: HTMLCanvasElement, sign: SignText, photos
         }
         ctx.font = `700 25px ${SANS}`;
         ctx.fillStyle = "#000";
-        lines.forEach((line, j) => put(ctx, line, M + 26, at + 13 + 24 + j * 32, cardW - 52));
+        lines.forEach((line, j) => put(ctx, line, M + 26, at + 13 + 24 + j * 32, cardW - 52, startsHebrew(detailLines[i])));
         at += lines.length * 32 + 26;
       });
     });
